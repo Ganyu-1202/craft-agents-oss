@@ -16,6 +16,7 @@ import { OnboardingWizard, ReauthScreen } from '@/components/onboarding'
 import { WorkspacePicker } from '@/components/workspace'
 import ServerPickerPage from './pages/ServerPickerPage'
 import { ResetConfirmationDialog } from '@/components/ResetConfirmationDialog'
+import { DeleteSessionConfirmationDialog } from '@/components/DeleteSessionConfirmationDialog'
 import { SplashScreen } from '@/components/SplashScreen'
 import { TooltipProvider } from '@craft-agent/ui'
 import { FocusProvider } from '@/context/FocusContext'
@@ -396,6 +397,30 @@ export default function App() {
   const [appTheme, setAppTheme] = useState<ThemeOverrides | null>(null)
   // Reset confirmation dialog
   const [showResetDialog, setShowResetDialog] = useState(false)
+  // Promise-backed delete confirmation keeps the async session action API while
+  // rendering an app-styled dialog in both Electron and the Web UI.
+  const [deleteSessionConfirmationName, setDeleteSessionConfirmationName] = useState<string | null>(null)
+  const deleteSessionConfirmationResolverRef = useRef<((confirmed: boolean) => void) | null>(null)
+
+  const requestDeleteSessionConfirmation = useCallback((name: string): Promise<boolean> => {
+    deleteSessionConfirmationResolverRef.current?.(false)
+    return new Promise(resolve => {
+      deleteSessionConfirmationResolverRef.current = resolve
+      setDeleteSessionConfirmationName(name)
+    })
+  }, [])
+
+  const resolveDeleteSessionConfirmation = useCallback((confirmed: boolean) => {
+    const resolve = deleteSessionConfirmationResolverRef.current
+    deleteSessionConfirmationResolverRef.current = null
+    setDeleteSessionConfirmationName(null)
+    resolve?.(confirmed)
+  }, [])
+
+  useEffect(() => () => {
+    deleteSessionConfirmationResolverRef.current?.(false)
+    deleteSessionConfirmationResolverRef.current = null
+  }, [])
 
   // Auto-update state
   const updateChecker = useUpdateChecker()
@@ -1221,7 +1246,9 @@ export default function App() {
       const isEmpty = !meta || (!meta.lastFinalMessageId && !meta.name)
 
       if (!isEmpty) {
-        const confirmed = await window.electronAPI.showDeleteSessionConfirmation(meta?.name || 'Untitled')
+        const confirmed = await requestDeleteSessionConfirmation(
+          meta?.name || t('settings.workspace.untitled'),
+        )
         if (!confirmed) return false
       }
     }
@@ -1230,7 +1257,7 @@ export default function App() {
     // Remove from per-session atom and metadata map (no sessionsAtom)
     removeSession(sessionId)
     return true
-  }, [store, removeSession])
+  }, [store, removeSession, requestDeleteSessionConfirmation, t])
 
   // Auto-delete handler for empty sessions (fire-and-forget, no confirmation)
   const handleAutoDeleteEmptySession = useCallback((sessionId: string) => {
@@ -2147,6 +2174,11 @@ export default function App() {
               open={showResetDialog}
               onConfirm={executeReset}
               onCancel={() => setShowResetDialog(false)}
+            />
+            <DeleteSessionConfirmationDialog
+              sessionName={deleteSessionConfirmationName}
+              onConfirm={() => resolveDeleteSessionConfirmation(true)}
+              onCancel={() => resolveDeleteSessionConfirmation(false)}
             />
           </div>
 
