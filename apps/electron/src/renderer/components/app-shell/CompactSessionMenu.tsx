@@ -465,7 +465,7 @@ function RootPane({
 
       <Separator />
 
-      {onConfigureCollaboration && <Row icon={<Users className="h-4 w-4" />} label="Configure collaboration" onTap={onConfigureCollaboration} />}
+      {onConfigureCollaboration && <Row icon={<Users className="h-4 w-4" />} label={t('settings.collaborations.configure')} onTap={onConfigureCollaboration} />}
 
       <Row
         icon={<span style={statusColor ? { color: statusColor } : undefined}>{statusIconNode}</span>}

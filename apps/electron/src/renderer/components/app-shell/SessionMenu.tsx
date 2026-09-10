@@ -157,7 +157,7 @@ export function SessionMenu({
       {onConfigureCollaboration && (
         <MenuItem onClick={onConfigureCollaboration}>
           <Users className="h-3.5 w-3.5" />
-          <span className="flex-1">Configure collaboration</span>
+          <span className="flex-1">{t("settings.collaborations.configure")}</span>
         </MenuItem>
       )}
 

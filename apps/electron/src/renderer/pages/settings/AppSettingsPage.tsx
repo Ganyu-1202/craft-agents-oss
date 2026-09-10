@@ -4,6 +4,7 @@
  * Global app-level settings that apply across all workspaces.
  *
  * Settings:
+ * - Display language
  * - Notifications
  * - Network (proxy)
  * - About (version, updates)
@@ -14,6 +15,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LANGUAGES, type LanguageCode } from '@craft-agent/shared/i18n'
 import { Download, Upload, HardDrive, Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
@@ -48,6 +50,7 @@ import {
   SettingsRow,
   SettingsToggle,
   SettingsInput,
+  SettingsMenuSelect,
 } from '@/components/settings'
 import { useUpdateChecker } from '@/hooks/useUpdateChecker'
 
@@ -55,6 +58,11 @@ export const meta: DetailsPageMeta = {
   navigator: 'settings',
   slug: 'app',
 }
+
+const DISPLAY_LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([code, config]) => ({
+  value: code,
+  label: config.nativeName,
+}))
 
 // ============================================
 // Proxy form helpers
@@ -119,8 +127,15 @@ function formatBytes(bytes: number): string {
 // ============================================
 
 export default function AppSettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const appShellContext = useAppShellContext()
+
+  const currentLanguage = (i18n.resolvedLanguage ?? i18n.language) as LanguageCode
+
+  const handleLanguageChange = useCallback((language: string) => {
+    void i18n.changeLanguage(language)
+    void window.electronAPI?.changeLanguage?.(language)
+  }, [i18n])
 
   // Notifications state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -335,6 +350,24 @@ export default function AppSettingsPage() {
         <ScrollArea className="h-full">
           <div className="px-5 py-7 max-w-3xl mx-auto">
             <div className="space-y-8">
+              {/* Language */}
+              <SettingsSection title={t("settings.app.language")}>
+                <SettingsCard>
+                  <SettingsRow
+                    label={t("settings.app.displayLanguage")}
+                    description={t("settings.app.displayLanguageDesc")}
+                  >
+                    <SettingsMenuSelect
+                      value={currentLanguage}
+                      onValueChange={handleLanguageChange}
+                      options={DISPLAY_LANGUAGE_OPTIONS}
+                      placeholder={LANGUAGES[currentLanguage]?.nativeName ?? LANGUAGES.en.nativeName}
+                      menuWidth={200}
+                    />
+                  </SettingsRow>
+                </SettingsCard>
+              </SettingsSection>
+
               {/* Notifications */}
               <SettingsSection title={t("settings.notifications.title")}>
                 <SettingsCard>
@@ -539,7 +572,7 @@ export default function AppSettingsPage() {
               {/* About */}
               <SettingsSection title={t("settings.about.title")}>
                 <SettingsCard>
-                  <SettingsRow label="客户端版本">
+                  <SettingsRow label={t("settings.about.clientVersion")}>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">
                         {clientVersion ?? updateChecker.updateInfo?.currentVersion ?? t("common.loading")}
@@ -552,9 +585,9 @@ export default function AppSettingsPage() {
                       )}
                     </div>
                   </SettingsRow>
-                  <SettingsRow label="服务端版本">
+                  <SettingsRow label={t("settings.about.serverVersion")}>
                     <span className="text-muted-foreground">
-                      {serverVersion ?? '未连接'}
+                      {serverVersion ?? t("settings.about.notConnected")}
                     </span>
                   </SettingsRow>
                   {isElectron && (

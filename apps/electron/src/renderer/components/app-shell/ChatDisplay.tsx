@@ -2332,13 +2332,19 @@ function MessageBubble({
       success: { icon: CheckCircle2, className: 'text-success' },
     }[level]
     const Icon = config.icon
+    // The server persists this fixed marker so session history remains
+    // language-neutral. Translate it at render time, including for messages
+    // created before the display-language setting existed.
+    const content = message.content === 'Response interrupted'
+      ? t('chat.responseInterrupted')
+      : message.content
 
     return (
       <div className={cn('flex items-center gap-2 px-3 py-1 text-[13px] select-none', config.className)}>
         <div className="w-3 h-3 flex items-center justify-center shrink-0">
           <Icon className="w-3 h-3" />
         </div>
-        <span>{message.content}</span>
+        <span>{content}</span>
       </div>
     )
   }

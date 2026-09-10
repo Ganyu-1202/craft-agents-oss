@@ -2769,7 +2769,7 @@ function AppShellContent({
                     },
                     {
                       id: "nav:collaborations",
-                      title: "协作管理",
+                      title: t("settings.collaborations.title"),
                       icon: Users,
                       variant: (isSettingsNavigation(navState) && navState.subpage === 'collaborations') ? "default" : "ghost",
                       onClick: handleCollaborationsClick,
