@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LANGUAGES, type LanguageCode } from '@craft-agent/shared/i18n'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -108,7 +107,7 @@ const getToolIconColumns = (t: (key: string) => string): ColumnDef<ToolIconMappi
 // ============================================
 
 export default function AppearanceSettingsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const toolIconColumns = useMemo(() => getToolIconColumns(t), [t])
 
   const {
@@ -411,23 +410,6 @@ export default function AppearanceSettingsPage() {
                         {Math.round(chatOpacity * 100)}%
                       </span>
                     </div>
-                  </SettingsRow>
-                  <SettingsRow label={t("settings.appearance.language")}>
-                    <SettingsMenuSelect
-                      value={(i18n.resolvedLanguage ?? i18n.language) as LanguageCode}
-                      onValueChange={(value) => {
-                        console.info('[i18n] Appearance dropdown change', {
-                          from: i18n.resolvedLanguage ?? null,
-                          to: value,
-                        })
-                        i18n.changeLanguage(value)
-                        window.electronAPI?.changeLanguage?.(value)
-                      }}
-                      options={Object.entries(LANGUAGES).map(([code, config]) => ({
-                        value: code,
-                        label: config.nativeName,
-                      }))}
-                    />
                   </SettingsRow>
                 </SettingsCard>
                 {themeLoadError && (
