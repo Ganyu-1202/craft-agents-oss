@@ -240,6 +240,7 @@
   "chat.processing.zooming": "¡Zoom!...",
   "chat.queuedBadge": "En cola",
   "chat.renameSession": "Renombrar sesión",
+  "chat.responseInterrupted": "Respuesta interrumpida",
   "chat.scrollUpForEarlier": "Sube para ver mensajes anteriores ({{count}} más)",
   "chat.selectedText": "Texto seleccionado",
   "chat.session": "Sesión",

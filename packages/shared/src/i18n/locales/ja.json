@@ -240,6 +240,7 @@
   "chat.processing.zooming": "ズーム中...",
   "chat.queuedBadge": "キュー待機中",
   "chat.renameSession": "セッション名を変更",
+  "chat.responseInterrupted": "応答が中断されました",
   "chat.scrollUpForEarlier": "上にスクロールして以前のメッセージを表示 (あと {{count}} 件)",
   "chat.selectedText": "選択テキスト",
   "chat.session": "セッション",

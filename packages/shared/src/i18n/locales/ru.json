@@ -240,6 +240,7 @@
   "chat.processing.zooming": "Масштабирование...",
   "chat.queuedBadge": "В очереди",
   "chat.renameSession": "Переименовать сеанс",
+  "chat.responseInterrupted": "Ответ прерван",
   "chat.scrollUpForEarlier": "Прокрутите вверх, чтобы увидеть более ранние сообщения (подробнее {{count}})",
   "chat.selectedText": "Выделенный текст",
   "chat.session": "Сессия",

@@ -240,6 +240,7 @@
   "chat.processing.zooming": "Zoom...",
   "chat.queuedBadge": "Várakozik",
   "chat.renameSession": "Munkamenet átnevezése",
+  "chat.responseInterrupted": "A válasz megszakadt",
   "chat.scrollUpForEarlier": "Görgess fel a korábbi üzenetekért (még {{count}})",
   "chat.selectedText": "Kijelölt szöveg",
   "chat.session": "Munkamenet",

@@ -240,6 +240,7 @@
   "chat.processing.zooming": "疾馳中...",
   "chat.queuedBadge": "已排隊",
   "chat.renameSession": "重新命名會話",
+  "chat.responseInterrupted": "回覆已中斷",
   "chat.scrollUpForEarlier": "向上滾動檢視更早的訊息 (還有 {{count}} 條)",
   "chat.selectedText": "選中文字",
   "chat.session": "會話",
