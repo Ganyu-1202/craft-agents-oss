@@ -95,9 +95,24 @@ describe("getDateLocale", () => {
     expect(locale.code).toBe("es");
   });
 
+  it("fr resolves to French", () => {
+    const locale = getDateLocale("fr");
+    expect(locale.code).toBe("fr");
+  });
+
+  it("ru resolves to Russian", () => {
+    const locale = getDateLocale("ru");
+    expect(locale.code).toBe("ru");
+  });
+
   it("zh-Hans resolves to Simplified Chinese", () => {
     const locale = getDateLocale("zh-Hans");
     expect(locale.code).toBe("zh-CN");
+  });
+
+  it("zh-Hant resolves to Traditional Chinese", () => {
+    const locale = getDateLocale("zh-Hant");
+    expect(locale.code).toBe("zh-TW");
   });
 
   it("hu resolves to Hungarian", () => {
