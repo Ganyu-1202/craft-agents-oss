@@ -23,6 +23,7 @@ import jaMessages from "./locales/ja.json";
 import huMessages from "./locales/hu.json";
 import deMessages from "./locales/de.json";
 import plMessages from "./locales/pl.json";
+import koMessages from "./locales/ko.json";
 
 // ─── date-fns locales ────────────────────────────────────────────────────────
 import { enUS } from "date-fns/locale/en-US";
@@ -35,6 +36,7 @@ import { ja as jaDateLocale } from "date-fns/locale/ja";
 import { hu as huDateLocale } from "date-fns/locale/hu";
 import { de as deDateLocale } from "date-fns/locale/de";
 import { pl as plDateLocale } from "date-fns/locale/pl";
+import { ko as koDateLocale } from "date-fns/locale/ko";
 
 // ─── Registry ────────────────────────────────────────────────────────────────
 
@@ -67,6 +69,7 @@ export const LOCALE_REGISTRY = {
   ja: { nativeName: "日本語", messages: jaMessages, dateLocale: jaDateLocale },
   pl: { nativeName: "Polski", messages: plMessages, dateLocale: plDateLocale },
   ru: { nativeName: "Русский", messages: ruMessages, dateLocale: ruDateLocale },
+  ko: { nativeName: "한국어", messages: koMessages, dateLocale: koDateLocale },
 } satisfies Record<string, LocaleEntry>;
 
 export type LanguageCode = keyof typeof LOCALE_REGISTRY;

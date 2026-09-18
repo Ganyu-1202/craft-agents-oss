@@ -2433,10 +2433,10 @@ export function FreeFormInput({
             // SDK has reported input token usage.  Never interpolate that null
             // value into the tooltip (which previously rendered "null%").
             const usageDescription = usagePercent !== null
-              ? `${usagePercent}% context used`
+              ? t('chat.contextUsagePercent', { percent: usagePercent })
               : contextStatus?.inputTokens != null
-                ? `${formatTokenCount(contextStatus.inputTokens)} tokens used`
-                : 'Context usage unavailable'
+                ? t('chat.tokensUsed', { displayCount: formatTokenCount(contextStatus.inputTokens) })
+                : t('chat.contextUsageUnavailable')
             const handleCompactClick = () => {
               if (!isProcessing) {
                 onSubmit('/compact', [])
@@ -2456,14 +2456,16 @@ export function FreeFormInput({
                       color: 'color-mix(in oklab, var(--info) 30%, var(--foreground))',
                     } as React.CSSProperties}
                   >
-                    {contextStatus?.isCompacting ? t('chat.compacting') : 'Compact'}{usagePercent !== null ? ` · ${usagePercent}%` : ''}
+                    {contextStatus?.isCompacting ? t('chat.compacting') : t('chat.compact')}{usagePercent !== null ? ` · ${usagePercent}%` : ''}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  {isProcessing
-                    ? `${usageDescription} — wait for current operation`
-                    : `${usageDescription} — click to compact`
-                  }
+                  {t(
+                    isProcessing
+                      ? 'chat.compactTooltipProcessing'
+                      : 'chat.compactTooltip',
+                    { usage: usageDescription },
+                  )}
                 </TooltipContent>
               </Tooltip>
             )

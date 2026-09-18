@@ -130,6 +130,11 @@ describe("getDateLocale", () => {
     expect(locale.code).toBe("pl");
   });
 
+  it("ko resolves to Korean", () => {
+    const locale = getDateLocale("ko");
+    expect(locale.code).toBe("ko");
+  });
+
   it("unknown locale falls back to English", () => {
     const locale = getDateLocale("xx-FAKE");
     expect(locale.code).toBe("en-US");
