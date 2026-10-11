@@ -22,7 +22,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveScriptRuntime } from '@craft-agent/session-tools-core';
+import { resolveScriptRuntime } from '@craft-agent/session-tools-core/runtime/resolve-script-runtime';
 import type { PageConfig, PageDataSnapshot } from '@craft-agent/core';
 import { createLogger } from '../utils/debug.ts';
 import {

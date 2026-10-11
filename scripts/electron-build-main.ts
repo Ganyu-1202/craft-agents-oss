@@ -227,12 +227,7 @@ async function buildPiAgentServer(): Promise<void> {
   // calls that fail at runtime since there are no node_modules relative to dist/.
   const proc = spawn({
     cmd: [
-      "bun", "build",
-      join(PI_AGENT_SERVER_DIR, "src/index.ts"),
-      "--outfile", PI_AGENT_SERVER_OUTPUT,
-      "--target", "bun",
-      "--format", "esm",
-      "--external", "koffi",
+      "bun", "run", join(PI_AGENT_SERVER_DIR, "build.ts"),
     ],
     cwd: ROOT_DIR,
     stdout: "inherit",

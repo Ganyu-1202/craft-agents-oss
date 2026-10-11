@@ -115,6 +115,7 @@ export interface Session {
   lastMessageAt: number
   messages: Message[]
   isProcessing: boolean
+  isAwaitingAuthentication?: boolean
   isFlagged?: boolean
   /** Permission mode for this session ('safe', 'ask', 'allow-all') */
   permissionMode?: PermissionMode

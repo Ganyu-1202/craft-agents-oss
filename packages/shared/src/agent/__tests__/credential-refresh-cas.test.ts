@@ -33,6 +33,21 @@ function remoteGate(failure = false) {
 }
 
 describe('Pi OAuth refresh recovery', () => {
+  test('provider rejection forces renewal even when the stored access token is locally unexpired', async () => {
+    const f = fixture()
+    await f.backend.set(f.id, { ...f.credential, expiresAt: Date.now() + 60 * 60_000 })
+    const agent = new PiAgent({ ...f.config, runtime: { piAuthProvider: 'openai', oauthProvider: 'tokennest' } })
+    cleanups.push(() => agent.destroy())
+    let requests = 0
+    globalThis.fetch = (async () => {
+      requests++
+      return Response.json({ access_token: 'renewed', refresh_token: 'rotated', expires_in: 3600 })
+    }) as unknown as typeof fetch
+    await agent.refreshOAuthCredentials()
+    expect(requests).toBe(1)
+    expect((await f.backend.get(f.id))?.value).toBe('renewed')
+    expect((await f.backend.get(f.id))?.refreshToken).toBe('rotated')
+  })
   test('refreshes an expired TokenNest token inside an active turn before releasing the next model request', async () => {
     const f = fixture();
     await f.backend.set(f.id, { ...f.credential, expiresAt: Date.now() + 60 * 60_000 });

@@ -10,7 +10,7 @@ $ElectronDir = Split-Path -Parent $ScriptDir
 $RootDir = Split-Path -Parent (Split-Path -Parent $ElectronDir)
 
 # Configuration
-$BunVersion = "bun-v1.3.9"  # Pinned version for reproducible builds
+$BunVersion = "bun-v1.4.0"  # 1.3.9 loses non-ASCII TokenNest header bytes
 
 # Windows PowerShell installations used in minimal/older environments may not
 # provide the Microsoft.PowerShell.Utility Get-FileHash cmdlet. Use certutil,

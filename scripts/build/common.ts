@@ -41,7 +41,7 @@ export interface BuildConfig {
  * Update this when upgrading Bun. Check latest at: https://github.com/oven-sh/bun/releases
  * This should match or be close to the version used in CI (setup-bun action).
  */
-export const BUN_VERSION = 'bun-v1.3.9';
+export const BUN_VERSION = 'bun-v1.4.0';
 
 /**
  * uv version to bundle with the app.
@@ -987,7 +987,7 @@ export function buildMcpServers(config: BuildConfig): void {
   if (existsSync(join(piDir, 'src'))) {
     mkdirSync(join(piDir, 'dist'), { recursive: true });
     execSync(
-      `bun build ${join(piDir, 'src', 'index.ts')} --outdir ${join(piDir, 'dist')} --target bun --format esm --external koffi`,
+      `bun run "${join(piDir, 'build.ts')}"`,
       { cwd: rootDir, stdio: 'inherit' }
     );
     if (!existsSync(piOut)) {

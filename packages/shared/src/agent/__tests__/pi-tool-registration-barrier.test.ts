@@ -63,6 +63,20 @@ describe('PiAgent tool registration startup barrier', () => {
     } finally { agent.destroy(); }
   });
 
+  it('reports an initialization protocol error immediately instead of a ready timeout', async () => {
+    const agent = new PiAgent(createConfig());
+    const harness = agent as any;
+    harness.subprocessReady = new Promise<void>((resolve, reject) => {
+      harness.subprocessReadyResolve = resolve;
+      harness.subprocessReadyReject = reject;
+    });
+    const ready = harness.waitForSubprocessReady(1000);
+    harness.handleLine(JSON.stringify({ type: 'error', message: 'listen EACCES 127.0.0.1' }));
+    try {
+      await expect(ready).rejects.toThrow('listen EACCES 127.0.0.1');
+    } finally { agent.destroy(); }
+  });
+
   it('does not complete registration until the matching subprocess ACK arrives', async () => {
     const agent = new PiAgent(createConfig());
     const sent: Array<Record<string, unknown>> = [];

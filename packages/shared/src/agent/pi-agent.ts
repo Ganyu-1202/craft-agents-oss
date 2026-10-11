@@ -89,7 +89,7 @@ import { listAgents } from '../agents/index.ts';
 import type { McpClientPool, ProxyToolDef } from '../mcp/mcp-pool.ts';
 
 // Path utilities
-import { join } from 'path';
+import { basename, join } from 'path';
 import { expandPath } from '../utils/paths.ts';
 
 // Session storage (plans folder path)
@@ -566,7 +566,11 @@ export class PiAgent extends BaseAgent {
 
     // Build spawn args — optionally preload the network interceptor
     // for tool metadata injection/capture across all API formats.
-    const args = [piServerPath];
+    // Installed runtimes must use bundled dependencies. Bun otherwise tries
+    // to download missing optional modules before the JSONL server starts.
+    const args = /^(bun|bun-baseline)(\.exe)?$/i.test(basename(nodePath))
+      ? ['--no-install', piServerPath]
+      : [piServerPath];
     const interceptorPath = runtime.paths?.interceptor;
     if (interceptorPath) {
       args.unshift('--require', interceptorPath);
@@ -992,6 +996,10 @@ export class PiAgent extends BaseAgent {
    * Refresh OAuth tokens and push updated credentials to the running subprocess.
    * Handles TokenNest, Copilot (Pi SDK), and ChatGPT Plus token refresh.
    */
+  async refreshOAuthCredentials(): Promise<void> {
+    await this.refreshAndPushTokens();
+  }
+
   private async refreshAndPushTokens(): Promise<void> {
     if (this.config.authType !== 'oauth') return;
 
@@ -1334,22 +1342,9 @@ export class PiAgent extends BaseAgent {
         const rawMessage = String(msg.message || 'Unknown subprocess error');
 
         this.debug(`Subprocess error${errorCode ? ` (${errorCode})` : ''}: ${rawMessage}`);
-        const errorMsg = rawMessage.toLowerCase();
 
-        // Detect auth errors and attempt token refresh for OAuth connections
-        if (this.config.authType === 'oauth' && (
-          errorMsg.includes('401') ||
-          errorMsg.includes('421') ||
-          errorMsg.includes('unauthorized') ||
-          errorMsg.includes('misdirected') ||
-          (errorMsg.includes('token') && errorMsg.includes('expired')) ||
-          errorMsg.includes('authentication')
-        )) {
-          this.debug('Auth error detected from subprocess, attempting token refresh');
-          this.refreshAndPushTokens().catch(err => {
-            this.debug(`Token refresh after auth error failed: ${err}`);
-          });
-        }
+        // SessionManager awaits renewal before retrying the failed turn. A
+        // background refresh here raced agent disposal and hid refresh failures.
 
         const requestId = typeof msg.id === 'string' ? msg.id : undefined;
 
@@ -1379,6 +1374,9 @@ export class PiAgent extends BaseAgent {
         }
 
         // An unscoped subprocess failure invalidates all outstanding utility work.
+        // Initialization can report an error without exiting. Fail the ready
+        // barrier immediately so the actual cause survives cleanup and retry.
+        this.subprocessReadyReject?.(new Error(rawMessage));
         this.rejectAllPendingEphemeral(new Error(rawMessage));
 
         // Reject pending ensure_session_ready requests (used by branch preflight)

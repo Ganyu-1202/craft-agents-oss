@@ -1,4 +1,6 @@
 <resources>
+    <string name="cloud_devices">TokenNest 设备</string>
+    <string name="cloud_devices_description">自动查找并连接登录相同 TokenNest 账号的电脑。</string>
     <string name="app_name">词元鸟</string>
     <string name="server_home_title">切换使用模式</string>
     <string name="server_home_description">本地模式可在手机上独立运行；服务器模式可连接您已有的词元鸟服务。</string>

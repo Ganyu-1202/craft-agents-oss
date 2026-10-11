@@ -1,4 +1,5 @@
 import type { EventSink, RpcServer } from '@craft-agent/server-core/transport'
+import { parseError } from '@craft-agent/shared/agent'
 import { TurnClientContexts, type TurnClientContext } from './turn-client-context'
 import { saveClientFiles } from './client-files'
 import { MessageBranchGate, editedBranchMessages, branchSeedMessages, copyBranchAttachmentFiles } from './message-branching'
@@ -918,6 +919,8 @@ interface ManagedSession {
   authRetryAttempted?: boolean
   // Flag indicating auth retry is in progress (to prevent complete handler from interfering)
   authRetryInProgress?: boolean
+  /** Failed turn awaiting replacement OAuth credentials, including hidden task sessions. */
+  pendingAuthResume?: { connectionSlug: string; messageId: string; generation: number; loginCompleted?: boolean; cleanupInProgress?: boolean }
   // Whether this session is hidden from session list (e.g., mini edit sessions)
   hidden?: boolean
   branchFromMessageId?: string
@@ -1151,6 +1154,7 @@ function managedToSession(m: ManagedSession, overrides?: Partial<Session>): Sess
     workspaceName: m.workspace.name,
     messages: [],
     isProcessing: m.isProcessing,
+    isAwaitingAuthentication: !!m.pendingAuthResume,
     sessionFolderPath: getSessionStoragePath(m.workspace.rootPath, m.id),
     supportsBranching: resolveSupportsBranching(m),
     ...overrides,
@@ -7216,6 +7220,7 @@ export class SessionManager implements ISessionManager {
     // Note: authRetryInProgress is NOT reset here - it's managed by the retry logic
     if (!_isAuthRetry) {
       managed.authRetryAttempted = false
+      managed.pendingAuthResume = undefined
     }
 
     // Store message/attachments for potential retry after auth refresh
@@ -7626,7 +7631,7 @@ export class SessionManager implements ISessionManager {
       // Only handle cleanup for unexpected exits (loop break without complete event)
       // Normal completion returns early after calling onProcessingStopped
       // Errors are handled in catch block
-      if (managed.isProcessing && managed.processingGeneration === myGeneration) {
+      if (managed.isProcessing && !managed.authRetryInProgress && managed.processingGeneration === myGeneration) {
         sessionLog.info('Finally block cleanup - unexpected exit')
         sendSpan.mark('chat.unexpected_exit')
         sendSpan.end()
@@ -7637,6 +7642,15 @@ export class SessionManager implements ISessionManager {
 
   async cancelProcessing(sessionId: string, silent = false): Promise<void> {
     const managed = this.sessions.get(sessionId)
+    const awaitingAuth = managed?.pendingAuthResume
+    if (managed) {
+      managed.pendingAuthResume = undefined
+      managed.authRetryInProgress = false
+    }
+    if (managed && awaitingAuth && !managed.isProcessing) {
+      managed.messageQueue = []
+      this.emitSessionComplete({ sessionId, workspaceId: managed.workspace.id, reason: 'interrupted' })
+    }
     if (!managed?.isProcessing || managed.stopRequested) {
       return // Not processing, nothing to cancel
     }
@@ -7752,87 +7766,84 @@ export class SessionManager implements ISessionManager {
     sessionId: string,
     managed: ManagedSession,
     workspaceId: string,
-    failureErrorCode?: string,
+    _failureErrorCode?: string,
   ): boolean {
-    if (managed.authRetryAttempted || !managed.lastSentMessage) return false
+    const connectionSlug = managed.llmConnection || loadWorkspaceConfig(managed.workspace.rootPath)?.defaults?.defaultLlmConnection || getDefaultLlmConnection()
+    const connection = connectionSlug ? getLlmConnection(connectionSlug) : undefined
+    if (connection?.authType !== 'oauth' || !managed.lastSentMessage) return false
+    const userMessage = managed.messages.findLast(m => m.role === 'user' && !m.isQueued)
+    if (!userMessage) return false
+    managed.pendingAuthResume = { connectionSlug: connection.slug, messageId: userMessage.id, generation: managed.processingGeneration }
+    if (managed.authRetryAttempted) return false
 
-    sessionLog.info(`Auth error detected, attempting token refresh and retry for session ${sessionId}`)
     managed.authRetryAttempted = true
     managed.authRetryInProgress = true
-
-    // Emit lightweight info so the user sees progress instead of a scary red error
-    this.sendEvent({
-      type: 'info',
-      sessionId,
-      message: 'Token expired, refreshing session…',
-      timestamp: this.monotonic(),
-    }, workspaceId)
+    const generation = managed.processingGeneration
+    let retryGeneration = generation
+    const agent = managed.agent
+    this.sendEvent({ type: 'info', sessionId, message: 'Token expired, refreshing session…', timestamp: this.monotonic() }, workspaceId)
 
     setImmediate(async () => {
       try {
-        // 1. Reset summarization client so it picks up fresh credentials
-        sessionLog.info(`[auth-retry] Resetting summarization client for session ${sessionId}`)
+        // Provider rejection may precede the locally stored expiry timestamp.
+        // Await forced renewal rather than rebuilding with the same rejected token.
+        await agent?.refreshOAuthCredentials?.()
+        if (managed.stopRequested || managed.processingGeneration !== generation || this.sessions.get(sessionId) !== managed) return
         resetSummarizationClient()
-
-        // 2. Destroy the agent — the new agent's postInit() will refresh auth
-        sessionLog.info(`[auth-retry] Destroying agent for session ${sessionId}`)
-        managed.agent = null
-
-        // 3. Retry the message
-        const retryMessage = managed.lastSentMessage
-        const retryAttachments = managed.lastSentAttachments
-        const retryStoredAttachments = managed.lastSentStoredAttachments
-        const retryOptions = managed.lastSentOptions
-
-        if (retryMessage) {
-          sessionLog.info(`[auth-retry] Retrying message for session ${sessionId}`)
-          this.setProcessing(managed, false)
-
-          // Remove the user message that was added for this failed attempt
-          // so we don't get duplicate messages when retrying
-          const lastUserMsgIndex = managed.messages.findLastIndex(m => m.role === 'user')
-          if (lastUserMsgIndex !== -1) {
-            managed.messages.splice(lastUserMsgIndex, 1)
-          }
-
-          managed.authRetryInProgress = false
-
-          await this.sendMessage(
-            sessionId,
-            retryMessage,
-            retryAttachments,
-            retryStoredAttachments,
-            retryOptions,
-            undefined,  // existingMessageId
-            true        // _isAuthRetry - prevents infinite retry loop
-          )
-          sessionLog.info(`[auth-retry] Retry completed for session ${sessionId}`)
-        } else {
-          managed.authRetryInProgress = false
-        }
-      } catch (retryError) {
+        // Retire the failed iterator before asynchronous disposal can release it.
+        managed.processingGeneration++
+        retryGeneration = managed.processingGeneration
+        managed.pendingAuthResume!.generation = managed.processingGeneration
+        await this.disposeManagedAgentRuntime(managed, 'OAuth refresh')
+        if (managed.stopRequested || managed.processingGeneration !== retryGeneration || !managed.pendingAuthResume) return
+        const messageId = managed.pendingAuthResume.messageId
+        managed.pendingAuthResume = undefined
+        this.setProcessing(managed, false)
         managed.authRetryInProgress = false
-        sessionLog.error(`[auth-retry] Failed to retry after auth refresh for session ${sessionId}:`, retryError)
-        sessionRuntimeHooks.captureException(retryError, { errorSource: 'auth-retry', sessionId })
+        await this.sendMessage(sessionId, managed.lastSentMessage!, managed.lastSentAttachments,
+          managed.lastSentStoredAttachments, managed.lastSentOptions, messageId, true)
+      } catch (error) {
+        if (managed.stopRequested || managed.processingGeneration !== retryGeneration || this.sessions.get(sessionId) !== managed) return
+        const parsed = parseError(error)
+        if (parsed.code !== 'expired_oauth_token') managed.pendingAuthResume = undefined
         const failedMessage: Message = {
-          id: generateMessageId(),
-          role: 'error',
-          content: 'Authentication failed. Please check your credentials.',
-          timestamp: this.monotonic(),
-          errorCode: failureErrorCode,
+          id: generateMessageId(), role: 'error', content: parsed.message,
+          timestamp: this.monotonic(), errorCode: parsed.code, errorTitle: parsed.title,
+          errorActions: parsed.actions, errorCanRetry: parsed.canRetry,
         }
         managed.messages.push(failedMessage)
-        this.sendEvent({
-          type: 'error',
-          sessionId,
-          error: 'Authentication failed. Please check your credentials.',
-          timestamp: failedMessage.timestamp,
-        }, workspaceId)
-        this.onProcessingStopped(sessionId, 'error')
+        this.sendEvent({ type: 'typed_error', sessionId, error: parsed, timestamp: failedMessage.timestamp }, workspaceId)
+        managed.authRetryInProgress = false
+        await this.onProcessingStopped(sessionId, 'error')
+      } finally {
+        if (managed.processingGeneration === retryGeneration) managed.authRetryInProgress = false
       }
     })
-
     return true
+  }
+
+  /** Resume only turns blocked on this connection, once, after successful login. */
+  resumeAfterAuthentication(connectionSlug: string): void {
+    for (const managed of this.sessions.values()) {
+      const pending = managed.pendingAuthResume
+      if (!pending || pending.connectionSlug !== connectionSlug) continue
+      pending.loginCompleted = true
+      if (managed.isProcessing || managed.authRetryInProgress || pending.cleanupInProgress || managed.stopRequested || managed.processingGeneration !== pending.generation) continue
+      managed.authRetryInProgress = true
+      managed.authRetryAttempted = false
+      // Do not hold the OAuth RPC open for the duration of a model turn.
+      void (async () => {
+        await this.disposeManagedAgentRuntime(managed, 'OAuth login')
+        if (managed.stopRequested || managed.pendingAuthResume !== pending || managed.processingGeneration !== pending.generation || this.sessions.get(managed.id) !== managed) return
+        managed.pendingAuthResume = undefined
+        managed.authRetryInProgress = false
+        await this.sendMessage(managed.id, managed.lastSentMessage!, managed.lastSentAttachments,
+          managed.lastSentStoredAttachments, managed.lastSentOptions, pending.messageId, true)
+      })().catch(error => sessionLog.error(`Failed to resume session ${managed.id} after login`, error))
+        .finally(() => {
+          if (!managed.pendingAuthResume || managed.pendingAuthResume === pending) managed.authRetryInProgress = false
+        })
+    }
   }
 
   /**
@@ -7886,6 +7897,7 @@ export class SessionManager implements ISessionManager {
     if (!managed) return
 
     sessionLog.info(`Processing stopped for session ${sessionId}: ${reason}`)
+    if (managed.pendingAuthResume) managed.pendingAuthResume.cleanupInProgress = true
 
     // The provider may still be aborting after its event iterator closes.
     // Retire the old runtime before accepting another prompt, including when
@@ -7971,6 +7983,17 @@ export class SessionManager implements ISessionManager {
       managed.pendingExternalMetadata = undefined
       sessionLog.info(`Applying deferred external metadata for session ${sessionId} after processing stop`)
       this.applyExternalSessionMetadata(managed, pendingHeader)
+    }
+
+    // Authentication is a pause, not a terminal task outcome. Keep queued
+    // follow-ups and the conductor's current node until login resumes the turn.
+    if (managed.pendingAuthResume) {
+      this.sendEvent({ type: 'complete', sessionId, tokenUsage: managed.tokenUsage, hasUnread: managed.hasUnread }, managed.workspace.id)
+      this.persistSession(managed)
+      const authResume = managed.pendingAuthResume
+      authResume.cleanupInProgress = false
+      if (authResume.loginCompleted) setImmediate(() => this.resumeAfterAuthentication(authResume.connectionSlug))
+      return
     }
 
     // 5. Check queue and process or complete
@@ -9541,6 +9564,7 @@ export class SessionManager implements ISessionManager {
           lowerErr.includes('token is expired') ||
           lowerErr.includes('authentication token is expired') ||
           lowerErr.includes('please try signing in again') ||
+          lowerErr.includes('login has expired') ||
           (lowerErr.includes('401') && (lowerErr.includes('unauthorized') || lowerErr.includes('auth')))
 
         if (isPlainAuthError && this.attemptAuthRetry(sessionId, managed, workspaceId)) {

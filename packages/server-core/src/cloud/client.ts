@@ -1,5 +1,5 @@
 import WebSocket from 'ws'
-import { getLlmConnection } from '@craft-agent/shared/config'
+import { getLlmConnection, getLlmConnections } from '@craft-agent/shared/config'
 import { getCredentialManager } from '@craft-agent/shared/credentials'
 import { getValidTokenNestCredentials } from '../../../shared/src/auth/tokennest-oauth'
 import { normalizeCloudUrl, type CloudConfig, type CloudStatus, type TunnelFrame } from '../../../shared/src/cloud/types'
@@ -21,9 +21,16 @@ export class CloudClient {
   get status(): CloudStatus { return { ...this.state, deviceId: loadCloudSettings().deviceId } }
 
   async request<T>(path: string, method = 'GET', body?: unknown, config = this.config, signal?: AbortSignal): Promise<T> {
-    const connection = getLlmConnection(config.connectionSlug)
+    // Discovery should work immediately after login, without configuring hosting.
+    const credentialManager = getCredentialManager()
+    let connection = config.connectionSlug ? getLlmConnection(config.connectionSlug) : undefined
+    if (!config.connectionSlug) {
+      for (const candidate of getLlmConnections().filter(item => item.oauthProvider === 'tokennest')) {
+        if (await credentialManager.hasLlmCredentials(candidate.slug, candidate.authType)) { connection = candidate; break }
+      }
+    }
     if (connection?.oauthProvider !== 'tokennest') throw new Error('Select a signed-in TokenNest account in Cloud Server settings')
-    const credentials = await getValidTokenNestCredentials(connection.slug, getCredentialManager())
+    const credentials = await getValidTokenNestCredentials(connection.slug, credentialManager)
     if (!credentials) throw new Error('Sign in to TokenNest again to use cloud services')
     const response = await fetch(normalizeCloudUrl(config.serverUrl) + path, {
       method, redirect: 'error', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),

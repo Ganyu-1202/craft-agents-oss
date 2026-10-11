@@ -17,6 +17,7 @@ afterEach(() => {
 function createHarness() {
   const handlers = new Map<string, HandlerFn>()
   const reinitializeAuth = mock(async (_slug: string) => {})
+  const resumeAfterAuthentication = mock((_slug: string) => {})
   const server = {
     handle(channel: string, handler: HandlerFn) { handlers.set(channel, handler) },
     push() {},
@@ -25,7 +26,7 @@ function createHarness() {
     findClientsWithCapability() { return [] },
   } as RpcServer
   const deps = {
-    sessionManager: { reinitializeAuth },
+    sessionManager: { reinitializeAuth, resumeAfterAuthentication },
     oauthFlowStore: {},
     platform: {
       appRootPath: '/',
@@ -49,7 +50,7 @@ function createHarness() {
     if (!handler) throw new Error(`Handler not registered: ${channel}`)
     return handler
   }
-  return { context, getHandler, reinitializeAuth }
+  return { context, getHandler, reinitializeAuth, resumeAfterAuthentication }
 }
 
 function stubStorage(existing: config.LlmConnection | null = null) {
@@ -279,6 +280,7 @@ describe('TokenNest OAuth RPC handlers', () => {
       accessToken: 'new-access-token',
     }))
     expect(harness.reinitializeAuth).toHaveBeenCalledWith(existing.slug)
+    expect(harness.resumeAfterAuthentication).toHaveBeenCalledWith(existing.slug)
   })
 
   it('keeps the existing connection when group discovery fails during reauthorization', async () => {

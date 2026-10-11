@@ -70,6 +70,12 @@ final class LocalAgentServer {
         return start(true);
     }
 
+    ConnectionInfo currentConnection() {
+        synchronized (lock) {
+            return process != null && process.isAlive() ? new ConnectionInfo(port, token) : null;
+        }
+    }
+
     private ConnectionInfo start(boolean allowRetry) throws IOException {
         if (!isSupportedOnThisDevice()) {
             throw new IOException("The bundled local server requires Android 9 or newer");

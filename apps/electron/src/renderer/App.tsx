@@ -416,7 +416,6 @@ export default function App() {
   useEffect(() => window.electronAPI.onSessionEvent(event => {
     if (event.type !== 'typed_error' && event.type !== 'error') return
     const session = store.get(sessionAtomFamily(event.sessionId))
-    if (session?.hidden) return
     const sessionConnection = session?.llmConnection ?? store.get(sessionMetaMapAtom).get(event.sessionId)?.llmConnection
     const connection = getRechargeConnection(llmConnections, sessionConnection, workspaceDefaultLlmConnection)
     rechargeOnInsufficientBalance(event.error, connection)

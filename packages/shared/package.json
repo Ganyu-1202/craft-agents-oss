@@ -61,6 +61,7 @@
     "./utils/redaction": "./src/utils/redaction.ts",
     "./utils/logo": "./src/utils/logo.ts",
     "./utils/service-url": "./src/utils/service-url.ts",
+    "./utils/tokennest-headers": "./src/utils/tokennest-headers.ts",
     "./utils/icon": "./src/utils/icon.ts",
     "./icons": "./src/icons/index.ts",
     "./colors": "./src/colors/index.ts",

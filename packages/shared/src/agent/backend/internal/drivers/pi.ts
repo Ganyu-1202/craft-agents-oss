@@ -2,6 +2,7 @@ import type { ProviderDriver, DriverTestConnectionArgs } from '../driver-types.t
 import type { ModelDefinition } from '../../../../config/models.ts';
 import { getAllPiModels, getPiModelsForAuthProvider } from '../../../../config/models-pi.ts';
 import { getPiProviderBaseUrl } from '../../../../config/models-pi.ts';
+import { tokenNestGroupHeaderValue } from '../../../../utils/tokennest-headers.ts';
 
 // ── Copilot model types ────────────────────────────────────────────────
 type RawCopilotModel = {
@@ -245,7 +246,7 @@ export const piDriver: ProviderDriver = {
       return m.id;
     }),
     customHeaders: context.connection?.oauthProvider === 'tokennest' && context.connection.channelGroup
-      ? { 'X-TokenNest-Group': context.connection.channelGroup }
+      ? { 'X-TokenNest-Group': tokenNestGroupHeaderValue(context.connection.channelGroup) }
       : undefined,
   }),
   fetchModels: async ({ connection, credentials, timeoutMs }) => {

@@ -139,6 +139,7 @@ public final class MainActivity extends Activity {
     private final AtomicInteger connectionAttempt = new AtomicInteger();
     private ServerMode activeMode;
     private boolean showingServerConfiguration;
+    private boolean openCloudPickerOnLocalStart;
     private boolean configurationAllowCancel;
     private ConfigurationPage configurationPage = ConfigurationPage.MODE_PICKER;
     private boolean backDispatchPending;
@@ -383,6 +384,16 @@ public final class MainActivity extends Activity {
                 true);
         remoteCard.setOnClickListener(view -> showRemoteServerForm());
         page.addView(remoteCard, cardParams());
+
+        if (localAvailable) {
+            View cloudCard = createModeCard(R.string.cloud_devices, R.string.cloud_devices_description,
+                    R.string.remote_mode_badge, false, true);
+            cloudCard.setOnClickListener(view -> {
+                openCloudPickerOnLocalStart = true;
+                connect(ServerMode.LOCAL);
+            });
+            page.addView(cloudCard, cardParams());
+        }
 
         TextView privacy = textView(R.string.connection_privacy_note, 12, COLOR_MUTED);
         privacy.setGravity(Gravity.CENTER);
@@ -734,7 +745,9 @@ public final class MainActivity extends Activity {
                                 .apply();
                         activeMode = ServerMode.LOCAL;
                         showWebView();
-                        webView.loadUrl("http://127.0.0.1:" + webPort + "/index.html?embedded=android");
+                        String pickerQuery = openCloudPickerOnLocalStart ? "&servers=1" : "";
+                        openCloudPickerOnLocalStart = false;
+                        webView.loadUrl("http://127.0.0.1:" + webPort + "/index.html?embedded=android" + pickerQuery);
                     } catch (IOException error) {
                         showConnectionError(error.getMessage());
                     }
@@ -1460,6 +1473,35 @@ public final class MainActivity extends Activity {
             runOnUiThread(() -> {
                 dismissKeyboard();
                 showServerConfiguration(true);
+            });
+        }
+
+        @JavascriptInterface
+        public String getLocalServerConnection() {
+            LocalAgentServer.ConnectionInfo connection = localAgentServer.currentConnection();
+            if (connection == null) return "{}";
+            JSONObject result = new JSONObject();
+            try {
+                result.put("url", "ws://127.0.0.1:" + connection.port);
+                result.put("token", connection.token);
+            } catch (Exception ignored) {}
+            return result.toString();
+        }
+
+        @JavascriptInterface
+        public void connectLocalServer() {
+            runOnUiThread(() -> connect(ServerMode.LOCAL));
+        }
+
+        @JavascriptInterface
+        public void connectRemoteServer(String url, String token) {
+            String normalized = normalizeUrl(url, ServerMode.REMOTE);
+            if (normalized == null || token == null || token.isEmpty()) return;
+            runOnUiThread(() -> {
+                preferences.edit().putString(MODE_KEY, ServerMode.REMOTE.value)
+                        .putString(REMOTE_SERVER_URL_KEY, normalized)
+                        .putString(REMOTE_SERVER_TOKEN_KEY, token).apply();
+                connect(ServerMode.REMOTE);
             });
         }
 

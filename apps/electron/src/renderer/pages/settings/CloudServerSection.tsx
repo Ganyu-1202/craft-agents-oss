@@ -17,9 +17,9 @@ export function CloudServerSection() {
   const [error, setError] = useState('')
   useEffect(() => {
     let active = true
-    void Promise.all([window.electronAPI.getCloudConfig(), window.electronAPI.listLlmConnections()]).then(([settings, connections]) => {
+    void Promise.all([window.electronAPI.getCloudConfig(), window.electronAPI.listLlmConnectionsWithStatus()]).then(([settings, connections]) => {
       if (!active) return
-      setConfig(settings)
+      setConfig({ ...settings, connectionSlug: settings.connectionSlug || connections.find(c => c.oauthProvider === 'tokennest' && c.isAuthenticated)?.slug || '' })
       setAccounts(connections.filter(c => c.oauthProvider === 'tokennest').map(c => ({ slug: c.slug, name: c.name })))
     }).catch(err => { if (active) setError(String(err)) })
     const poll = () => { void window.electronAPI.getCloudStatus().then(value => { if (active) setStatus(value) }).catch(() => {}) }

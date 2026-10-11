@@ -282,6 +282,7 @@ export interface ISessionManager {
   // ---------------------------------------------------------------------------
 
   reinitializeAuth(connectionSlug?: string): Promise<void>
+  resumeAfterAuthentication?(connectionSlug: string): void
   /**
    * Push runtime updates (e.g. capability toggles) to every active session
    * that uses the given connection. Backstopped by the lazy refresh path in

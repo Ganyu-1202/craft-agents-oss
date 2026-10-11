@@ -513,6 +513,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       // Reinitialize auth for the connection that was just created/updated,
       // not the global default (which may be a different connection).
       await sessionManager.reinitializeAuth(setup.slug)
+      sessionManager.resumeAfterAuthentication?.(setup.slug)
       deps.platform.logger?.info('Reinitialized auth after LLM connection setup')
 
       // Clear "Setup later" flag now that user has configured a provider
@@ -1125,6 +1126,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       balanceCache.delete(flow.connectionSlug)
       pendingTokenNestFlows.delete(args.state)
       await sessionManager.reinitializeAuth(flow.connectionSlug)
+      sessionManager.resumeAfterAuthentication?.(flow.connectionSlug)
       deps.platform.logger?.info(`[TokenNest OAuth] Connection ready: ${flow.connectionSlug}`)
       return { success: true }
     } catch (error) {
@@ -1229,6 +1231,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
 
       pendingChatGptFlows.delete(state)
       deps.platform.logger?.info(`[ChatGPT OAuth] Flow complete for ${flow.connectionSlug}`)
+      sessionManager.resumeAfterAuthentication?.(flow.connectionSlug)
       refreshModelsInBackground(flow.connectionSlug, 'ChatGPT auth')
       return { success: true }
     } catch (error) {
@@ -1347,6 +1350,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       })
 
       deps.platform.logger?.info('GitHub Copilot OAuth completed successfully')
+      sessionManager.resumeAfterAuthentication?.(connectionSlug)
       refreshModelsInBackground(connectionSlug, 'Copilot auth')
       return { success: true }
     } catch (error) {

@@ -1,12 +1,13 @@
 import { dirname, join, resolve } from 'node:path'
 import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { headlessRuntimePlugin } from '../../../packages/pi-agent-server/build/headless-runtime.ts'
 
 /** Android owns clipboard access through WebView; Pi's desktop native loader
  * must never run here. Bun Android can spin while resolving its absent addon
  * before the JSONL server even starts listening for the init message. */
 const outdir = process.argv[2]
 if (!outdir) throw new Error('Usage: bun build-pi-runtime.ts <output-directory>')
-let clipboardShimApplied = false
+const runtime = headlessRuntimePlugin()
 
 const result = await Bun.build({
   entrypoints: [resolve(import.meta.dir, '../../../packages/pi-agent-server/src/index.ts')],
@@ -18,24 +19,13 @@ const result = await Bun.build({
   // Jiti loads its Babel compiler lazily. Inlining that compiler into the
   // startup module would include a compiler that ordinary chat never uses.
   external: ['koffi', '@anthropic-ai/claude-agent-sdk', 'jiti'],
-  plugins: [{
-    name: 'android-pi-clipboard',
-    setup(build) {
-      build.onLoad({ filter: /[/\\]pi-coding-agent[/\\]dist[/\\]utils[/\\]clipboard-native\.js$/ }, () => {
-        clipboardShimApplied = true
-        return {
-          contents: 'export const clipboard = null; export function loadClipboardNative() { return null; }',
-          loader: 'js',
-        }
-      })
-    },
-  }],
+  plugins: [runtime.plugin],
 })
 if (!result.success) {
   for (const log of result.logs) console.error(log)
   process.exit(1)
 }
-if (!clipboardShimApplied) throw new Error('Android clipboard shim was not applied; check the Pi SDK module path')
+runtime.assertApplied()
 const sdkEntry = Bun.resolveSync('@earendil-works/pi-coding-agent', import.meta.dir)
 let jitiRoot = dirname(Bun.resolveSync('jiti', dirname(sdkEntry)))
 while (!existsSync(join(jitiRoot, 'package.json'))

@@ -22,6 +22,20 @@ async function confirmStopped(context: Fixture) {
 }
 
 describe('Super Agent runtime turn reconciliation', () => {
+  test('preserves a turn awaiting login and accepts its completion after authentication resumes', async () => {
+    const context = await fixture()
+    const { service, host, config } = context
+    await service.save('alpha', config)
+    const task = await startTask(context)
+    Object.assign(host.sessions.get(task.sessionId!)!, { isProcessing: false, isAwaitingAuthentication: true })
+    await confirmStopped(context)
+    expect((await service.get('alpha')).state.tasks[0]!.status).toBe('running')
+    expect(host.sends).toHaveLength(1)
+    Object.assign(host.sessions.get(task.sessionId!)!, { isProcessing: true, isAwaitingAuthentication: false })
+    host.complete(task.sessionId!, 'Reviewed the existing artifact successfully.')
+    const completed = await until(() => service.get('alpha'), value => value.state.tasks[0]?.status === 'completed')
+    expect(completed.state.tasks[0]!.output).toContain('Reviewed the existing artifact')
+  })
   test('settles a lost worker completion as unknown, blocks its plan and asks the coordinator to review once', async () => {
     const context = await fixture()
     const { root, service, host, config } = context

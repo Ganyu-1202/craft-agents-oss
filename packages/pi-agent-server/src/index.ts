@@ -22,7 +22,9 @@ import { mkdirSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 
 // Pi SDK
-import { withToolImages, type ToolImage } from '@craft-agent/session-tools-core';
+// Import only the pure image adapter. The barrel also initializes host-only
+// handlers and native computer-use dependencies in the JSONL subprocess.
+import { withToolImages, type ToolImage } from '@craft-agent/session-tools-core/computer-use';
 import {
   createAgentSession,
   SessionManager as PiSessionManager,
@@ -105,6 +107,7 @@ import { allowCraftMetadataProperties, stripCraftMetadata } from './craft-metada
 import { applySystemPromptOverride } from './system-prompt-override.ts';
 import { adaptCredentialForPiSdk, type PiCredential } from './adapt-credential.ts';
 import { installRequestAuthGuard, updateCustomEndpointCredential } from './runtime-auth.ts';
+import { normalizeCustomHeaderValues } from './header-values.ts';
 
 // ============================================================
 // Types — JSONL Protocol
@@ -1425,7 +1428,7 @@ async function handleInit(msg: Extract<InboundMessage, { type: 'init' }>): Promi
   moduleRuntimePromise = null;
   piModelRegistry = null;
 
-  initConfig = msg;
+  initConfig = { ...msg, customHeaders: normalizeCustomHeaderValues(msg.customHeaders) };
 
   // Azure OpenAI requires a tenant-specific endpoint URL.
   // The Pi SDK (via Vercel AI SDK) reads AZURE_OPENAI_BASE_URL from env.
@@ -1727,7 +1730,7 @@ async function handleUpdateRuntimeConfig(msg: RuntimeConfigUpdateMessage): Promi
       baseUrl: msg.baseUrl,
       customEndpoint: msg.customEndpoint,
       customModels: msg.customModels,
-      customHeaders: msg.customHeaders,
+      customHeaders: normalizeCustomHeaderValues(msg.customHeaders),
       autoCompactionTokenLimit: msg.autoCompactionTokenLimit,
       browserToolOnly: msg.browserToolOnly ?? initConfig.browserToolOnly,
       interactionOnly: msg.interactionOnly ?? initConfig.interactionOnly,

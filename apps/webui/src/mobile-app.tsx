@@ -12,6 +12,7 @@ import type { Workspace } from '../../electron/src/shared/types'
 import { useTheme } from '../../electron/src/renderer/context/ThemeContext'
 import { installAndroidDownloads } from './adapter/browser-files'
 import { toast } from 'sonner'
+import { CloudServerPicker } from './cloud-server-picker'
 
 function isAndroidApp() {
   return new URLSearchParams(window.location.search).get('embedded') === 'android'
@@ -149,6 +150,7 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
   const { isDark, setMode } = useTheme()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
+  const [serverPickerOpen, setServerPickerOpen] = useState(() => new URLSearchParams(window.location.search).get('servers') === '1')
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [switchingWorkspaceId, setSwitchingWorkspaceId] = useState<string | null>(null)
   const [workspaceError, setWorkspaceError] = useState('')
@@ -274,6 +276,7 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
 
   return (
     <>
+      <CloudServerPicker open={serverPickerOpen} onOpenChange={setServerPickerOpen} connectionMode={connectionMode} />
       <header className="mobile-app-bar" aria-label="词元鸟">
         <button type="button" className="mobile-app-bar__icon" aria-label="打开应用菜单" aria-expanded={navigationOpen} aria-controls="mobile-controls-panel" onClick={() => { dismissKeyboard(); setWorkspaceOpen(false); setNavigationOpen(value => !value) }}><Menu aria-hidden="true" /></button>
         <button type="button" className="mobile-app-bar__title" aria-label="切换工作区" aria-expanded={workspaceOpen} aria-controls="mobile-workspace-controls-panel" onClick={openWorkspace}><span>{studioMode === 'canvas' ? '画布' : studioMode === 'mindmap' ? '思维导图' : studioMode === 'super-agent' ? '超级智能体' : '词元鸟'} <ChevronDown aria-hidden="true" /></span><small><i className={connectionMode === 'remote' ? 'is-remote' : ''} />{modeLabel}</small></button>
@@ -300,7 +303,7 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
             <DrawerSessions onNavigate={navigateTo} />
           </div>
           <footer className="mobile-drawer__footer">
-            <button type="button" className="mobile-drawer__mode" onClick={() => { closeOverlays(); window.CraftAgentAndroid?.configureServer() }}><Server aria-hidden="true" /><span><strong>{modeLabel}</strong><small>切换本机 / 服务器</small></span><ChevronDown aria-hidden="true" /></button>
+            <button type="button" className="mobile-drawer__mode" onClick={() => { closeOverlays(); setServerPickerOpen(true) }}><Server aria-hidden="true" /><span><strong>{modeLabel}</strong><small>服务器列表 · 同账号设备</small></span><ChevronDown aria-hidden="true" /></button>
             <div className="mobile-drawer__footer-actions">
               <button type="button" onClick={openWorkspace}><FolderKanban aria-hidden="true" /><span>工作区</span></button>
               <button type="button" onClick={() => navigateTo(routes.view.settings())}><Settings aria-hidden="true" /><span>设置</span></button>

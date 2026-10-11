@@ -20,10 +20,8 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import {
-  resolveScriptRuntime,
-  isPathWithinDirectory,
-} from '@craft-agent/session-tools-core';
+import { resolveScriptRuntime } from '@craft-agent/session-tools-core/runtime/resolve-script-runtime';
+import { isPathWithinDirectory } from '@craft-agent/session-tools-core/runtime/path-security';
 import { createLogger } from '../utils/debug.ts';
 import { recordPageRefresh } from '../pages/storage.ts';
 import { HISTORY_FIELD_MAX_LENGTH } from './constants.ts';

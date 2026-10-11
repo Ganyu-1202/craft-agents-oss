@@ -36,6 +36,9 @@ export interface AndroidNativeResult<T = unknown> {
 export interface AndroidBridge {
   reload: () => void
   configureServer: () => void
+  getLocalServerConnection?: () => string
+  connectRemoteServer?: (url: string, token: string) => void
+  connectLocalServer?: () => void
   dismissKeyboard: () => void
   setDarkTheme?: (dark: boolean) => void
   getThemeMode?: () => string

@@ -83,7 +83,7 @@ done
 if [ "$FORCE_DOWNLOAD" = true ]; then export TOKENBIRD_FORCE_DOWNLOAD=1; else export TOKENBIRD_FORCE_DOWNLOAD=0; fi
 
 # Configuration
-BUN_VERSION="bun-v1.3.9"  # Pinned version for reproducible builds
+BUN_VERSION="bun-v1.4.0"  # Pinned version for reproducible builds
 
 echo "=== Building TokenBird DMG (${ARCH}) using electron-builder ==="
 if [ "$UPLOAD" = true ]; then

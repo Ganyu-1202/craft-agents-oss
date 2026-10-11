@@ -348,6 +348,8 @@ export type SdkMcpServerConfig =
  * 4. Allow capability-based UI adaptation
  */
 export interface AgentBackend {
+  /** Force renewal after a provider rejects an OAuth access token. */
+  refreshOAuthCredentials?(): Promise<void>;
   /** Explicit Settings edits only; metadata/identifiers, never secret values.
    * Returns true when a live runtime needs user-visible next-session guidance. */
   notifyStoredCredentialChanges?(changes: import('../../credentials/native-types.ts').NativeCredentialAppliedChange[]): Promise<boolean>;

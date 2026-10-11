@@ -8,6 +8,7 @@ import { readMindMapSession, writeMindMapSession, deleteMindMapSession, mindMapW
 import { validateFilePath, getWorkspaceAllowedDirs } from '@craft-agent/server-core/handlers'
 import { inflateRawSync } from 'node:zlib'
 import { isValidThinkingLevel, type ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
+import { tokenNestGroupHeaderValue } from '@craft-agent/shared/utils/tokennest-headers'
 
 export type ImageInput = {
   connectionSlug: string
@@ -74,12 +75,6 @@ async function getToken(connection: LlmConnection, refresh = false): Promise<str
 
 function endpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/$/, '')}/${path}`
-}
-
-// Fetch converts header values from ByteString to wire bytes. Preserve the
-// UTF-8 bytes of group IDs that contain Chinese characters for TokenNest.
-function tokenNestGroupHeaderValue(group: string): string {
-  return Buffer.from(group, 'utf8').toString('latin1')
 }
 
 function parseChatCompletionStream(raw: string): Record<string, any> {

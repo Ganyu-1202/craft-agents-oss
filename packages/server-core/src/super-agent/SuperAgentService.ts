@@ -68,7 +68,7 @@ import {
 
 export interface SuperAgentSessionHost {
   createSession(workspaceId: string, options: CreateSessionOptions): Promise<{ id: string }>
-  getSession(sessionId: string): Promise<{ id: string; workspaceId: string; isProcessing: boolean; tokenUsage?: Session['tokenUsage'] } | null>
+  getSession(sessionId: string): Promise<{ id: string; workspaceId: string; isProcessing: boolean; isAwaitingAuthentication?: boolean; tokenUsage?: Session['tokenUsage'] } | null>
   sendMessage(sessionId: string, message: string, context?: string, hidden?: boolean): Promise<void>
   cancelProcessing(sessionId: string, silent?: boolean): Promise<void>
   onSessionComplete(listener: (event: SessionCompletionEvent) => void): () => void
@@ -922,7 +922,7 @@ export class SuperAgentService {
         this.stoppedTurnObservations.delete(turn)
         continue
       }
-      if (session?.workspaceId === workspaceId && session.isProcessing) {
+      if (session?.workspaceId === workspaceId && (session.isProcessing || session.isAwaitingAuthentication)) {
         this.stoppedTurnObservations.delete(turn)
         continue
       }
