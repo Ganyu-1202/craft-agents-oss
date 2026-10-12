@@ -18,6 +18,18 @@ $androidRoot = $PSScriptRoot
 $sdkRoot = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }
 $bunAndroidVersion = "1.3.14"
 
+# Hash through .NET so minimal PowerShell hosts do not need Get-FileHash.
+function Get-Sha256([string]$Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return -join ($hasher.ComputeHash($stream) | ForEach-Object { $_.ToString("x2") })
+    } finally {
+        $hasher.Dispose()
+        $stream.Dispose()
+    }
+}
+
 if (($Artifact -ne "Apk" -or $SigningProperties -or $ValidateOnly) -and -not $Release) {
     throw "-Artifact Aab/Both, -SigningProperties and -ValidateOnly require -Release."
 }
@@ -162,7 +174,7 @@ try {
         Sort-Object FullName |
         ForEach-Object {
             $relative = $_.FullName.Substring($serverAssetRoot.Length).TrimStart("\", "/")
-            "$relative`:$((Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash)"
+            "$relative`:$(Get-Sha256 $_.FullName)"
         }
     $bundleHashBytes = [Text.Encoding]::UTF8.GetBytes(($bundleHashLines -join "`n"))
     $bundleHasher = [Security.Cryptography.SHA256]::Create()
@@ -310,7 +322,7 @@ if ($Release -and $Artifact -ne "Apk") {
 foreach ($output in $outputs) {
     $destination = Join-Path $outputDir $output.Name
     Copy-Item -LiteralPath $output.Source -Destination $destination -Force
-    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
+    $hash = Get-Sha256 $destination
     Set-Content -LiteralPath "$destination.sha256" -Value "$hash  $($output.Name)" -Encoding ascii
     Write-Output "Artifact: $destination"
     Write-Output "SHA256: $hash"
