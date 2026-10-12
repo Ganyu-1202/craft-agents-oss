@@ -1,3 +1,4 @@
+import { SUPER_AGENT_COLLABORATION_SKILL } from '@craft-agent/session-tools-core/super-agent-tools'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { access, realpath } from 'node:fs/promises'
 import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
@@ -5,12 +6,19 @@ import { spawn } from 'node:child_process'
 import { getLlmConnection, getModelsForProviderType, getWorkspaceByNameOrId, isImageGenerationModelId } from '@craft-agent/shared/config'
 import { getCredentialManager } from '@craft-agent/shared/credentials'
 import { loadWorkspaceSources } from '@craft-agent/shared/sources'
+import { loadAllSkills, loadSkillBySlug } from '@craft-agent/shared/skills'
 import type { SuperAgentConfig, SuperAgentEnvironment } from '@craft-agent/shared/super-agent'
 import type { ISessionManager } from '../handlers/session-manager-interface'
 import { SuperAgentService } from './SuperAgentService'
+import { describeSuperAgentResources } from './SuperAgentResources'
 import { SuperAgentEnvironments } from './SuperAgentEnvironments'
 import { MicrosoftAgentWorkflow } from './MicrosoftAgentWorkflow'
 import { setSessionOperationRecorder } from '@craft-agent/shared/agent'
+import { resolveSessionAgentRuntime } from '@craft-agent/shared/config/llm-connections'
+import { getConfiguredAgentFrameworkProfile, nativeCodexTransportCompatible } from '@craft-agent/shared/agent-plugins/frameworks'
+import { getAgentPluginDescriptor } from '@craft-agent/shared/agent-plugins/catalog'
+import { loadBackendFrameworkConfiguration } from '@craft-agent/shared/agent-plugins'
+import { resolveNativeCodexBinary } from '@craft-agent/shared/codex/binary-resolver'
 
 const services = new WeakMap<ISessionManager, { service: SuperAgentService; environments: SuperAgentEnvironments }>()
 const closedHosts = new WeakSet<ISessionManager>()
@@ -37,6 +45,13 @@ export async function validateSuperAgentCatalog(workspaceId: string, config: Sup
   for (const node of config.nodes) {
     const connection = getLlmConnection(node.llmConnection)
     if (!connection) throw new Error(`AI connection not found: ${node.llmConnection}`)
+    resolveSessionAgentRuntime(connection, node.agentRuntime)
+    const skills = (node.skillSlugs ?? []).map(slug => {
+      const skill = loadSkillBySlug(workspace.rootPath, slug, config.environment.workingDirectory)
+      if (!skill) throw new Error(`Skill not found: ${slug}`)
+      return skill
+    })
+    if (skills.reduce((size, skill) => size + skill.content.length, 0) > 128_000) throw new Error(`Assigned skill instructions for ${node.name} exceed 128 KB`)
     if (connection.authType !== 'none' && !await credentials.hasLlmCredentials(connection.slug, connection.authType)) {
       throw new Error(`Sign in to the AI connection: ${connection.name}`)
     }
@@ -65,11 +80,48 @@ export function getSuperAgentService(host: ISessionManager): SuperAgentService {
     actionGates: true,
     upgradeArchitecture: true,
     workflow: new MicrosoftAgentWorkflow(),
+    describeResources: (workspaceId, config) => {
+      const workspace = getWorkspaceByNameOrId(workspaceId)
+      if (!workspace) throw new Error('Workspace not found')
+      return describeSuperAgentResources(workspace.rootPath, config)
+    },
+    describeNodeBackend: node => {
+      const connection = getLlmConnection(node.llmConnection)
+      if (!connection) return undefined
+      const runtime = resolveSessionAgentRuntime(connection, node.agentRuntime)
+      const compatibility = runtime === 'codex' && (!nativeCodexTransportCompatible(connection) || !resolveNativeCodexBinary())
+      const settings = loadBackendFrameworkConfiguration(runtime)
+      const profile = getConfiguredAgentFrameworkProfile(compatibility ? 'pi' : runtime, settings, true)
+      return { runtime, name: getAgentPluginDescriptor(runtime)?.name ?? runtime,
+        execution: compatibility ? 'Pi compatibility loop' : 'native framework loop',
+        strengths: profile?.strengths, suitableTasks: profile?.suitableTasks,
+        limitations: [...(profile?.limitations ?? []), ...(compatibility ? ['Native Codex features are unavailable on this connection'] : [])],
+        features: settings?.features, nativeOptions: settings?.nativeOptions, assignedSkills: node.skillSlugs ?? [], skillsDelivery: 'TokenBird node system instructions',
+        ...(runtime === 'codex' && !compatibility ? { toolExecution: 'TokenBird policy-enforced host tools; no native execution environment' } : {}) }
+    },
+    describeNodeSkills: (workspaceId, config, node) => {
+      const workspace = getWorkspaceByNameOrId(workspaceId)
+      if (!workspace) throw new Error('Workspace not found')
+      const available = loadAllSkills(workspace.rootPath, config.environment.workingDirectory)
+      return [...new Set([SUPER_AGENT_COLLABORATION_SKILL, ...(node.skillSlugs ?? [])])].flatMap(slug => {
+        const skill = available.find(skill => skill.slug === slug)
+        return skill ? [{ slug, name: skill.metadata.name, description: skill.metadata.description }] : []
+      })
+    },
+    resolveNodeSkills: (workspaceId, config, node) => {
+      const workspace = getWorkspaceByNameOrId(workspaceId)
+      if (!workspace) throw new Error('Workspace not found')
+      return [...new Set([SUPER_AGENT_COLLABORATION_SKILL, ...(node.skillSlugs ?? [])])].map(slug => {
+        const skill = loadSkillBySlug(workspace.rootPath, slug, config.environment.workingDirectory)
+        if (!skill) throw new Error(`Skill not found: ${slug}`)
+        return { slug, content: skill.content }
+      })
+    },
     host: {
       createSession: (workspaceId, options) => host.createSession(workspaceId, options),
       getSession: sessionId => host.getSession(sessionId),
       getSessions: workspaceId => host.getSessions(workspaceId),
-      getSuperAgentSessionIds: workspaceId => host.getSuperAgentSessionIds?.(workspaceId) ?? [],
+      getSuperAgentSessionIds: (workspaceId, nodeId) => host.getSuperAgentSessionIds?.(workspaceId, nodeId) ?? [],
       deleteSession: (sessionId, guard) => host.deleteSession(sessionId, guard),
       sendMessage: (sessionId, message, context, hidden) => host.sendMessage(sessionId, message, undefined, undefined, { collaborationDispatch: true, superAgentContext: context, hidden }),
       cancelProcessing: (sessionId, silent) => host.cancelProcessing(sessionId, silent),

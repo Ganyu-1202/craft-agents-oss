@@ -31,6 +31,7 @@ export function NativeCredentialManager({ workspaceId }: { workspaceId: string |
   const [data, setData] = React.useState<NativeCredentialListResponse | null>(null)
   const [failure, setFailure] = React.useState<Failure | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [access, setAccess] = React.useState<'local' | 'required' | 'pending' | 'approved' | 'unavailable'>('local')
   const [query, setQuery] = React.useState('')
   const [domain, setDomain] = React.useState<'all' | CredentialDomain>('all')
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
@@ -59,15 +60,19 @@ export function NativeCredentialManager({ workspaceId }: { workspaceId: string |
       return
     }
     try {
+      const permission = await api.getCredentialAccess()
+      if (!current()) return
+      setAccess(permission.state)
+      if (permission.state !== 'local' && permission.state !== 'approved') { setData(null); return }
       const status = await api.getNativeCredentialStatus()
       if (!current()) return
       if (!status.ok) { setFailure(status.code); setData(null); return }
-      if (status.value.scope.workspaceId !== workspaceId) { setFailure('SCOPE_NOT_ALLOWED'); setData(null); return }
+      if (permission.state === 'local' && status.value.scope.workspaceId !== workspaceId) { setFailure('SCOPE_NOT_ALLOWED'); setData(null); return }
       if (!status.value.status.canList) { setData({ ...status.value, entries: [] }); return }
       const inventory = await api.listNativeCredentials()
       if (!current()) return
       if (!inventory.ok) { setFailure(inventory.code); setData({ ...status.value, entries: [] }); return }
-      if (inventory.value.scope.workspaceId !== workspaceId) { setFailure('SCOPE_NOT_ALLOWED'); setData(null); return }
+      if (inventory.value.scope.workspaceId !== status.value.scope.workspaceId) { setFailure('SCOPE_NOT_ALLOWED'); setData(null); return }
       setData(inventory.value)
       const keys = new Set(inventory.value.entries.map(entry => nativeCredentialKey(entry.id)))
       setSelected(old => new Set([...old].filter(key => keys.has(key))))
@@ -77,6 +82,31 @@ export function NativeCredentialManager({ workspaceId }: { workspaceId: string |
       if (current()) setLoading(false)
     }
   }, [workspaceId])
+
+  React.useEffect(() => {
+    if (access !== 'pending' && access !== 'approved') return
+    const currentGeneration = generation.current
+    const timer = setInterval(() => {
+      if (busyRef.current) return
+      void window.electronAPI.getCredentialAccess().then(result => {
+        if (generation.current !== currentGeneration || result.state === access) return
+        setAccess(result.state)
+        if (result.state !== 'approved') { setData(null); closeDialog() }
+        void refresh()
+      }).catch(() => {})
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [access, refresh, closeDialog])
+
+  const requestAccess = async () => {
+    const currentGeneration = generation.current
+    setBusy(true)
+    try {
+      const result = await window.electronAPI.requestCredentialAccess()
+      if (generation.current === currentGeneration) { setAccess(result.state); await refresh() }
+    } catch { if (generation.current === currentGeneration) toast.error(t(`${PREFIX}errors.UNKNOWN`)) }
+    finally { if (generation.current === currentGeneration) setBusy(false) }
+  }
 
   React.useEffect(() => {
     generation.current++
@@ -137,6 +167,10 @@ export function NativeCredentialManager({ workspaceId }: { workspaceId: string |
         <SettingsCard><div className="space-y-3 p-4">
           {loading && <p role="status" className="text-sm text-muted-foreground">{t(`${PREFIX}loading`)}</p>}
           {failure && <p role="alert" className="text-sm text-destructive">{t(`${PREFIX}errors.${failure}`)}</p>}
+          {!loading && access !== 'local' && access !== 'approved' && <>
+            <p role="status" className="text-sm text-muted-foreground">{t(`${PREFIX}access.${access}`)}</p>
+            {access === 'required' && <Button disabled={busy} onClick={() => void requestAccess()}>{t(`${PREFIX}requestAccess`)}</Button>}
+          </>}
           {data && <>
             <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" /><div className="space-y-1 text-sm">
               <p className="font-medium">{t(`${PREFIX}protection.${data.status.protection}`)}</p>

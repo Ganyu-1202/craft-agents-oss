@@ -974,6 +974,7 @@ app.whenReady().then(async () => {
             mode: 'thin', url: startupRemoteTarget.url, token: startupRemoteTarget.token,
             remoteWorkspaceId: authority.workspaceId || undefined, revision: startupRemoteTarget.revision,
             profileId: current.profileId, profileRevision: current.revision,
+            sftpEnabled: current.sftp?.enabled === true,
           }
         }
         const workspace = getWorkspaceByNameOrId(authority.workspaceId)
@@ -990,7 +991,7 @@ app.whenReady().then(async () => {
         const matched = profile && profile.url === resolved.url && profile.token === resolved.token
         return { mode: 'workspace', url: resolved.url, token: resolved.token,
           remoteWorkspaceId: resolved.remoteWorkspaceId, revision: resolved.revision ?? 'legacy',
-          ...(matched ? { profileId: profile.profileId, profileRevision: profile.revision } : {}) }
+          ...(matched ? { profileId: profile.profileId, profileRevision: profile.revision, sftpEnabled: profile.sftp?.enabled === true } : {}) }
       },
       createClient: (target, capabilities) => new WsRpcClient(validateNativeRemoteUrl(target.url), {
         token: target.token, workspaceId: target.remoteWorkspaceId,
@@ -1380,6 +1381,33 @@ app.whenReady().then(async () => {
             oauthFlowStore: ofs,
             messagingRegistry: messagingHandle.registry,
             prepareRemoteWorkspaceConfig,
+            remoteCredentialHost: isHeadless ? undefined : {
+              scope: (id: string) => {
+                if (!getWorkspaces().some(w => w.id === id && !w.remoteServer)) return null
+                const sourceWorkspaceId = sourceCredentialWorkspaceId(id, getWorkspaces())
+                return { workspaceId: id, sourceWorkspaceId, sourceScopeUnavailable: sourceWorkspaceId === null, includesGlobal: true as const, includesLlm: true as const }
+              },
+              status: () => credentialVault.status(),
+              listMetadata: () => credentialVault.listMetadata(),
+              apply: (changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialChange[]) => credentialVault.apply(changes),
+              onApplied: async (changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialChange[]) => {
+                const applied = changes.map(change => ({ op: change.op, id: change.id,
+                  ...(change.op === 'upsert' ? { fields: Object.keys(change.credential) as import('@craft-agent/shared/credentials/native-types').NativeCredentialAppliedChange['fields'] } : {}) }))
+                const notified = await sm.notifyStoredCredentialChanges(applied)
+                const reconciled = await reconcileSourceCredentialChanges(applied, id => workspaceForSourceCredentialId(id, getWorkspaces()) ?? null)
+                const reloads = await Promise.allSettled(reconciled.workspaceIds.map(id => sm.reloadMcpServers(id)))
+                if (reconciled.failed || notified.sessionIdsNeedingRestart.length || reloads.some(result => result.status === 'rejected' || !!result.value.failures.length)) throw new Error('Runtime reconciliation pending')
+              },
+              approve: async (request: { clientId: string; workspaceId: string; expiresAt: number }) => {
+                const result = await dialog.showMessageBox({
+                  type: 'warning', title: 'TokenBird · 凭据库访问申请 / Credential access request',
+                  message: '是否允许此连接管理本设备的凭据库？ / Allow this connection to manage this device’s credentials?',
+                  detail: `工作区 / Workspace: ${request.workspaceId}\n连接 / Connection: ${request.clientId}\n允许查看凭据元数据，以及添加、更新、删除此工作区和全局应用凭据。不会返回已保存的密码或密钥。授权有效期为 10 分钟。\nAllows metadata listing and credential changes, including global application credentials, for 10 minutes. Stored secrets are never returned.`,
+                  buttons: ['拒绝 / Deny', '允许 10 分钟 / Allow for 10 minutes'], defaultId: 0, cancelId: 0, noLink: true,
+                })
+                return result.response === 1 && Date.now() < request.expiresAt
+              },
+            },
           }
         },
         // Headless: register only core handlers (no GUI handlers for browser, settings, etc.)

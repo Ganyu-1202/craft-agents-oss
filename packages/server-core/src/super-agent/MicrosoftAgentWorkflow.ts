@@ -11,14 +11,22 @@ export interface SuperAgentWorkflowInput {
 
 export interface SuperAgentWorkflow {
   prepare?(): Promise<void>
-  run(input: SuperAgentWorkflowInput, invoke: () => Promise<void>): Promise<void>
+  run(input: SuperAgentWorkflowInput, invoke: () => Promise<void>, onEvent?: (event: SuperAgentWorkflowEvent) => void): Promise<void>
   close(): void
+}
+
+export interface SuperAgentWorkflowEvent {
+  type: 'executor_invoked' | 'executor_completed' | 'executor_failed' | 'status'
+  executorId?: string
+  state?: string
 }
 
 type PendingRun = {
   nodeId: string
   invoke: () => Promise<void>
   invoked: boolean
+  settled: boolean
+  onEvent?: (event: SuperAgentWorkflowEvent) => void
   resolve: () => void
   reject: (error: Error) => void
   timer?: ReturnType<typeof setTimeout>
@@ -67,19 +75,23 @@ export class MicrosoftAgentWorkflow implements SuperAgentWorkflow {
           }
           const run = this.pending.get(packet.id)
           if (!run) return
-          if (packet.type === 'invoke') {
+          if (packet.type === 'event') {
+            if (!['executor_invoked', 'executor_completed', 'executor_failed', 'status'].includes(packet.event)) { fail(new Error('Invalid Agent Framework event')); return }
+            run.onEvent?.({ type: packet.event, ...(typeof packet.executorId === 'string' ? { executorId: packet.executorId.slice(0, 200) } : {}),
+              ...(typeof packet.state === 'string' ? { state: packet.state.slice(0, 100) } : {}) })
+          } else if (packet.type === 'invoke') {
             if (run.invoked || packet.nodeId !== run.nodeId) { fail(new Error('Invalid Agent Framework node invocation')); return }
             run.invoked = true
             if (run.timer) clearTimeout(run.timer)
             void Promise.resolve().then(run.invoke).then(
-              () => { if (this.child === child && this.pending.has(packet.id)) child.stdin.write(JSON.stringify({ type: 'result', id: packet.id, ok: true }) + '\n') },
-              error => { if (this.child === child && this.pending.has(packet.id)) child.stdin.write(JSON.stringify({ type: 'result', id: packet.id, ok: false, error: String(error) }) + '\n') },
+              () => { run.settled = true; if (this.child === child && this.pending.has(packet.id)) child.stdin.write(JSON.stringify({ type: 'result', id: packet.id, ok: true }) + '\n') },
+              error => { run.settled = true; if (this.child === child && this.pending.has(packet.id)) child.stdin.write(JSON.stringify({ type: 'result', id: packet.id, ok: false, error: String(error) }) + '\n') },
             )
           } else if (packet.type === 'complete' || packet.type === 'error') {
             if (run.timer) clearTimeout(run.timer)
             this.pending.delete(packet.id)
             if (packet.type === 'error') run.reject(new Error(packet.error || 'Agent Framework workflow failed'))
-            else if (!run.invoked) run.reject(new Error('Agent Framework skipped session execution'))
+            else if (!run.invoked || !run.settled) run.reject(new Error('Agent Framework skipped session execution or completed before its result'))
             else run.resolve()
           }
         } catch { fail(new Error('Invalid Agent Framework protocol response')) }
@@ -89,12 +101,12 @@ export class MicrosoftAgentWorkflow implements SuperAgentWorkflow {
     return this.ready
   }
 
-  async run(input: SuperAgentWorkflowInput, invoke: () => Promise<void>): Promise<void> {
+  async run(input: SuperAgentWorkflowInput, invoke: () => Promise<void>, onEvent?: (event: SuperAgentWorkflowEvent) => void): Promise<void> {
     await this.start()
     if (this.closed || !this.child) throw new Error('Agent Framework is unavailable')
     return new Promise<void>((resolve, reject) => {
       const id = randomUUID()
-      const run: PendingRun = { nodeId: input.nodeId, invoke, invoked: false, resolve, reject }
+      const run: PendingRun = { nodeId: input.nodeId, invoke, invoked: false, settled: false, onEvent, resolve, reject }
       run.timer = setTimeout(() => {
         // Kill the transport so a late invoke cannot execute an expired assignment.
         this.child?.kill()

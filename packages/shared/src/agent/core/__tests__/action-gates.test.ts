@@ -79,6 +79,48 @@ describe('mandatory Action Gates', () => {
     setSessionExecutionPolicy(sessionId, policy);
     expect(checkSessionExecutionPolicy(sessionId, 'Write', { file_path: join(root, 'file.txt'), content: 'gated' }).allowed).toBe(false);
   });
+  test.each([false, true])('full control browser commands reach provider dispatch with Action Gates %s', async actionGates => {
+    const toolName = 'mcp__session__browser_tool';
+    setSessionExecutionPolicy(sessionId, { ...policy, actionGates: actionGates ? true : undefined, fullControl: true,
+      browser: false, readFiles: false, safety: { autoReview: true, customRules: [] } });
+    let reviews = 0;
+    setSessionActionReviewer(sessionId, async () => { reviews++; return { verdict: 'deny', reason: 'Must not run' }; });
+    const commands = [
+      ['evaluate', 'var x = 1; x + 2'], 'evaluate document.title',
+      ['downloads', 'list'], ['paste', 'Name\tAge\nAlice\t30'], ['get-clipboard'],
+      'fill @e1 hello; click @e2', ['navigate', 'file:///tmp/report.html'],
+      ['upload', '@e1', join(temp, 'report.txt')],
+    ];
+    for (const [index, command] of commands.entries()) {
+      const input = { command };
+      const invocationId = `browser-${index}`;
+      expect(checkSessionExecutionPolicy(sessionId, toolName, input).allowed).toBe(true);
+      const result = await runPreToolUseChecksWithPermissions({ toolName, input, sessionId, invocationId,
+        permissionMode: 'allow-all', workspaceRootPath: root, workspaceId: 'workspace', workingDirectory: root,
+        activeSourceSlugs: [], allSourceSlugs: [], hasSourceActivation: false,
+        permissionManager: new PermissionManager({ sessionId, workspaceId: 'workspace', workingDirectory: root }) });
+      expect(['allow', 'modify']).toContain(result.type);
+      const dispatched = result.type === 'modify' ? result.input : input;
+      expect(consumeSessionActionGate(sessionId, toolName, dispatched, root, invocationId).allowed).toBe(true);
+      expect(claimSessionActionGateDispatch(sessionId, toolName, dispatched, root, invocationId).allowed).toBe(true);
+    }
+    expect(reviews).toBe(0);
+    expect(requests).toHaveLength(0);
+  });
+  test('browser full control retains explicit deny rules and restores restrictions when disabled', async () => {
+    const tool = 'mcp__session__browser_tool';
+    const input = { command: ['evaluate', 'document.title'] };
+    setSessionExecutionPolicy(sessionId, { ...policy, fullControl: true,
+      safety: { autoReview: true, customRules: [{ toolName: tool, effect: 'deny', reason: 'Browser disabled' }] } });
+    expect(await authorize(tool, input, 'browser-denied')).toMatchObject({ allowed: false, reason: expect.stringContaining('Browser disabled') });
+    setSessionExecutionPolicy(sessionId, { ...policy, fullControl: true });
+    expect((await authorize(tool, input, 'browser-full')).allowed).toBe(true);
+    setSessionExecutionPolicy(sessionId, policy);
+    expect((await authorize(tool, input, 'browser-restricted')).allowed).toBe(false);
+    expect(claimSessionActionGateDispatch(sessionId, tool, input, root, 'browser-full').allowed).toBe(false);
+    expect((await authorize(tool, { command: ['snapshot'] }, 'browser-snapshot')).allowed).toBe(true);
+    expect(requests).toHaveLength(0);
+  });
   test('full control still enforces deny rules and execution boundaries without prompting', async () => {
     setSessionExecutionPolicy(sessionId, { ...policy, fullControl: true,
       safety: { autoReview: true, customRules: [{ toolName: 'mcp__assigned__send_email', effect: 'deny', reason: 'No external mail' }] } });

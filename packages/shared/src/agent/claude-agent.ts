@@ -12,6 +12,8 @@ type ContentBlockParam =
   | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } };
 import { z } from 'zod';
 import { getSystemPrompt } from '../prompts/system.ts';
+import { loadBackendFrameworkConfiguration } from '../agent-plugins/framework-storage.ts';
+import { claudeFrameworkPlugins } from '../agent-plugins/frameworks.ts';
 import { BaseAgent, type MiniAgentConfig, MINI_AGENT_TOOLS, MINI_AGENT_MCP_KEYS } from './base-agent.ts';
 import { getModelPromptSettings, resolveAutoCompactionTokenLimit } from '../config/llm-connections.ts';
 import type { BackendConfig, PostInitResult, PermissionRequestType, SdkMcpServerConfig } from './backend/types.ts';
@@ -1308,6 +1310,7 @@ export class ClaudeAgent extends BaseAgent {
       const resolvedCwd = this.resolveSpawnCwd({ isRetry: _isRetry, sessionId });
 
       const defaultOptions = getDefaultOptions(this.config.envOverrides);
+      const frameworkConfiguration = loadBackendFrameworkConfiguration('claude-code');
       const options: Options = {
         ...defaultOptions,
         ...(compactPercent !== undefined ? {
@@ -1757,6 +1760,8 @@ export class ClaudeAgent extends BaseAgent {
         // Bash permission logic is in PreToolUse where it actually executes.
         // Selectively disable tools - file tools are disabled (use MCP), web/code controlled by settings
         disallowedTools,
+        ...(frameworkConfiguration?.nativeOptions?.claudePlugins !== undefined
+          ? { plugins: claudeFrameworkPlugins(frameworkConfiguration, hasSessionExecutionPolicy(sessionId)) } : {}),
         // Ordinary sessions retain SDK-native skills and configured plugins.
         // Filesystem settings can run command hooks, and discovered MCP servers
         // can spawn host programs before any PreToolUse callback is invoked.

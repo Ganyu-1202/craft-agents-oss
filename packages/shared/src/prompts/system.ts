@@ -356,6 +356,16 @@ type BuiltinPromptSkill = {
  * system prompt small without hiding product capabilities from the model.
  */
 const BUILTIN_PROMPT_SKILLS: readonly BuiltinPromptSkill[] = [
+  { slug: 'super-agent-collaboration', description: 'Use registered Super Agent tools for goals, dispatch, shared state, evidence and delivery.' },
+  { slug: 'intent-clarification', description: 'Clarify and relay Super Agent goals and verified outcomes.' },
+  { slug: 'task-orchestration', description: 'Route Super Agent work by skills and verify dependent results.' },
+  { slug: 'everyday-assistance', description: 'Complete everyday writing, learning, comparisons and planning.' },
+  { slug: 'software-development', description: 'Implement scoped code, integration and interface changes.' },
+  { slug: 'software-verification', description: 'Test, review and run assigned software build checks.' },
+  { slug: 'research-methods', description: 'Execute reproducible experiments and quantitative analysis.' },
+  { slug: 'evidence-review', description: 'Verify claims, calculations and deliverables against evidence.' },
+  { slug: 'knowledge-organization', description: 'Organize sourced information, reusable knowledge and archives.' },
+  { slug: 'incident-response', description: 'Diagnose, remediate and verify scoped service failures.' },
   { slug: 'source-authoring', description: 'Use or configure API, MCP, and local-folder sources.' },
   { slug: 'workspace-configuration', description: 'Edit labels, statuses, views, permissions, and tool metadata.' },
   { slug: 'automation-authoring', description: 'Create event, schedule, and hosted-script automations.' },

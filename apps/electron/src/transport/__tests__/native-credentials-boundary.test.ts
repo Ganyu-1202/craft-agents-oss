@@ -13,23 +13,24 @@ const nativeMethods = {
 } as const
 
 describe('native credential preload boundary', () => {
-  it('uses direct native IPC for exactly four management methods without an RPC fallback', () => {
+  it('routes remote management to approval protected RPC and keeps migration native', () => {
     const preload = readFileSync(resolve(import.meta.dir, '../../preload/bootstrap.ts'), 'utf8')
     for (const [method, channel] of Object.entries(nativeMethods)) {
       const declaration = preload.split('\n').find(line => line.startsWith(`;(api as ElectronAPI).${method} =`))
       expect(declaration).toBeDefined()
-      expect(declaration).toContain(`ipcRenderer.invoke(NATIVE_CREDENTIAL_IPC.${channel}`)
-      expect(declaration).not.toContain('client.invoke')
+      expect(declaration).toContain(`NATIVE_CREDENTIAL_IPC.${channel}`)
+      if (channel !== 'MIGRATE') expect(declaration).toContain(`RPC_CHANNELS.credentials.${channel}`)
+      else expect(declaration).toContain('ipcRenderer.invoke')
       expect(declaration).not.toContain('workspaceId')
     }
   })
 
-  it('never advertises native credential management in CHANNEL_MAP or public RPC channels', () => {
+  it('never exposes native IPC channels through the public transport', () => {
     const rpcChannels = JSON.stringify(RPC_CHANNELS)
     for (const channel of Object.values(NATIVE_CREDENTIAL_IPC)) {
       expect(Object.values(CHANNEL_MAP).some(entry => entry.channel === channel)).toBe(false)
       expect(rpcChannels).not.toContain(channel)
     }
-    for (const method of Object.keys(nativeMethods)) expect(method in CHANNEL_MAP).toBe(false)
+    expect('migrateNativeCredentials' in CHANNEL_MAP).toBe(false)
   })
 })

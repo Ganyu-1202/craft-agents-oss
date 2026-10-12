@@ -1,0 +1,61 @@
+{
+  "name": "星云 Galaxy",
+  "nameEn": "Galaxy Nebula",
+  "author": "aionui-themes",
+  "tagline": "柔紫天光与深空星尘，昼夜双模式",
+  "description": "原生星云背景与磨砂面板，完整覆盖侧栏、对话和输入框。",
+  "tags": [
+    "美学风格"
+  ],
+  "colors": {
+    "background": "rgba(244, 243, 251, .7)",
+    "foreground": "#241f3d",
+    "accent": "#5b45b8",
+    "paper": "rgba(250, 249, 254, .9)",
+    "navigator": "rgba(234, 232, 246, .85)",
+    "input": "rgba(250, 249, 254, .94)",
+    "popover": "#faf9fe",
+    "popoverSolid": "#faf9fe",
+    "success": "#1e9e6e",
+    "info": "#c08a10",
+    "destructive": "#d13a62",
+    "dark": {
+      "background": "rgba(8, 8, 22, .68)",
+      "foreground": "#eef0ff",
+      "accent": "#a58cff",
+      "paper": "rgba(21, 21, 50, .86)",
+      "navigator": "rgba(15, 15, 36, .88)",
+      "input": "rgba(21, 21, 50, .94)",
+      "popover": "#12122a",
+      "popoverSolid": "#12122a",
+      "success": "#4fd6a5",
+      "info": "#e8c05a",
+      "destructive": "#f06a8a"
+    },
+    "supportedModes": [
+      "light",
+      "dark"
+    ],
+    "mode": "scenic"
+  },
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "style": {
+    "backgroundBlur": 8,
+    "borderRadius": "14px",
+    "backgroundPosition": "center",
+    "backgroundSize": "cover"
+  },
+  "id": "style-galaxy",
+  "version": 2,
+  "bodyAttr": "data-tokenbird-style-galaxy",
+  "stylesheets": [
+    "tokenbird.css"
+  ],
+  "background": {
+    "light": "assets/nebula-light.svg",
+    "dark": "assets/nebula-dark.svg"
+  }
+}

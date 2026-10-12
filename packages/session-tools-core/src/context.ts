@@ -459,6 +459,7 @@ export interface SessionToolContext {
 
   /** Read the collaboration shared board and durable activity history for this session. */
   getCollaboration?(query?: { goalId?: string; taskId?: string; itemIds?: string[]; offset?: number; limit?: number }): Promise<unknown>;
+  superAgentAction?(toolName: string, args: Record<string, unknown>): Promise<unknown>;
   superAgentTask?(args: Record<string, unknown>): Promise<unknown>;
   superAgentLibrary?(args: Record<string, unknown>): Promise<unknown>;
 
@@ -770,6 +771,8 @@ export interface PagesToolCallbacks {
 
 export interface SessionInfo {
   id: string;
+  workspaceId?: string;
+  workspaceRootPath?: string;
   name: string;
   labels: string[];
   status: string;

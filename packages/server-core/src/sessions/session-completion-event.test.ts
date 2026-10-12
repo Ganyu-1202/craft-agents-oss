@@ -60,6 +60,8 @@ test('Super Agent reset identifies retired sessions by policy within the selecte
     ['other', { id: 'other', workspace: { id: 'beta' }, executionPolicy: { nodeId: 'worker' } }],
   ])
   expect(manager.getSuperAgentSessionIds('alpha')).toEqual(['current', 'retired'])
+  expect(manager.getSuperAgentSessionIds('alpha', 'worker')).toEqual(['current'])
+  expect(manager.getSuperAgentSessionIds('alpha', 'old-worker')).toEqual(['retired'])
 })
 
 test('Super Agent reset permits current idle sessions but still rejects activity and workspace changes', async () => {

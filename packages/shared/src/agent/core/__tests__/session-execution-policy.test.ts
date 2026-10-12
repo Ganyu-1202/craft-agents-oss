@@ -32,6 +32,14 @@ beforeEach(() => {
 afterEach(() => { clearSessionExecutionPolicy(sessionId); cleanupModeState(sessionId); rmSync(temp, { recursive: true, force: true }); });
 
 describe('node output paths in model context', () => {
+  test('node skill bindings and backend survive policy normalization; full control cannot select an unassigned skill', () => {
+    for (const fullControl of [false, true]) {
+      const saved = setSessionExecutionPolicy(sessionId, { ...policy, agentRuntime: 'pi', allowSkills: ['report'], fullControl })
+      expect(saved).toMatchObject({ agentRuntime: 'pi', allowSkills: ['report'] })
+      expect(checkSessionExecutionPolicy(sessionId, 'Skill', { skill: 'workspace:private' }).allowed).toBe(false)
+    }
+    expect(() => setSessionExecutionPolicy(sessionId, { ...policy, allowSkills: 'bad' as never })).toThrow('Invalid')
+  })
   test('advertised output directories are writable within the environment, including full control', () => {
     for (const fullControl of [false, true]) {
       setSessionExecutionPolicy(sessionId, { ...policy, actionGates: true, fullControl });
@@ -120,6 +128,15 @@ describe('durable operation dispatch', () => {
 });
 
 describe('Super Agent permission ceiling', () => {
+  test('full control folder workers may use the host desktop, while containers and interaction nodes cannot', async () => {
+    setSessionExecutionPolicy(sessionId, { ...policy, fullControl: true, actionGates: true });
+    expect(checkSessionExecutionPolicy(sessionId, 'mcp__session__computer_use', { action: 'status' }).allowed).toBe(true);
+    const executable = join(temp, process.platform === 'win32' ? 'docker.exe' : 'docker'); writeFileSync(executable, 'runtime');
+    setSessionProgramExecutor(sessionId, { runtimePath: executable, containerId: 'tokenbird-super-test', workingDirectory: '/workspace' });
+    expect(checkSessionExecutionPolicy(sessionId, 'mcp__session__computer_use', { action: 'status' }).allowed).toBe(false);
+    setSessionExecutionPolicy(sessionId, { ...policy, fullControl: true, role: 'orchestrator', actionGates: true });
+    expect(checkSessionExecutionPolicy(sessionId, 'mcp__session__computer_use', { action: 'status' }).allowed).toBe(false);
+  });
   test('allows full shared board reads for either role and rejects direct writes', async () => {
     for (const role of ['coordinator', 'orchestrator', 'worker'] as const) {
       for (const fullControl of [false, true]) {

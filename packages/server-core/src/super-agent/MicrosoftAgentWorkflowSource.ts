@@ -4,7 +4,7 @@ import asyncio
 import json
 import sys
 from importlib.metadata import version
-from agent_framework import Executor, WorkflowBuilder, WorkflowContext, handler
+from agent_framework import Executor, WorkflowBuilder, WorkflowContext, handler, response_handler
 
 waiters = {}
 tasks = set()
@@ -44,29 +44,54 @@ class SessionNode(Executor):
 
     @handler
     async def invoke(self, packet: dict, ctx: WorkflowContext[dict]):
-        request_id = packet["id"]
-        future = asyncio.get_running_loop().create_future()
-        waiters[request_id] = future
-        try:
-            # TokenBird owns provider credentials, streaming, tools and approvals.
-            emit({"type": "invoke", "id": request_id, "nodeId": packet["nodeId"]})
-            outcome = await future
-            if not outcome.get("ok"):
-                await ctx.yield_output({"error": outcome.get("error", "Session execution failed")})
-            else:
-                await ctx.yield_output({"nodeId": packet["nodeId"], "completed": True})
-        finally:
-            waiters.pop(request_id, None)
+        # Suspend in the SDK's native external-request mechanism. The workflow
+        # resumes with one correlated host response; it never runs a model itself.
+        await ctx.request_info(packet, dict, request_id=packet["id"])
+
+    @response_handler
+    async def complete(self, packet: dict, outcome: dict, ctx: WorkflowContext[dict]):
+        if not outcome.get("ok"):
+            await ctx.yield_output({"error": outcome.get("error", "Session execution failed")})
+        else:
+            await ctx.yield_output({"nodeId": packet["nodeId"], "completed": True})
+
+async def stream_run(workflow, packet, **kwargs):
+    stream = workflow.run(stream=True, **kwargs)
+    requests = []
+    async for event in stream:
+        if event.type == "request_info":
+            requests.append(event)
+        if event.type in ["executor_invoked", "executor_completed", "executor_failed", "status"]:
+            emit({"type": "event", "id": packet["id"], "event": event.type,
+                  "executorId": event.executor_id, "state": event.state.value if event.state else None})
+    return await stream.get_final_response(), requests
 
 async def run(packet):
     try:
         router = Router(packet["nodes"], packet["nodeId"])
-        builder = WorkflowBuilder(start_executor=router)
-        # Each node is an external session executor; only the routed node runs.
+        builder = WorkflowBuilder(start_executor=router, max_iterations=8,
+                                  name="TokenBird node dispatch")
+        # Each run owns a separate graph: MAF prohibits concurrent runs on one instance.
         for node in packet["nodes"]:
             builder.add_edge(router, SessionNode(node["id"]))
-        events = await builder.build().run(packet)
-        outputs = events.get_outputs()
+        workflow = builder.build()
+        result, requests = await stream_run(workflow, packet, message=packet)
+        if requests:
+            if len(requests) != 1 or requests[0].request_id != packet["id"] or requests[0].data.get("nodeId") != packet["nodeId"]:
+                raise RuntimeError("Invalid external session request")
+            request_id = requests[0].request_id
+            future = asyncio.get_running_loop().create_future()
+            waiters[request_id] = future
+            # TokenBird owns provider credentials, streaming, tools and approvals.
+            emit({"type": "invoke", "id": request_id, "nodeId": packet["nodeId"]})
+            try:
+                outcome = await future
+                result, requests = await stream_run(workflow, packet, responses={request_id: outcome})
+            finally:
+                waiters.pop(request_id, None)
+            if requests:
+                raise RuntimeError("Session workflow requested a repeated invocation")
+        outputs = result.get_outputs()
         if len(outputs) == 1 and "error" in outputs[0]:
             raise RuntimeError(outputs[0]["error"])
         if len(outputs) != 1 or outputs[0]["nodeId"] != packet["nodeId"]:

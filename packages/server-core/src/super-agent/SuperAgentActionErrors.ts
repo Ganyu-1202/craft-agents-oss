@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { isSuperAgentToolValidationError } from '@craft-agent/session-tools-core/super-agent-tools'
 
 /** Keep rejected field paths and their repair instructions ahead of verbose data. */
 export function superAgentActionErrorMessage(error: unknown): string {
-  if (!(error instanceof z.ZodError)) return (error instanceof Error ? error.message : String(error)).slice(0, 2_000)
+  if (!(error instanceof z.ZodError) && !isSuperAgentToolValidationError(error)) return (error instanceof Error ? error.message : String(error)).slice(0, 2_000)
 
   const fields = new Set(error.issues.map(issue => issue.path[0]))
   const hints: string[] = []

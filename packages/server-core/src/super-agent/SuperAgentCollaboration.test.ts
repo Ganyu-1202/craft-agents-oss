@@ -119,12 +119,12 @@ describe('Super Agent collaboration and continuity', () => {
     expect(third.state.messages.some(message => message.body === 'Durable original conversation')).toBe(true)
   })
 
-  test('prompt examples have no fixed worker bias and use only executable protocol fields', async () => {
+  test('prompt routes collaboration through tools without fixed worker examples', async () => {
     const { config } = await superAgentFixture()
     const prompt = buildSuperAgentNodePrompt(config, config.nodes[0]!)
-    const actions = JSON.parse(prompt.match(/<super_agent_actions>(.*?)<\/super_agent_actions>/)![1]!)
-    expect(actions.tasks[0].nodeId).toBeUndefined()
-    expect(Object.keys(actions.tasks[0]).sort()).toEqual(['instructions', 'planId', 'title'])
+    expect(prompt).not.toContain('<super_agent_actions>')
+    expect(prompt).toContain('super_agent_dispatch')
+    expect(prompt).toContain('super-agent-collaboration')
     expect(prompt).toContain('communicationBudget')
     expect(prompt).toContain('部分成功后只协调剩余动作')
     for (const node of config.nodes.filter(node => node.role === 'worker')) {
@@ -133,10 +133,12 @@ describe('Super Agent collaboration and continuity', () => {
       expect(nodePrompt).toContain('WebFetch/web_fetch、WebSearch/web_search 已禁用')
       expect(nodePrompt).toContain('不使用 evaluate')
     }
-    expect(buildSuperAgentNodePrompt({ ...config, environment: { ...config.environment, fullControl: true } }, config.nodes[1]!))
-      .toContain('不使用 evaluate')
+    const fullControlPrompt = buildSuperAgentNodePrompt({ ...config, environment: { ...config.environment, fullControl: true } }, config.nodes[1]!)
+    expect(fullControlPrompt).not.toContain('不使用 evaluate')
+    expect(fullControlPrompt).toContain('evaluate')
+    expect(fullControlPrompt).toContain('数组参数')
     expect(prompt).toContain('主智能体只负责与用户交互')
-    expect(prompt).toContain('userReply')
+    expect(prompt).toContain('super_agent_deliver')
     expect(prompt).not.toContain('evaluate 读取 document.body.innerText')
   })
 
@@ -148,7 +150,7 @@ describe('Super Agent collaboration and continuity', () => {
     expect(coordinatorPrompt).toContain('任务正文引用准确条目 ID')
     expect(coordinatorPrompt).toContain('需要核实原始文件或证据时交工作节点，不自行执行或验证')
     expect(workerPrompt).toContain('工作节点开始任务、使用依赖和交付前检查本轮 board')
-    expect(workerPrompt).toContain('在本轮末尾通过 board 动作写回')
+    expect(workerPrompt).toContain('通过 super_agent_board 写回')
     expect(workerPrompt).not.toContain('主节点在派工和阶段交接时检查相关条目')
     expect(coordinatorPrompt).not.toContain('工作节点开始任务、使用依赖和交付前检查本轮 board')
   })
@@ -176,9 +178,9 @@ describe('Super Agent collaboration and continuity', () => {
       expect(prompt).toContain('不从节选猜测全文或据此替换条目')
       expect(prompt).toContain('完整内容及最新 revision')
       expect(prompt).toContain('新建 expectedRevision 为 0')
-      expect(prompt).toContain('本轮最新 revision 作为 expectedRevision')
+      expect(prompt).toContain('本轮最新 revision')
       expect(prompt).toContain('更新会替换整条 title/content')
-      expect(prompt).toContain('不用新 ID 绕过冲突制造副本')
+      expect(prompt).toContain('不用新 ID 绕过冲突')
       expect(prompt).toContain('actionReceipt 中对应 board-upsert 的 applied')
       expect(prompt).toContain('rejected/notAttempted 的记录不能宣称已共享')
       expect(prompt).toContain('共享板写入不会自动派工或唤醒所有节点')

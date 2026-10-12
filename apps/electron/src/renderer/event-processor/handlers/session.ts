@@ -334,6 +334,7 @@ export function handleInfo(
     content: event.message,
     timestamp: event.timestamp ?? Date.now(),
     infoLevel: event.level,
+    statusType: event.statusType,
   }
 
   return {

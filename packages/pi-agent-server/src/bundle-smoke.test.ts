@@ -23,20 +23,22 @@ import { dirname, join } from 'node:path';
  */
 
 const packageDir = dirname(import.meta.dir);
-const bundlePath = join(packageDir, 'dist', 'index.js');
+const bundlePath = process.env.TOKENBIRD_SMOKE_PI_BUNDLE ?? join(packageDir, 'dist', 'index.js');
 const blockNetworkPreloadPath = join(import.meta.dir, 'test-fixtures', 'block-network.ts');
 const RUN_TIMEOUT_MS = 30_000;
 
 let scratchDir: string;
 
 beforeAll(() => {
-  const build = spawnSync('bun', ['run', 'build'], { cwd: packageDir, stdio: 'pipe', timeout: 120_000 });
-  if (build.status !== 0) {
-    throw new Error(`bundle build failed: ${build.stderr?.toString() ?? build.stdout?.toString()}`);
+  if (!process.env.TOKENBIRD_SMOKE_PI_BUNDLE) {
+    const build = spawnSync('bun', ['run', 'build'], { cwd: packageDir, stdio: 'pipe', timeout: 120_000 });
+    if (build.status !== 0) {
+      throw new Error(`bundle build failed: ${build.stderr?.toString() ?? build.stdout?.toString()}`);
+    }
   }
   scratchDir = mkdtempSync(join(tmpdir(), 'pi-bundle-smoke-'));
   mkdirSync(join(scratchDir, 'plans'), { recursive: true });
-});
+}, 150_000);
 
 afterAll(() => {
   if (scratchDir) rmSync(scratchDir, { recursive: true, force: true });
@@ -120,6 +122,84 @@ function driveBundle(
 }
 
 describe('pi-agent-server bundle', () => {
+  it.each(['coordinator', 'orchestrator', 'worker'] as const)('exposes and executes real role tools at the model endpoint (%s)', async role => {
+    const { getToolDefsAsJsonSchema } = await import('@craft-agent/session-tools-core')
+    let dispatches = 0
+    const tools = getToolDefsAsJsonSchema({ prefix: 'mcp__session__' })
+    if (!tools.some(tool => tool.name === 'mcp__session__computer_use')) tools.push({ name: 'mcp__session__computer_use', description: 'Observe the desktop', inputSchema: { type: 'object', properties: { action: { type: 'string' } } } })
+    const output = await driveBundle([{
+      type: 'init', apiKey: '', model: `node-tools-${role}`, cwd: scratchDir,
+      workspaceRootPath: scratchDir, sessionId: `bundle-node-${role}`, sessionPath: scratchDir,
+      workingDirectory: scratchDir, plansFolderPath: join(scratchDir, 'plans'),
+      providerType: 'pi_compat', authType: 'api_key', browserToolOnly: true,
+      interactionOnly: role !== 'worker', superAgentRole: role,
+      baseUrl: 'https://node-tools.invalid/v1', customEndpoint: { api: 'openai-completions' },
+      customModels: [`node-tools-${role}`], piAuth: { provider: 'openai', credential: { type: 'api_key', key: 'dummy-offline' } },
+    }], out => out.includes('Node tool completed.'), [
+      { type: 'register_tools', id: 'node-tools', tools },
+      { type: 'prompt', id: 'node-prompt', message: 'Execute the assigned role tool.', systemPrompt: 'Use the registered tool.' },
+    ], {
+      preload: join(import.meta.dir, 'test-fixtures', 'node-tool-provider.ts'),
+      onMessage(message) {
+        if (message.type === 'pre_tool_use_request') return [{ type: 'pre_tool_use_response', requestId: message.requestId, action: 'allow' }]
+        if (message.type !== 'tool_execute_request') return []
+        dispatches++
+        expect(message.toolCallId).toBe('node-call')
+        return [{ type: 'tool_execute_response', requestId: message.requestId, result: { content: 'Applied', isError: false,
+          ...(role === 'worker' ? { images: [{ type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==' }] } : {}) } }]
+      },
+    })
+    expect(dispatches).toBe(1)
+    const advertised = output.split('\n').map(line => { try { return JSON.parse(line) } catch { return null } }).find(item => item?.type === 'test_node_tools')
+    expect(advertised).toBeDefined()
+    if (role === 'coordinator') {
+      expect(advertised.tools).toContain('mcp__session__super_agent_intent')
+      expect(advertised.tools).not.toContain('mcp__session__super_agent_dispatch')
+    } else if (role === 'orchestrator') {
+      expect(advertised.tools).toContain('mcp__session__super_agent_resources')
+      expect(advertised.tools).not.toContain('mcp__session__super_agent_deliver')
+    } else {
+      expect(advertised.tools).toContain('mcp__session__super_agent_task')
+      expect(output).toContain('"hasImage":true')
+    }
+  }, RUN_TIMEOUT_MS + 5_000)
+  it.each([true, false])('checks a proxy operation once and dispatches only authorized input (allowed: %s)', async allowed => {
+    let prechecks = 0;
+    let dispatches = 0;
+    const output = await driveBundle([{
+      type: 'init', apiKey: '', model: 'proxy-test', cwd: scratchDir,
+      workspaceRootPath: scratchDir, sessionId: 'bundle-proxy-operation', sessionPath: scratchDir,
+      workingDirectory: scratchDir, plansFolderPath: join(scratchDir, 'plans'),
+      providerType: 'pi_compat', authType: 'api_key', browserToolOnly: true,
+      baseUrl: 'https://proxy-operation.invalid/v1', customEndpoint: { api: 'openai-completions' },
+      customModels: ['proxy-test'], piAuth: { provider: 'openai', credential: { type: 'api_key', key: 'dummy-offline' } },
+    }], out => out.includes('Verified proxy result.'), [
+      { type: 'register_tools', id: 'proxy-tools', tools: [{ name: 'mcp__session__browser_tool',
+        description: 'Capture the current page.', inputSchema: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] } }] },
+      { type: 'prompt', id: 'proxy-prompt', message: 'Capture the current page.', systemPrompt: 'Use browser_tool.' },
+    ], {
+      preload: join(import.meta.dir, 'test-fixtures', 'proxy-operation-provider.ts'),
+      onMessage(message) {
+        if (message.type === 'pre_tool_use_request') {
+          prechecks++;
+          expect(message.toolCallId).toBe('operation-once');
+          return [{ type: 'pre_tool_use_response', requestId: message.requestId,
+            action: allowed && prechecks === 1 ? 'modify' : 'block', input: { command: 'screenshot', authorized: true },
+            reason: allowed ? 'Operation is already running; duplicate precheck rejected' : 'Operation denied before dispatch' }];
+        }
+        if (message.type === 'tool_execute_request') {
+          dispatches++;
+          expect(message.toolCallId).toBe('operation-once');
+          expect(message.args).toEqual({ command: 'screenshot', authorized: true });
+          return [{ type: 'tool_execute_response', requestId: message.requestId, result: { content: 'Screenshot captured', isError: false } }];
+        }
+        return [];
+      },
+    });
+    expect(prechecks).toBe(1);
+    expect(dispatches).toBe(allowed ? 1 : 0);
+    expect(output).not.toContain('duplicate precheck rejected');
+  });
   for (const [browserToolOnly, interactionOnly] of [[true, false], [false, false], [true, true]]) {
     it(interactionOnly ? 'advertises only messaging for the interaction node' : `advertises browser_tool with native web tools ${browserToolOnly ? 'hidden for nodes' : 'retained for ordinary sessions'}`, async () => {
       const output = await driveBundle([{

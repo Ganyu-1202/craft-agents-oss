@@ -67,7 +67,7 @@ import { buildTitlePrompt, buildRegenerateTitlePrompt, validateTitle } from '../
 
 // Skill extraction for Codex/Copilot backends (Claude uses native SDK Skill tool)
 import { parseMentions, resolveSkillMentions, resolveSourceMentions, resolveFileMentions } from '../mentions/index.ts';
-import { loadAllSkills } from '../skills/storage.ts';
+import { loadAllSkills, loadSkillBySlug } from '../skills/storage.ts';
 
 // ============================================================
 // Mini Agent Configuration
@@ -666,6 +666,10 @@ export abstract class BaseAgent implements AgentBackend {
     const policy = getSessionExecutionPolicy(this._sessionId);
     if (!policy) return;
     const paths = sources.filter(source => policy.fullControl || policy.allowSources.includes(source.config.slug)).map(source => join(source.folderPath, 'guide.md'));
+    for (const slug of policy.allowSkills ?? []) {
+      const skill = loadSkillBySlug(this.config.workspace.rootPath, slug, this.config.session?.workingDirectory);
+      if (skill) paths.push(join(skill.path, 'SKILL.md'));
+    }
     // App-provided capability instructions are exact read-only references. Discover
     // their real assets, and only the matching names of synced documentation;
     // arbitrary files added to the config directory never become references.
@@ -674,7 +678,7 @@ export abstract class BaseAgent implements AgentBackend {
     try {
       if (skillsRoot) {
         for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
-          if (entry.isDirectory()) paths.push(join(skillsRoot, entry.name, 'SKILL.md'));
+          if (entry.isDirectory() && (policy.allowSkills === undefined || policy.allowSkills.includes(entry.name))) paths.push(join(skillsRoot, entry.name, 'SKILL.md'));
         }
       }
       if (docsRoot) {
@@ -982,7 +986,8 @@ ${formattedMessages}
   } {
     const workspaceRoot = this.config.workspace?.rootPath ?? this.workingDirectory;
     const projectRoot = this.config.session?.workingDirectory;
-    const skills = loadAllSkills(workspaceRoot, projectRoot);
+    const policy = getSessionExecutionPolicy(this._sessionId);
+    const skills = loadAllSkills(workspaceRoot, projectRoot).filter(skill => !policy || policy.allowSkills?.includes(skill.slug));
     const skillSlugs = skills.map(s => s.slug);
 
     this.debug(`[extractSkillPaths] Available skills: ${skillSlugs.join(', ')}`);

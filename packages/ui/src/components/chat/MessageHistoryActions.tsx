@@ -55,7 +55,7 @@ export function MessageHistoryActions({ content, children, onEdit, editDisabled,
         <div ref={rootRef} className="group/history min-w-0" onDoubleClick={event => {
           const target = event.target as HTMLElement
           if (editing || !onEdit || cannotEdit || target.closest('button, a, input, textarea, [role="button"], [contenteditable="true"]')) return
-          if (!target.closest('[data-theme-bubble="user"], [data-theme-bubble="assistant"]')) return
+          if (!target.closest('[data-theme-bubble="user"]')) return
           event.preventDefault()
           event.stopPropagation()
           window.getSelection()?.removeAllRanges()

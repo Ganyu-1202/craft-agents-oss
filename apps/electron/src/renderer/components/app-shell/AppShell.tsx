@@ -86,6 +86,8 @@ import { PanelStackContainer } from "./PanelStackContainer"
 import { CompactSessionListFilter } from "./CompactSessionListFilter"
 import type { ChatDisplayHandle } from "./ChatDisplay"
 import { LeftSidebar } from "./LeftSidebar"
+import { SidebarAccountMenu } from "./SidebarAccountMenu"
+import { PageSidebarProvider } from '@/context/PageSidebarContext'
 import { useSession } from "@/hooks/useSession"
 import { ensureSessionMessagesLoadedAtom } from "@/atoms/sessions"
 import { AppShellProvider, type AppShellContextType } from "@/context/AppShellContext"
@@ -107,7 +109,7 @@ import { type SessionStatusId, type SessionStatus, statusConfigsToSessionStatuse
 import { useStatuses } from "@/hooks/useStatuses"
 import { useLabels } from "@/hooks/useLabels"
 import { useViews } from "@/hooks/useViews"
-import { useContainerWidth } from "@/hooks/useContainerWidth"
+import { useStudioCompactLayout } from '@/pages/studio/useStudioCompactLayout'
 import { LabelIcon, LabelValueTypeIcon } from "@/components/ui/label-icon"
 import { filterSessionStatuses as filterLabelMenuStates } from "@/components/ui/label-menu"
 import { createLabelMenuItems, filterItems as filterLabelMenuItems, type LabelMenuItem } from "@/components/ui/label-menu-utils"
@@ -575,8 +577,7 @@ function AppShellContent({
   // Auto-compact mode: shell width below mobile threshold hides sidebar/navigator
   // and switches to single-panel mode. Works in both webui (narrow viewport) and
   // desktop (narrow window or small screen).
-  const shellRef = useRef<HTMLDivElement>(null)
-  const shellWidth = useContainerWidth(shellRef)
+  const { ref: shellRef, width: shellWidth, compact: isStudioCompact } = useStudioCompactLayout()
   const MOBILE_THRESHOLD = 768
   const isShortTouchViewport = isWebUI
     && typeof window !== 'undefined'
@@ -589,6 +590,9 @@ function AppShellContent({
     || (shellWidth > 0 && shellWidth <= MOBILE_THRESHOLD)
 
   const effectiveSidebarAndNavigatorHidden = isSidebarAndNavigatorHidden || isAutoCompact
+  const isPageSidebarCompact = studioMode === 'agent' ? isAutoCompact : isAutoCompact || isStudioCompact
+  const [pageSidebarOpen, setPageSidebarOpen] = React.useState(false)
+  React.useEffect(() => { setPageSidebarOpen(false) }, [studioMode, isPageSidebarCompact])
 
   const [isResizing, setIsResizing] = React.useState<'sidebar' | 'session-list' | null>(null)
   const [sidebarHandleY, setSidebarHandleY] = React.useState<number | null>(null)
@@ -1233,12 +1237,17 @@ function AppShellContent({
   })
 
   const handleToggleSidebar = useCallback(() => {
+    if (isPageSidebarCompact) {
+      setPageSidebarOpen(open => !open)
+      return
+    }
     if (isSidebarAndNavigatorHidden) {
       setIsSidebarAndNavigatorHidden(false)
+      setIsSidebarVisible(true)
       return
     }
     setIsSidebarVisible(v => !v)
-  }, [isSidebarAndNavigatorHidden])
+  }, [isSidebarAndNavigatorHidden, isPageSidebarCompact])
 
   // Sidebar toggle (CMD+B)
   useAction('view.toggleSidebar', handleToggleSidebar)
@@ -2402,6 +2411,8 @@ function AppShellContent({
 
   return (
     <AppShellProvider value={appShellContextValue}>
+      <PageSidebarProvider value={{ mode: studioMode, visible: isSidebarVisible && !isSidebarAndNavigatorHidden,
+        compact: isPageSidebarCompact, open: pageSidebarOpen, setOpen: setPageSidebarOpen, toggle: handleToggleSidebar }}>
         {/* === TOP BAR === */}
         <TopBar
           studioMode={studioMode}
@@ -2426,12 +2437,11 @@ function AppShellContent({
           isCompact={isAutoCompact}
         />
 
-      <div className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-1">
+      <div ref={shellRef} className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-1">
         {studioContent}
 
       {/* === OUTER LAYOUT: Unified Panel Stack | Right Sidebar === */}
       <StudioPagePanel
-        ref={shellRef}
         active={studioMode === 'agent'}
         display="flex"
         className="flex items-stretch relative"
@@ -2447,7 +2457,7 @@ function AppShellContent({
           sidebarSlot={
             <div
               ref={sidebarRef}
-              style={{ width: sidebarWidth }}
+              style={{ width: isAutoCompact ? '100%' : sidebarWidth }}
               className="h-full font-sans relative"
               data-focus-zone="sidebar"
               data-theme-area="sidebar"
@@ -2816,6 +2826,7 @@ function AppShellContent({
                 </div>
               </div>
 
+              <SidebarAccountMenu sessionId={focusedSessionId} />
             </div>
           </div>
           }
@@ -4044,6 +4055,7 @@ function AppShellContent({
           Mounted here so they survive context-menu / dropdown close. */}
       <MessagingDialogHost />
 
+      </PageSidebarProvider>
     </AppShellProvider>
   )
 }

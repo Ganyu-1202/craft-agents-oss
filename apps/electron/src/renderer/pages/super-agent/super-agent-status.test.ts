@@ -23,14 +23,14 @@ const thinking: SuperAgentActivityEntry = { id: 'thought', kind: 'thinking', sta
 const tool: SuperAgentActivityEntry = { ...thinking, id: 'tool', kind: 'tool', toolName: 'Read' }
 
 describe('Super Agent current work status', () => {
-  it('explains impossible dependency queues as blocked and preserves runnable queue status', () => {
+  it('routes internal dependency problems to recovery and preserves runnable queue status', () => {
     const current = snapshot()
     current.state.tasks = [
       { id: 'source', title: 'Source', instructions: '', nodeId: 'worker', status: 'cancelled', createdAt: 1 },
       { id: 'next', title: 'Next', instructions: '', nodeId: 'worker', status: 'queued', dependsOn: ['source'], createdAt: 1 },
     ]
-    expect(nodeWorkStatus(current, 'worker')).toBe('blocked')
-    expect(teamWorkStatus(current).status).toBe('blocked')
+    expect(nodeWorkStatus(current, 'worker')).toBe('recovering')
+    expect(teamWorkStatus(current).status).toBe('recovering')
     current.state.tasks[1]!.dependsOn = []
     expect(teamWorkStatus(current).status).toBe('queued')
   })
@@ -38,7 +38,13 @@ describe('Super Agent current work status', () => {
   it('keeps blocked plans visible even after obsolete tasks leave the queue', () => {
     const current = snapshot()
     current.state.plans = [{ id: 'plan', title: 'Research', instructions: '', status: 'blocked', priority: 1, note: 'Need official source', revision: 1, updatedBy: 'main', updatedAt: 1 }]
+    expect(teamWorkStatus(current).status).toBe('recovering')
+    current.state.plans[0]!.blocker = { kind: 'user', summary: 'Authorization missing', userAction: 'Authorize access to the official source' }
     expect(teamWorkStatus(current).status).toBe('blocked')
+    current.state.plans[0]!.blocker = undefined
+    current.recoverySuspended = true
+    expect(teamWorkStatus(current).status).toBe('idle')
+    current.recoverySuspended = false
     current.state.nodes[1]!.status = 'working'
     expect(teamWorkStatus(current).status).toBe('working')
   })

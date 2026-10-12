@@ -1,5 +1,9 @@
 /** Main owns all remote transport credentials. Preload receives opaque handles only. */
 import { createHash, randomUUID } from 'node:crypto'
+import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { RPC_CHANNELS, type FileAttachment } from '@craft-agent/shared/protocol'
 import { getAllChannelValues, isRemoteEligible } from '@craft-agent/shared/protocol'
 import { CLIENT_REMOTE_ACCESS, CLIENT_SFTP_TRANSFER, LOCAL_CLIENT_CAPABILITIES, type TransportConnectionState, type RpcClient, type WsRpcHandshakeGuard } from '@craft-agent/server-core/transport'
 import { CHANNEL_MAP } from '../transport/channel-map'
@@ -17,6 +21,7 @@ export interface MainRemoteTarget {
   /** Exact saved profile generation, for main-owned SFTP only. */
   profileId?: string
   profileRevision?: string
+  sftpEnabled?: boolean
   /** Additional main-owned values to redact if a remote peer echoes them. */
   secrets?: string[]
 }
@@ -61,7 +66,10 @@ const failureMessages: Record<NativeRemoteFailureCode, string> = {
   PROTOCOL: 'The client and server protocol versions are incompatible. Update the client or server.',
   TIMEOUT: 'The remote server did not respond in time. Check the connection and retry.',
   UNSUPPORTED: 'The remote server does not support this operation. Update the server.',
+  FILE_TOO_LARGE: '文件太大，目前不支持。请先在“远程服务器”设置中配置 SFTP，然后重试。 / File too large. Configure SFTP in Remote Servers settings and retry.',
+  SFTP_FAILED: '大文件 SFTP 上传失败，请检查 SFTP 配置、远程目录和连接后重试。 / Large file SFTP upload failed. Check SFTP settings, remote root and connection.',
 }
+export const REMOTE_ATTACHMENT_INLINE_LIMIT = 8 * 1024 * 1024
 function connectionFailureCode(kind: unknown): NativeRemoteFailureCode {
   switch (kind) {
     case 'network': return 'NETWORK'
@@ -267,6 +275,53 @@ export function registerNativeRemoteTransport(ipc: NativeRegistrar, deps: Native
     entry.pendingRequests++
     try {
       await revalidate(entry)
+      if (channel === RPC_CHANNELS.file.STORE_ATTACHMENT) {
+        const attachment = args[1] as FileAttachment | undefined
+        if (attachment && (attachment.size > REMOTE_ATTACHMENT_INLINE_LIMIT
+          || (attachment.base64?.length ?? 0) > REMOTE_ATTACHMENT_INLINE_LIMIT * 4 / 3
+          || Buffer.byteLength(attachment.text ?? '', 'utf8') > REMOTE_ATTACHMENT_INLINE_LIMIT)) {
+          if (!deps.transferSftp || !entry.target.sftpEnabled || !entry.target.profileId || !entry.target.profileRevision) {
+            throw new BoundaryError('FILE_TOO_LARGE')
+          }
+          const { base64, text, thumbnailBase64: _thumb, ...metadata } = attachment
+          const bytes = base64 ? Buffer.from(base64, 'base64') : text != null ? Buffer.from(text, 'utf8') : null
+          if (!bytes || bytes.length !== attachment.size) throw new BoundaryError('SFTP_FAILED')
+          const directory = await mkdtemp(join(tmpdir(), 'tokenbird-upload-'))
+          let prepared: { id: string; storedPath: string } | undefined
+          try {
+            const localPath = join(directory, 'attachment')
+            await writeFile(localPath, bytes)
+            await revalidate(entry)
+            prepared = await entry.client.invoke(channel, args[0], metadata, { sftpStage: 'prepare' })
+            await revalidate(entry)
+            await deps.transferSftp(Object.freeze({ ...entry.target }), {
+              direction: 'upload', localPath, remotePath: prepared!.storedPath,
+            }, () => revalidate(entry))
+            await revalidate(entry)
+            const result = await entry.client.invoke(channel, args[0], metadata, {
+              ...(args[2] as object ?? {}), sftpStage: 'finish', uploadId: prepared!.id,
+            })
+            await revalidate(entry)
+            return safePayload(result, [entry.target.token, ...(entry.target.secrets ?? [])])
+          } catch (error) {
+            if (prepared && !entry.closed) await revalidate(entry).then(() => entry.client.invoke(channel, args[0], metadata, { sftpStage: 'cancel', uploadId: prepared!.id })).catch(() => {})
+            throw error instanceof BoundaryError ? error : new BoundaryError('SFTP_FAILED')
+          } finally {
+            await rm(directory, { recursive: true, force: true })
+          }
+        }
+      }
+      // Stored attachments are already on the server. Do not send the large
+      // content again with the chat message after a successful SFTP upload.
+      if (channel === RPC_CHANNELS.sessions.SEND_MESSAGE && Array.isArray(args[2])) {
+        args = [...args]
+        args[2] = args[2].map((attachment: FileAttachment & { storedPath?: string }) => {
+          if (!attachment.storedPath || (attachment.type === 'image' && attachment.size <= REMOTE_ATTACHMENT_INLINE_LIMIT)) return attachment
+          const { base64: _base64, text: _text, ...metadata } = attachment
+          return metadata
+        })
+      }
+      if (Buffer.byteLength(JSON.stringify(args), 'utf8') > 12 * 1024 * 1024) throw new BoundaryError('FILE_TOO_LARGE')
       const result = await entry.client.invoke(channel, ...args)
       await revalidate(entry)
       return safePayload(result, [entry.target.token, ...(entry.target.secrets ?? [])])

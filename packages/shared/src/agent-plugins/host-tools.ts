@@ -13,8 +13,9 @@ import { getSessionDataPath, getSessionPlansPath, getSessionPath } from '../sess
 import { saveBinaryResponse } from '../utils/binary-detection.ts';
 import { extractWorkspaceSlug } from '../utils/workspace.ts';
 import { executeLocalAgentHostTool } from './local-tools.ts';
+import { claimSessionActionGateDispatch } from '../agent/core/session-execution-policy.ts';
 
-export interface HostToolResult { content: string; isError: boolean }
+export interface HostToolResult { content: string; isError: boolean; images?: import('@craft-agent/session-tools-core').ToolImage[] }
 
 /** Composition service: native agent bridges call the same host policy and tools. */
 export class AgentPluginHostTools {
@@ -45,11 +46,11 @@ export class AgentPluginHostTools {
     for (const id of this.permissions.keys()) this.respondToPermission(id, false);
   }
 
-  async authorize(toolName: string, input: Record<string, unknown>): Promise<{ allowed: boolean; input: Record<string, unknown>; reason?: string }> {
+  async authorize(toolName: string, input: Record<string, unknown>, invocationId = `host-tool-${randomUUID()}`): Promise<{ allowed: boolean; input: Record<string, unknown>; reason?: string }> {
     const generation = this.generation;
     const root = this.config.workspace.rootPath;
     const run = () => runPreToolUseChecksWithPermissions({
-      toolName, input, sessionId: this.sessionId, permissionMode: this.owner.getPermissionMode(),
+      toolName, input, invocationId, sessionId: this.sessionId, permissionMode: this.owner.getPermissionMode(),
       workspaceRootPath: root, workspaceId: extractWorkspaceSlug(root, this.config.workspace.id),
       plansFolderPath: getSessionPlansPath(root, this.sessionId), dataFolderPath: getSessionDataPath(root, this.sessionId),
       workingDirectory: this.config.session?.workingDirectory ?? root,
@@ -83,13 +84,16 @@ export class AgentPluginHostTools {
       return { allowed: allowed && generation === this.generation, input: checked.modifiedInput ?? input,
         reason: generation !== this.generation ? 'Agent turn was stopped' : allowed ? undefined : 'Permission denied' };
     }
+    const dispatch = claimSessionActionGateDispatch(this.sessionId, toolName, input,
+      this.config.session?.workingDirectory ?? root, invocationId);
+    if (!dispatch.allowed) return { allowed: false, input, reason: dispatch.reason };
     return { allowed: true, input: 'input' in checked ? checked.input : input };
   }
 
-  async execute(toolName: string, input: Record<string, unknown>): Promise<HostToolResult> {
+  async execute(toolName: string, input: Record<string, unknown>, invocationId?: string): Promise<HostToolResult> {
     const generation = this.generation;
     const signal = this.executionController.signal;
-    const authorization = await this.authorize(toolName, input);
+    const authorization = await this.authorize(toolName, input, invocationId);
     if (generation !== this.generation) return { content: 'Agent turn was stopped', isError: true };
     if (!authorization.allowed) return { content: authorization.reason ?? 'Permission denied', isError: true };
     const args = authorization.input;
@@ -128,7 +132,8 @@ export class AgentPluginHostTools {
         onAuthRequest: request => this.owner.onAuthRequest?.(request as never) });
       attachSessionSelfManagementBindings(this.context, this.sessionId);
       const result = await definition.handler(this.context, args);
-      return { content: result.content.map(block => block.text).join('\n'), isError: !!result.isError };
+      return { content: result.content.map(block => block.text).join('\n'), isError: !!result.isError,
+        ...(result.images?.length ? { images: result.images } : {}) };
     }
     if (this.config.mcpPool?.isProxyTool(toolName)) return this.config.mcpPool.callTool(toolName, args);
     return { content: `Unknown host tool: ${toolName}`, isError: true };

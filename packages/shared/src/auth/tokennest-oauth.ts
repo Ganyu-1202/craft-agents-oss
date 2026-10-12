@@ -16,6 +16,7 @@ export const TOKENNEST_OAUTH_CONFIG = {
   tokenUrl: 'https://openai.goldgom.top/api/oauth2/token',
   revocationUrl: 'https://openai.goldgom.top/api/oauth2/revoke',
   balanceUrl: 'https://openai.goldgom.top/api/oauth2/balance',
+  profileUrl: 'https://openai.goldgom.top/api/oauth2/profile',
   rechargeSessionUrl: 'https://openai.goldgom.top/api/oauth2/recharge-session',
   groupsUrl: 'https://openai.goldgom.top/api/oauth2/groups',
   usageSummaryUrl: 'https://openai.goldgom.top/api/oauth2/usage/summary',
@@ -104,6 +105,15 @@ async function tokenNestJson(accessToken: string, url: URL | string, method = 'G
   }
   const data = root.data;
   return data && typeof data === 'object' ? data as Record<string, unknown> : root;
+}
+
+/** Basic identity only; profile lookup must not delay login indefinitely. */
+export async function fetchTokenNestProfile(accessToken: string): Promise<{ username: string }> {
+  const data = await tokenNestJson(accessToken, TOKENNEST_OAUTH_CONFIG.profileUrl, 'GET', AbortSignal.timeout(5000));
+  if (typeof data.username !== 'string' || !data.username.trim()) {
+    throw new Error('TokenNest returned an invalid profile');
+  }
+  return { username: data.username.trim() };
 }
 
 export async function createTokenNestRechargeSession(accessToken: string): Promise<{ url: string; requiresWebsiteLogin: boolean }> {

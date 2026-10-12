@@ -1,3 +1,4 @@
+import { SUPER_AGENT_ACTION_TOOLS } from '@craft-agent/session-tools-core/super-agent-tools';
 import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { expandPath } from '../../utils/paths.ts';
@@ -54,6 +55,8 @@ export function normalizeSessionExecutionPolicy(input: SessionExecutionPolicy): 
       || input.safety.customRules.length > 100 || input.safety.customRules.some(rule => !rule || typeof rule.toolName !== 'string' || !rule.toolName.trim()
         || rule.toolName.length > 200 || !['deny', 'require-human'].includes(rule.effect) || typeof rule.reason !== 'string' || !rule.reason.trim() || rule.reason.length > 2_000)))
     || !Array.isArray(input.allowSources) || input.allowSources.some(slug => typeof slug !== 'string' || !slug.trim())
+    || (input.allowSkills !== undefined && (!Array.isArray(input.allowSkills) || input.allowSkills.length > 100 || input.allowSkills.some(slug => typeof slug !== 'string' || !slug.trim() || slug.length > 200 || /[\\/:\0]/.test(slug) || slug === '.' || slug === '..')))
+    || (input.agentRuntime !== undefined && (typeof input.agentRuntime !== 'string' || !/^(?:pi|claude-code|codex|plugin:[a-z0-9][a-z0-9_-]*)$/.test(input.agentRuntime)))
     || ['readFiles', 'writeFiles', 'runPrograms', 'browser'].some(key => typeof input[key as keyof SessionExecutionPolicy] !== 'boolean')) {
     throw new Error('Invalid Super Agent execution policy');
   }
@@ -82,6 +85,8 @@ export function normalizeSessionExecutionPolicy(input: SessionExecutionPolicy): 
     runPrograms: input.role === 'worker' && input.runPrograms,
     browser: input.role === 'worker' && input.browser,
     allowSources: Object.freeze(input.role === 'worker' ? [...new Set(input.allowSources)] : []) as unknown as string[],
+    ...(input.agentRuntime ? { agentRuntime: input.agentRuntime } : {}),
+    ...(input.allowSkills !== undefined ? { allowSkills: Object.freeze([...new Set(input.allowSkills)]) as unknown as string[] } : {}),
     allowSubagents: false,
   });
 }
@@ -541,6 +546,7 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
   const slug = parts.length >= 3 && parts[0] === 'mcp' ? parts[1] : undefined;
   const canonical = parts[parts.length - 1]!.toLowerCase();
   if (canonical === 'computer_use') {
+    if (policy.role === 'worker' && policy.fullControl && !registered.executor) return { allowed: true };
     return deny('Computer use controls the host desktop outside the node environment; restricted nodes cannot access it');
   }
   // The host routes existing team sessions through the durable node scheduler.
@@ -558,6 +564,15 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     if (slug && slug !== 'session') return deny('use the session collaboration board for shared team data');
     return input.action === 'get' ? { allowed: true } : deny('Super Agent board writes require a final board action with expectedRevision');
   }
+  if (SUPER_AGENT_ACTION_TOOLS.some(def => def.name === canonical)) {
+    if (slug !== 'session') return deny('use the registered session collaboration tools');
+    const interaction = ['super_agent_intent', 'super_agent_deliver'];
+    const orchestration = ['super_agent_dispatch', 'super_agent_plan', 'super_agent_accept'];
+    if (interaction.includes(canonical) && policy.role !== 'coordinator') return deny('only the interaction node may hand off intent or deliver to the user');
+    if (orchestration.includes(canonical) && policy.role === 'worker') return deny('only the orchestrator may dispatch, plan or accept work');
+    if (canonical === 'super_agent_script' && policy.role !== 'worker') return deny('only workers may manage scripts');
+    return { allowed: true }; // The active host executor validates exact roles, versions, targets and budgets.
+  }
   if (canonical === 'super_agent_task') {
     if (slug !== 'session') return deny('use the session continuity tool');
     return policy.role === 'worker' || input.action === 'get' ? { allowed: true } : deny('only workers may update task checkpoints or artifacts');
@@ -570,6 +585,10 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     if (input.type === 'archive-create') return policy.readFiles || policy.fullControl ? { allowed: true } : deny('archive creation requires file read permission');
     if (input.type === 'archive-restore') return policy.writeFiles || policy.fullControl ? { allowed: true } : deny('archive restore requires file write permission');
     return deny('unknown library operation');
+  }
+  if (name === 'skill') {
+    const skill = typeof input.skill === 'string' ? input.skill.split(':').pop() : undefined;
+    if (!skill || !policy.allowSkills?.includes(skill)) return deny('skill is not assigned to this node');
   }
   if (policy.role !== 'worker') return deny('the main agent only understands user needs and communicates; assign reading, research, execution and verification to workers');
   if (DELEGATION_TOOLS.has(canonical) || /^(?:spawn|delegate|handoff|callllm|createtask)/.test(name)) return deny('each node uses one model process; spawning, delegation and additional model calls are disabled');
@@ -626,6 +645,9 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     if (!policy.browser && !policy.fullControl) return deny('browser access is disabled for this node');
     // WebFetch may execute a second summarization model; native aliases lack one auditable command path.
     if (canonical !== 'browser_tool') return deny('use browser_tool for browser access; native fetch and browser aliases are disabled');
+    // Full control uses the browser runtime's complete command set. The whitelist,
+    // HTTP-only navigation and environment upload paths apply to restricted nodes.
+    if (policy.fullControl) return { allowed: true };
     const command = input.command;
     const args = Array.isArray(command) && command.every(value => typeof value === 'string')
       ? command as string[]

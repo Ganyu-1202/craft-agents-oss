@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, LoaderCircle, Plus, Settings2, Sparkles, Trash2 } from 'lucide-react'
 import type { SuperAgentConfig, SuperAgentEnvironmentStatus } from '@craft-agent/shared/super-agent'
 import type { LlmConnectionWithStatus, LoadedSource } from '../../../shared/types'
+import type { LoadedSkill } from '@craft-agent/shared/skills'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -12,10 +13,11 @@ import { applyPreset, configError, createNode, nodeModels, useSuperAgentText, wi
 import { SuperAgentPresetPicker } from './SuperAgentPresetPicker'
 import { SuperAgentReadiness } from './SuperAgentReadiness'
 
-export function SuperAgentConfiguration({ config, connections, sources, environmentStatus, onSave, onContinuousWork, onReset, onOpenAiSettings, initialNodeId }: {
+export function SuperAgentConfiguration({ config, connections, sources, skills = [], environmentStatus, onSave, onContinuousWork, onReset, onOpenAiSettings, initialNodeId }: {
   config: SuperAgentConfig
   connections: LlmConnectionWithStatus[]
   sources: LoadedSource[]
+  skills?: LoadedSkill[]
   environmentStatus: SuperAgentEnvironmentStatus
   onSave: (config: SuperAgentConfig) => Promise<void>
   onContinuousWork: (enabled: boolean) => Promise<void>
@@ -99,7 +101,7 @@ export function SuperAgentConfiguration({ config, connections, sources, environm
             }}><Plus className="size-3.5" />{text('addWorker')}</Button>
           </div>
           <FormSection title={text('editNode')}>
-            <NodeEditor node={selected} connections={connections} sources={sources.filter(source => draft.sourceSlugs.includes(source.config.slug))} abilities={draft.abilityProfiles}
+            <NodeEditor node={selected} connections={connections} skills={skills} sources={sources.filter(source => draft.sourceSlugs.includes(source.config.slug))} abilities={draft.abilityProfiles}
               onChange={node => patch({ nodes: draft.nodes.map(item => item.id === node.id ? node : item) })}
               onRemove={selected.role === 'worker' && draft.nodes.filter(node => node.role === 'worker').length > 1
                 ? () => { patch({ nodes: draft.nodes.filter(node => node.id !== selected.id), scripts: draft.scripts.map(script => script.nodeId === selected.id ? { ...script, nodeId: undefined } : script) }); setSelectedNodeId(draft.nodes[0].id) } : undefined} />

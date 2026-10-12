@@ -40,6 +40,7 @@ export const SETTINGS_PAGES = [
   { id: 'recharge' as const, labelKey: 'settings.recharge.title', descriptionKey: 'settings.recharge.description' },
   { id: 'preferences' as const, labelKey: 'settings.preferences.title', descriptionKey: 'settings.preferences.description' },
   { id: 'ai' as const, labelKey: 'settings.ai.title', descriptionKey: 'settings.ai.description' },
+  { id: 'backends' as const, labelKey: 'settings.backends.title', descriptionKey: 'settings.backends.description' },
   { id: 'credentials' as const, labelKey: 'settings.credentials.title', descriptionKey: 'settings.credentials.description' },
   { id: 'appearance' as const, labelKey: 'settings.appearance.title', descriptionKey: 'settings.appearance.description' },
   { id: 'input' as const, labelKey: 'settings.input.title', descriptionKey: 'settings.input.description' },

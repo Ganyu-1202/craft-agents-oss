@@ -92,7 +92,7 @@ export class CloudClient {
       tunnel.on('open', () => {
         if (!current()) { tunnel.terminate(); return }
         this.state = { deviceId: settings.deviceId, connected: true }
-        tunnel.send(JSON.stringify({ type: 'capabilities', direct: true }))
+        tunnel.send(JSON.stringify({ type: 'capabilities', direct: true, deferredHandshake: true }))
         let pending = false
         this.heartbeat = setInterval(() => {
           if (!current() || pending) return

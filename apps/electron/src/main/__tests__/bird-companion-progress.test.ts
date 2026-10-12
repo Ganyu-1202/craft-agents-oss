@@ -8,6 +8,41 @@ const result = (id = 't1', isError = false): BirdProgressEvent => ({ type: 'resu
 const finish = (outcome: 'complete' | 'error' | 'interrupted' = 'complete'): BirdProgressEvent => ({ type: 'finish', sessionId: 's1', outcome })
 
 describe('bird companion lifecycle', () => {
+  it('hides both windows for this run across new turns and duplicate deliveries, then restores from settings', () => {
+    const progress = new BirdCompanionProgress()
+    progress.setPreferences({ alwaysVisible: true, autoShowComputerUse: true })
+    progress.observe('w', tool())
+    progress.dismissCompanion()
+    progress.observe('w', result())
+    progress.observe('w', finish())
+    progress.observe('w', { type: 'start', sessionId: 's2', startId: 'm2' })
+    progress.observe('w', tool('t2', true, 's2'))
+    progress.showBubble()
+    expect(progress.getState()).toMatchObject({ visible: false, bubbleVisible: false })
+    expect(progress.preferences).toEqual({ alwaysVisible: true, autoShowComputerUse: true })
+    progress.setPreferences(progress.preferences)
+    expect(progress.getState()).toMatchObject({ visible: true, activeSessions: 1, activity: 'click' })
+  })
+
+  it('prioritizes pending permission over activity in another session', () => {
+    const progress = new BirdCompanionProgress()
+    progress.observe('w', { type: 'permission', sessionId: 's1', requestId: 'p', computer: true })
+    progress.observe('w', tool('t2', true, 's2'))
+    expect(progress.getState()).toMatchObject({ mood: 'waiting', activity: 'permission', activeSessions: 2 })
+    progress.observe('w', { type: 'permission_resolved', sessionId: 's1', requestId: 'p', allowed: true })
+    progress.observe('w', tool('t3', true, 's2'))
+    expect(progress.getState()).toMatchObject({ mood: 'working', activity: 'click' })
+  })
+
+  it('shows a worried state for a failed step while the turn remains active, and recovers on the next tool', () => {
+    const progress = new BirdCompanionProgress()
+    progress.observe('w', tool())
+    progress.observe('w', result('t1', true))
+    expect(progress.getState()).toMatchObject({ mood: 'error', activity: 'stepError', activeSessions: 1 })
+    progress.observe('w', tool('t2'))
+    expect(progress.getState()).toMatchObject({ mood: 'working', activity: 'click' })
+  })
+
   it('defaults to hidden, automatically shows only for computer use, and retains the end message', () => {
     const progress = new BirdCompanionProgress()
     expect(progress.getState().visible).toBe(false)

@@ -418,6 +418,7 @@ export interface ElectronAPI {
   onSessionEvent(callback: (event: SessionEvent) => void): () => void
   /** Client-local desktop companion; absent in the web frontend. */
   getBirdCompanionPreferences?(): Promise<import('./bird-companion').BirdCompanionPreferences>
+  onBirdCompanionPreferencesChanged?(callback: (preferences: import('./bird-companion').BirdCompanionPreferences) => void): () => void
   setBirdCompanionPreferences?(updates: Partial<import('./bird-companion').BirdCompanionPreferences>): Promise<import('./bird-companion').BirdCompanionPreferences>
   observeBirdCompanionProgress?(event: import('./bird-companion').BirdProgressEvent): Promise<void>
   onUnreadSummaryChanged(callback: (summary: UnreadSummary) => void): () => void
@@ -531,6 +532,8 @@ export interface ElectronAPI {
 
   // Native Electron credential management. Never routed over WebSocket RPC.
   getNativeCredentialStatus(): Promise<NativeCredentialResult<NativeCredentialStatusResponse>>
+  getCredentialAccess(): Promise<{ state: 'local' | 'required' | 'pending' | 'approved' | 'unavailable'; expiresAt?: number }>
+  requestCredentialAccess(): Promise<{ state: 'required' | 'pending' | 'approved' | 'unavailable' }>
   listNativeCredentials(): Promise<NativeCredentialResult<NativeCredentialListResponse>>
   applyNativeCredentialChanges(request: NativeCredentialApplyRequest): Promise<NativeCredentialResult<NativeCredentialApplyResponse>>
   migrateNativeCredentials(request: NativeCredentialMigrateRequest): Promise<NativeCredentialResult<NativeCredentialMigrateResponse>>
@@ -880,6 +883,8 @@ export interface ElectronAPI {
   getLlmConnectionApiKey(slug: string): Promise<string | null>
   saveLlmConnection(connection: LlmConnection): Promise<{ success: boolean; error?: string }>
   deleteLlmConnection(slug: string): Promise<{ success: boolean; error?: string }>
+  /** Clear only this connection's credentials, keeping its configuration and chats. */
+  logoutLlmConnection(slug: string): Promise<{ success: boolean; error?: string }>
   testLlmConnection(slug: string): Promise<{ success: boolean; error?: string }>
   setDefaultLlmConnection(slug: string): Promise<{ success: boolean; error?: string }>
   getDefaultThinkingLevel(): Promise<ThinkingLevel>

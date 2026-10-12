@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, ArrowUp, ChevronDown, Circle, LoaderCircle, ShieldCheck, Sparkles, Square } from 'lucide-react'
-import { canShareSuperAgentPermission, superAgentTaskBlocker, type SuperAgentCommand, type SuperAgentConfig, type SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import { canShareSuperAgentPermission, type SuperAgentCommand, type SuperAgentConfig, type SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
 import type { PermissionRequest } from '../../../shared/types'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,9 @@ import { formatTimestamp, useSuperAgentText } from './super-agent-ui'
 import { conversationMessages, ordinaryPermissionHeads, recentPermissionResolutions, visibleActivityText, type SuperAgentApproval } from './super-agent-activity'
 import { approvalNotice, permissionNotice } from './super-agent-permission-notice'
 import { PermissionResultCard } from './PermissionResultCard'
+import { SuperAgentBlockingCard } from './SuperAgentBlockingCard'
+import { SuperAgentDeliveryCard } from './SuperAgentDeliveryCard'
+import { superAgentBlockingReports, type SuperAgentBlockingReport } from './super-agent-blockers'
 
 export function SuperAgentConversation({ snapshot, active, busy, requestPending, canStop, onStop, onCommand, onInspect }: {
   snapshot: SuperAgentSnapshot & { config: SuperAgentConfig }
@@ -21,7 +24,7 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
   canStop: boolean
   onStop: () => void
   onCommand: (command: SuperAgentCommand) => Promise<void>
-  onInspect: () => void
+  onInspect: () => Promise<void>
 }) {
   const text = useSuperAgentText()
   const { pendingPermissions, onRespondToPermission } = useAppShellContext()
@@ -29,9 +32,12 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
   const coordinator = config.nodes.find(node => node.role === 'coordinator')!
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [inspecting, setInspecting] = useState(false)
+  const inspectRef = useRef(false)
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
   const [approvalError, setApprovalError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const approvalRef = useRef<HTMLDivElement>(null)
   const followRef = useRef(true)
   const messages = conversationMessages(state.messages)
@@ -41,12 +47,21 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
   const sessionIds = new Set(state.nodes.map(node => node.sessionId).filter((id): id is string => !!id))
   const ordinary = ordinaryPermissionHeads(sessionIds, pendingPermissions, inbox)
   const approvalCount = approvals.length + ordinary.length
-  const blockers = state.tasks.filter(task => task.status === 'queued').flatMap(task => {
-    const blocker = superAgentTaskBlocker(state, task)
-    return blocker ? [{ id: task.id, title: task.title, reason: text(blocker.code, { detail: blocker.detail }) }] : []
-  })
-  const blockedPlans = state.plans.filter(plan => plan.status === 'blocked'
-    && !state.tasks.some(task => task.planId === plan.id && task.status === 'running'))
+  const blockingReports = superAgentBlockingReports(state)
+  const humanReports = blockingReports.filter(report => report.kind === 'user')
+  const internalReports = snapshot.recoverySuspended ? [] : blockingReports.filter(report => report.kind !== 'user')
+  const inspectionPending = inspecting || snapshot.inspectionPending === true
+  const processingBlockers = inspectionPending || busy || sending
+  function provideInput(report: SuperAgentBlockingReport) {
+    setInput(current => current || text('blockerReplyPrompt', { title: report.title, action: report.userAction ?? '' }))
+    inputRef.current?.focus()
+    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+  function replyToDelivery(title: string) {
+    setInput(current => current || text('deliveryReplyPrompt', { title }))
+    inputRef.current?.focus()
+    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
   useEffect(() => {
     if (active && followRef.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages.length, approvalCount, busy, active])
@@ -56,6 +71,12 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
     const draft = input
     setSending(true)
     try { await onCommand({ type: 'chat', text: draft.trim() }); setInput(current => current === draft ? '' : current) } catch { /* The page keeps the draft and displays the actual backend error. */ } finally { setSending(false) }
+  }
+  async function inspect() {
+    if (inspectRef.current || snapshot.inspectionPending || requestPending || !snapshot.environment.available) return
+    inspectRef.current = true; setInspecting(true)
+    try { await onInspect() } catch { /* The page displays the actual backend error. */ }
+    finally { inspectRef.current = false; setInspecting(false) }
   }
   async function respond(request: SuperAgentApproval, allowed: boolean, remember = false) {
     if (respondingTo) return
@@ -78,7 +99,7 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
         <div className="min-w-0"><p className="truncate text-xs font-medium">{coordinator.name}</p><p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground"><Circle className={cn('size-1.5 fill-current', busy ? 'text-amber-500' : 'text-emerald-500')} /><span className="truncate">{coordinator.model}</span></p></div>
       </div>
       {canStop ? <Button size="sm" variant="ghost" onClick={onStop}><Square className="size-3.5" />{text('stopAll')}</Button>
-        : <Button size="sm" variant="ghost" disabled={requestPending || !snapshot.environment.available} onClick={onInspect}><Sparkles className="size-3.5" />{text('inspect')}</Button>}
+        : <Button size="sm" variant="ghost" disabled={inspectionPending || requestPending || !snapshot.environment.available} onClick={() => void inspect()}>{inspectionPending ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{text('inspect')}</Button>}
     </div>
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-5" onScroll={() => {
       const scroller = scrollRef.current
@@ -109,16 +130,22 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
                 <div className="border-t border-destructive/15 px-4 py-3">
                   <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-5">{message.body}</pre>
                 </div>
-              </details> : <div className="break-words text-sm leading-6">{user ? <p className="whitespace-pre-wrap">{message.body}</p> : <Markdown>{visibleActivityText(message.body)}</Markdown>}</div>}
+              </details> : !user && message.delivery ? <SuperAgentDeliveryCard delivery={message.delivery} body={visibleActivityText(message.body)} artifacts={state.artifacts ?? []} text={text}
+                disabled={requestPending || sending || !snapshot.environment.available} onReply={replyToDelivery} />
+                : <div className="break-words text-sm leading-6">{user ? <p className="whitespace-pre-wrap">{message.body}</p> : <Markdown>{visibleActivityText(message.body)}</Markdown>}</div>}
             </div>
           </article>
         })}
-        {(blockers.length > 0 || blockedPlans.length > 0) && <aside role="status" className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm">
+        {internalReports.length > 0 && <aside role="status" aria-live="polite" className="rounded-xl border border-border bg-foreground/5 px-4 py-3 text-xs">
+          <div className="flex items-center gap-2">{processingBlockers && <LoaderCircle aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />}<span>{text('blockerSystemIssue')}</span></div>
+          <details className="mt-2 text-muted-foreground"><summary className="cursor-pointer">{text('queueBlockerDetails')}</summary>
+            <div className="mt-2 space-y-3">{internalReports.map(report => <SuperAgentBlockingCard key={report.id} report={report} text={text} processing={processingBlockers} disabled onProvideInput={provideInput} />)}</div>
+          </details>
+        </aside>}
+        {humanReports.length > 0 && <aside role="status" className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm">
           <h2 className="font-medium text-amber-700 dark:text-amber-400">{text('queueBlocked')}</h2>
-          <ul className="space-y-2 text-xs leading-5">{blockers.map(item => <li key={item.id}><strong>{item.title}</strong><p>{item.reason}</p></li>)}
-            {blockedPlans.map(plan => <li key={plan.id}><strong>{plan.title}</strong><p className="whitespace-pre-wrap">{plan.note || text('planBlocked', { detail: plan.title })}</p></li>)}</ul>
-          <p className="text-xs leading-5 text-muted-foreground">{text('queueNextStep')}</p>
-          <Button size="sm" variant="outline" disabled={busy || requestPending || !snapshot.environment.available} onClick={onInspect}>{text('queueInspect')}</Button>
+          <div className="space-y-3">{humanReports.map(report => <SuperAgentBlockingCard key={report.id} report={report} text={text} processing={false}
+            disabled={requestPending} onProvideInput={provideInput} />)}</div>
         </aside>}
         {approvalCount > 0 && <div ref={approvalRef} className="space-y-3" aria-label={text('permissionInbox')}>
           <h2 className="flex items-center gap-2 text-xs font-semibold"><ShieldCheck className="size-3.5 text-amber-600 dark:text-amber-400" />{text('permissionInbox')}<span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">{approvalCount}</span></h2>
@@ -135,7 +162,7 @@ export function SuperAgentConversation({ snapshot, active, busy, requestPending,
       <div className="mx-auto max-w-3xl space-y-2">
         {approvalCount > 0 && <button type="button" className="flex items-center gap-2 text-xs text-amber-700 hover:underline dark:text-amber-400" onClick={() => approvalRef.current?.scrollIntoView({ block: 'nearest' })}><ShieldCheck className="size-3.5" />{text('approvalCount', { count: approvalCount })}<ChevronDown className="size-3" /></button>}
         <div className="rounded-2xl border border-border bg-background p-3 shadow-xs">
-          <textarea rows={2} maxLength={32_000} className="max-h-40 min-h-14 w-full resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground/70" value={input} placeholder={text('messagePlaceholder')} aria-label={text('messagePlaceholder')}
+          <textarea ref={inputRef} rows={2} maxLength={32_000} className="max-h-40 min-h-14 w-full resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground/70" value={input} placeholder={text('messagePlaceholder')} aria-label={text('messagePlaceholder')}
             onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send() } }} />
           <div className="mt-2 flex items-center justify-between gap-3"><span className="truncate text-[10px] text-muted-foreground">{busy ? text('sendWhileWorking') : text('coordinator')}</span>
             <Button size="icon" className="size-8 shrink-0 rounded-xl" aria-label={text('send')} disabled={!input.trim() || requestPending || sending || !snapshot.environment.available} onClick={() => void send()}>{sending ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}</Button></div>

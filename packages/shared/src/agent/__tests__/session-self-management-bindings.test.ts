@@ -59,6 +59,24 @@ describe('Pi session self-management regression (#511)', () => {
     expect(ctx.resolveStatus).toBeUndefined();
   });
 
+  it('routes collaboration tools through callbacks registered after context creation', async () => {
+    const ctx = createBaseContext(sessionId);
+    attachSessionSelfManagementBindings(ctx, sessionId);
+    expect(ctx.superAgentAction).toBeUndefined();
+    const received: Array<{ name: string; args: Record<string, unknown> }> = [];
+    mergeSessionScopedToolCallbacks(sessionId, {
+      superAgentActionFn: async (name, args) => {
+        received.push({ name, args });
+        return { receipt: { status: 'applied', applied: [{ id: 'real-target' }] } };
+      },
+    });
+    const args = { requestId: 'one', toNodeId: 'main', body: 'New evidence' };
+    const result = await SESSION_TOOL_REGISTRY.get('super_agent_message')!.handler!(ctx, args);
+    expect(result.isError).not.toBe(true);
+    expect(received).toEqual([{ name: 'super_agent_message', args }]);
+    expect(JSON.stringify(result)).toContain('real-target');
+  });
+
   it('context WITH bindings resolves callbacks from registry', async () => {
     const ctx = createBaseContext(sessionId);
     attachSessionSelfManagementBindings(ctx, sessionId);

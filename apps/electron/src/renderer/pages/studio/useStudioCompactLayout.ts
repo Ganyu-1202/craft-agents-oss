@@ -20,5 +20,5 @@ export function useStudioCompactLayout() {
     }
   }, [])
   const android = new URLSearchParams(window.location.search).get('embedded') === 'android'
-  return { ref, compact: studioCompactLayout(width || window.innerWidth, height, android) }
+  return { ref, width, compact: studioCompactLayout(width || window.innerWidth, height, android) }
 }

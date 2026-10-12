@@ -98,7 +98,7 @@ export default function App() {
   const initRef = useRef(false)
   const initialParams = new URLSearchParams(window.location.search)
   const embeddedPlatform = initialParams.get('embedded')
-  const embedded = Boolean(cloudGrant || initialParams.get('ws')) || embeddedPlatform === 'android'
+  const embedded = Boolean(cloudGrant || initialParams.get('ws')) || embeddedPlatform === 'android' || embeddedPlatform === 'ios'
 
   const initialize = async () => {
     setPhase('loading')
@@ -110,13 +110,13 @@ export default function App() {
       let embeddedWsUrl = cloudGrant?.url ?? params.get('ws')
       let embeddedToken = cloudGrant?.token ?? params.get('token') ?? undefined
       let embeddedConnectionMode: 'local' | 'remote' | undefined = cloudGrant ? 'remote' : undefined
-      if (params.get('embedded') === 'android') {
+      if (params.get('embedded') === 'android' || params.get('embedded') === 'ios') {
         const mobileConfigResponse = await fetch('/api/mobile-config', {
           credentials: 'same-origin',
           cache: 'no-store',
         })
         if (!mobileConfigResponse.ok) {
-          throw new Error(`Failed to load Android server config: ${mobileConfigResponse.status}`)
+          throw new Error(`Failed to load mobile server config: ${mobileConfigResponse.status}`)
         }
         const mobileConfig = await mobileConfigResponse.json() as {
           wsUrl?: string

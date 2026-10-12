@@ -1,8 +1,9 @@
 import { useStudioCompactLayout } from './useStudioCompactLayout'
-import { StudioMobileSheet } from './StudioMobileSheet'
+import { PageSidebar } from '@/components/app-shell/PageSidebar'
+import { usePageSidebar } from '@/context/PageSidebarContext'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
-import { Check, FileImage, GitBranch, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Check, PanelLeftOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { DeleteSessionConfirmationDialog } from '@/components/DeleteSessionConfirmationDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -30,10 +31,14 @@ export function StudioSessionWorkspace({ mode, children }: {
   children: (props: StudioSessionEditorProps) => ReactNode
 }) {
   const { t, i18n } = useTranslation()
+  const pageSidebar = usePageSidebar()
   const { ref: layoutRef, compact: smallLayout } = useStudioCompactLayout()
   const compact = mode === 'canvas' && smallLayout
-  const [sessionsOpen, setSessionsOpen] = useState(false)
-  useEffect(() => { if (!compact) setSessionsOpen(false) }, [compact])
+  const sidebarCompact = pageSidebar?.compact ?? smallLayout
+  const [localSessionsOpen, setLocalSessionsOpen] = useState(false)
+  const sessionsOpen = pageSidebar ? pageSidebar.mode === mode && pageSidebar.open : localSessionsOpen
+  const setSessionsOpen = pageSidebar?.setOpen ?? setLocalSessionsOpen
+  useEffect(() => { if (!sidebarCompact) setSessionsOpen(false) }, [sidebarCompact, setSessionsOpen])
   const [sessions, setSessions] = useState<StudioSessionMeta[]>([])
   const [current, setCurrent] = useState<(StudioSessionMeta & { data: string }) | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,7 +47,9 @@ export function StudioSessionWorkspace({ mode, children }: {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState('')
   const [draft, setDraft] = useState('')
-  const [collapsed, setCollapsed] = useState(() => new URLSearchParams(window.location.search).get('embedded') === 'android')
+  const [localSidebarVisible, setLocalSidebarVisible] = useState(true)
+  const sidebarVisible = pageSidebar?.visible ?? localSidebarVisible
+  const toggleSidebar = pageSidebar?.toggle ?? (() => setLocalSidebarVisible(value => !value))
   const [creating, setCreating] = useState(false)
   const [workDirectory, setWorkDirectory] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -87,14 +94,14 @@ export function StudioSessionWorkspace({ mode, children }: {
 
   async function select(id: string) {
     if (locked) return
-    if (id === current?.id) { setSessionsOpen(false); return }
+    if (id === current?.id) { if (sidebarCompact) setSessionsOpen(false); return }
     try {
       setError(''); await flush()
       const meta = sessions.find(item => item.id === id)
       if (!meta) return
       const data = await loadStudioSession(id)
       flushRef.current = null
-      setCurrent({ ...meta, data }); setActiveStudioSessionId(mode, id); setSessionsOpen(false)
+      setCurrent({ ...meta, data }); setActiveStudioSessionId(mode, id); if (sidebarCompact) setSessionsOpen(false)
     } catch (cause) { setError(t('studio.sessionSwitchFailed', { value1: String(cause) })) }
   }
 
@@ -106,7 +113,8 @@ export function StudioSessionWorkspace({ mode, children }: {
       await putStudioSession(meta, '')
       flushRef.current = null
       setSessions(items => [meta, ...items]); setCurrent({ ...meta, data: '' }); setActiveStudioSessionId(mode, meta.id)
-      setSessionsOpen(false); setCreating(false); createResolve.current?.(); createResolve.current = null
+      if (sidebarCompact) setSessionsOpen(false)
+      setCreating(false); createResolve.current?.(); createResolve.current = null
     } catch (cause) { setError(t('studio.sessionCreateFailed', { value1: String(cause) })) }
   }
   async function create() {
@@ -177,12 +185,11 @@ export function StudioSessionWorkspace({ mode, children }: {
     if (current?.title === defaultTitle) void rename(current.id, title)
   }, [current?.id, current?.title, sessions])
 
-  const sidebar = (<aside data-studio-session-sidebar className={`flex shrink-0 flex-col border-r border-border/70 bg-muted/20 ${(collapsed && !compact) ? 'w-11' : 'w-56'}`}>
-      <div className={`flex h-12 shrink-0 items-center justify-between border-b border-border/70 ${(collapsed && !compact) ? 'px-1.5' : 'px-3'}`}>
-        {(!collapsed || compact) && <span className="flex items-center gap-2 text-sm font-semibold">{mode === 'canvas' ? <FileImage className="size-4 text-primary" /> : <GitBranch className="size-4 text-primary" />}{mode === 'canvas' ? t('studio.canvasSessions') : t('studio.diagramSessions')}</span>}
-        <div className="flex items-center gap-1"><button className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" title={(collapsed && !compact) ? t('studio.expandSessions') : t('studio.collapseSessions')} aria-label={(collapsed && !compact) ? t('studio.expandSessions') : t('studio.collapseSessions')} onClick={() => compact ? setSessionsOpen(false) : setCollapsed(value => !value)}>{(collapsed && !compact) ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}</button>{(!collapsed || compact) && <button className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40" title={t('studio.newSession')} aria-label={t('studio.newSession')} disabled={locked || loading} onClick={() => void create()}><Plus className="size-4" /></button>}</div>
-      </div>
-      {(collapsed && !compact) ? <button className="mx-auto mt-2 flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40" title={t('studio.newSession')} aria-label={t('studio.newSession')} disabled={locked || loading} onClick={() => void create()}><Plus className="size-4" /></button> : <>
+  const sidebarTitle = mode === 'canvas' ? t('studio.canvasSessions') : t('studio.diagramSessions')
+  const sidebar = <PageSidebar title={sidebarTitle} visible={sidebarVisible} compact={sidebarCompact}
+    open={sessionsOpen} onOpenChange={setSessionsOpen} onToggle={toggleSidebar}>
+      <div data-studio-session-sidebar className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-2 pt-2"><button className="flex h-9 w-full items-center gap-2 rounded-md bg-background px-2 text-xs shadow-minimal hover:bg-accent disabled:opacity-40" disabled={locked || loading} onClick={() => void create()}><Plus className="size-4" />{t('studio.newSession')}</button></div>
       <div className="px-2 py-2"><label className="flex h-8 items-center gap-2 rounded-md border border-border/70 bg-background px-2 text-muted-foreground"><Search className="size-3.5" /><input className="w-full bg-transparent text-xs text-foreground outline-none" placeholder={t('studio.searchSessions')} value={query} onChange={event => setQuery(event.target.value)} /></label></div>
       <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
         {sessions.filter(item => item.title.toLowerCase().includes(query.trim().toLowerCase())).map(item => <div key={item.id}
@@ -192,14 +199,12 @@ export function StudioSessionWorkspace({ mode, children }: {
         </div>)}
       </div>
       {error && <div role="alert" className="border-t border-border px-3 py-2 text-xs text-destructive">{error}</div>}
-      </>}
-    </aside>)
-  return <div ref={layoutRef} data-studio-session-compact={compact || undefined} className="flex h-full min-h-0 bg-background text-foreground">
-    {compact ? <>
-      <div className="studio-session-mobile-bar"><button aria-label={t('studio.canvasSessions')} onClick={() => setSessionsOpen(true)}><PanelLeftOpen className="size-4 shrink-0" /><span>{current?.title ?? defaultTitle}</span></button><button aria-label={t('studio.newSession')} disabled={locked || loading} onClick={() => void create()}><Plus className="size-5" /></button></div>
-      <StudioMobileSheet open={sessionsOpen} onOpenChange={setSessionsOpen} title={t('studio.canvasSessions')}>{sidebar}</StudioMobileSheet>
-    </> : sidebar}
-    {error && compact && <div role="alert" className="px-3 py-2 text-xs text-destructive">{error}</div>}
+      </div>
+    </PageSidebar>
+  return <div ref={layoutRef} data-studio-session-compact={(sidebarCompact || (!pageSidebar && !sidebarVisible)) || undefined} className="flex h-full min-h-0 bg-background text-foreground">
+    {sidebarCompact || (!pageSidebar && !sidebarVisible) ? <div className="studio-session-mobile-bar"><button aria-label={sidebarTitle} onClick={() => sidebarCompact ? setSessionsOpen(true) : toggleSidebar()}><PanelLeftOpen className="size-4 shrink-0" /><span>{current?.title ?? defaultTitle}</span></button><button aria-label={t('studio.newSession')} disabled={locked || loading} onClick={() => void create()}><Plus className="size-5" /></button></div> : null}
+    {sidebar}
+    {error && (sidebarCompact || !sidebarVisible) && <div role="alert" className="px-3 py-2 text-xs text-destructive">{error}</div>}
     <div className="min-h-0 min-w-0 flex-1">{current ? children({ compactLayout: mode === 'canvas' ? compact : undefined, session: current, onSave: save, createSession: create, bindWorkDirectory, selectSession: select, renameSession: rename, deleteSession: remove, flushRef, setLocked, suggestTitle }) : <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">{loading ? t('studio.loadingSessions') : mode === 'mindmap' ? <><span>{t('studio.chooseFolderCreate')}</span><button className="rounded-md bg-primary px-3 py-2 text-primary-foreground" onClick={() => void create()}>{t('studio.newMindMap')}</button></> : t('studio.sessionOpenFailed')}</div>}</div>
     <DeleteSessionConfirmationDialog
       sessionName={sessions.find(item => item.id === pendingDeleteId)?.title ?? null}

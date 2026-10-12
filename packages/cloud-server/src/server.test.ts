@@ -68,6 +68,21 @@ describe('cloud relay and chat snapshots', () => {
     try { expect((await cloud.request(path, 'GET', undefined, registered.tunnelToken)).status).toBe(401) } finally { clock.mockRestore() }
   })
 
+  test('Android loopback origins are admitted only for client sockets', async () => {
+    const cloud = createCloud()
+    const device = { deviceId: randomUUID(), deviceSecret: 'e'.repeat(64), name: 'Host' }
+    const registered = await (await cloud.request('/v1/devices/register', 'POST', device)).json() as { tunnelToken: string }
+    const clientPath = `/v1/connect/${device.deviceId}`
+    for (const origin of ['http://127.0.0.1:1', 'http://127.0.0.1:8080', 'http://127.0.0.1:65535', cloud.origin]) {
+      // Ordinary HTTP reaches the upgrade guard instead of the origin rejection.
+      expect((await fetch(cloud.origin + clientPath, { headers: { Origin: origin } })).status).toBe(400)
+    }
+    for (const origin of ['null', 'https://evil.example', 'http://127.0.0.1', 'http://127.0.0.1:0', 'http://127.0.0.1:65536', 'http://127.0.0.1:8080/', 'http://127.0.0.1:8080.evil.example', 'http://127.0.0.2:8080', 'http://localhost:8080']) {
+      expect((await fetch(cloud.origin + clientPath, { headers: { Origin: origin } })).status).toBe(403)
+    }
+    expect((await fetch(cloud.origin + `/v1/tunnel/${device.deviceId}`, { headers: { Origin: 'http://127.0.0.1:8080', Authorization: `Bearer ${registered.tunnelToken}` } })).status).toBe(403)
+  })
+
   test('shares persist, escape scripts, isolate owners and revoke public copies', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'tokenbird-cloud-test-'))
     cleanup.push(() => rmSync(directory, { recursive: true, force: true }))
@@ -131,11 +146,16 @@ describe('cloud relay and chat snapshots', () => {
     peer.handleCapability(CLIENT_REQUEST_FILES, async () => ({ canceled: false, files: [{ name: 'report.txt', base64: Buffer.from('client report').toString('base64') }] }))
     await peer.connect()
     expect(await peer.invoke('test:echo', 'cloud works')).toEqual({ echo: 'cloud works' })
+    const androidPeer = new WsRpcClient(grant.url, { token: grant.token, autoReconnect: false })
+    cleanup.push(() => androidPeer.destroy())
+    const androidSocket = spyOn(androidPeer as any, 'createRawWebSocket').mockImplementation((url: string) => new WebSocket(url, { origin: 'http://127.0.0.1:8080' }))
+    cleanup.push(() => { androidSocket.mockRestore() })
+    expect(await androidPeer.invoke('test:echo', 'Android cloud works')).toEqual({ echo: 'Android cloud works' })
     const fileRequest = await peer.invoke('test:files') as { reminder: string; result: { files: Array<{ path: string }> } }
     expect(fileRequest.reminder).toContain('REMOTE ACCESS')
     expect(await Bun.file(fileRequest.result.files[0]!.path).text()).toBe('client report')
 
-    const badPeer = new WebSocket(grant.url)
+    const badPeer = new WebSocket(grant.url, { origin: 'http://127.0.0.1:8080' })
     cleanup.push(() => badPeer.terminate())
     const closeCode = new Promise<number>(resolve => badPeer.on('close', resolve))
     badPeer.on('open', () => badPeer.send(JSON.stringify({ type: 'handshake', token: 'wrong-token' })))

@@ -40,8 +40,8 @@ export class MessageBranchGate {
 /** Changed messages get their own identity; later parent messages never enter the child. */
 export function editedBranchMessages(messages: StoredMessage[], index: number, content: string, id: string): StoredMessage[] {
   const original = messages[index]
-  if (!original || (original.type !== 'user' && original.type !== 'assistant') || original.hidden || original.isQueued || original.isIntermediate) {
-    throw new Error('Only completed user or assistant messages can be edited.')
+  if (!original || original.type !== 'user' || original.hidden || original.isQueued || original.isIntermediate) {
+    throw new Error('Only completed user messages can be edited.')
   }
   if (typeof content !== 'string' || !content.trim()) throw new Error('Edited message cannot be empty.')
   return [...messages.slice(0, index), {
@@ -53,7 +53,7 @@ export function editedBranchMessages(messages: StoredMessage[], index: number, c
     annotations: undefined,
     turnId: undefined,
     relayDelivery: undefined,
-    isQueued: original.type === 'user',
+    isQueued: true,
   }]
 }
 

@@ -1,5 +1,6 @@
-import { readFile, writeFile, stat } from 'fs/promises'
-import { join } from 'path'
+import { readFile, writeFile, stat, realpath } from 'fs/promises'
+import { join, relative, isAbsolute } from 'path'
+import { getSessionAttachmentsPath, validateSessionId } from '@craft-agent/shared/sessions'
 import { RPC_CHANNELS, type FileAttachment, type SendMessageOptions, type SessionEvent } from '@craft-agent/shared/protocol'
 import type { StoredAttachment } from '@craft-agent/core/types'
 import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
@@ -213,6 +214,28 @@ export function registerSessionsHandlers(server: RpcServer, deps: HandlerDeps): 
   //     event stream as today.
   // attachments: FileAttachment[] for Claude (has content), storedAttachments: StoredAttachment[] for persistence (has thumbnailBase64)
   server.handle(RPC_CHANNELS.sessions.SEND_MESSAGE, async (ctx, sessionId: string, message: string, attachments?: FileAttachment[], storedAttachments?: StoredAttachment[], options?: SendMessageOptions) => {
+    // SFTP uploads carry metadata over RPC. Restore PDFs on the server for
+    // backends that require inline PDF bytes, only from this session's folder.
+    if (attachments?.some(attachment => attachment.type === 'pdf' && !attachment.base64)) {
+      validateSessionId(sessionId)
+      const session = await sessionManager.getSession(sessionId)
+      const workspace = session && getWorkspaceByNameOrId(session.workspaceId)
+      if (!workspace) throw new Error('Attachment workspace not found')
+      const root = await realpath(getSessionAttachmentsPath(workspace.rootPath, sessionId))
+      attachments = await Promise.all(attachments.map(async attachment => {
+        if (attachment.type !== 'pdf' || attachment.base64) return attachment
+        const path = (attachment as FileAttachment & { storedPath?: string }).storedPath
+        if (!path) throw new Error('Stored PDF path missing')
+        const resolved = await realpath(path)
+        const child = relative(root, resolved)
+        if (!child || child.startsWith('..') || isAbsolute(child)) throw new Error('PDF must belong to this session')
+        const info = await stat(resolved)
+        if (!info.isFile() || info.size !== attachment.size) throw new Error('Stored PDF size mismatch')
+        const bytes = await readFile(resolved)
+        if (bytes.length !== attachment.size) throw new Error('Stored PDF size mismatch')
+        return { ...attachment, base64: bytes.toString('base64') }
+      }))
+    }
     // Model-only team context is produced by the host's node dispatcher.
     // Clients may submit visible messages but cannot inject this internal field.
     const clientOptions = options ? { ...options, superAgentContext: undefined } : undefined

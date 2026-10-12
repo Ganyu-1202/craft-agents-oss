@@ -31,11 +31,12 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, cpSync, rmSync } from 'fs';
-import { join, basename, extname, relative, sep } from 'path';
+import { join, basename, dirname, extname, relative, resolve, sep } from 'path';
 import { CONFIG_DIR } from './paths.ts';
 import { getBundledAssetsDir } from '../utils/paths.ts';
 import { debug } from '../utils/debug.ts';
 import type { ThemeOverrides } from './theme.ts';
+import { extractDshPalette } from './theme-pack-compat.ts';
 
 // Style types + defaults live in a browser-safe module so the renderer can
 // import them without pulling node:fs / node:os into the client bundle.
@@ -49,6 +50,8 @@ import type { ThemePackStyle } from './theme-pack-style.ts';
 
 /** Native theme pack manifest (theme-pack.json). */
 export interface ThemePackManifest {
+  /** Stable folder/import identifier, independent of the display name. */
+  id?: string;
   name: string;
   nameEn?: string;
   author?: string;
@@ -56,6 +59,8 @@ export interface ThemePackManifest {
   description?: string;
   version?: number;
   tags?: string[];
+  /** Attribution for bundled or imported character artwork. */
+  artwork?: { artist: string; credit: string; sourceUrl: string }[];
   /** Preview images relative to the pack dir. */
   preview?: { light?: string; dark?: string };
   /** Scenic background. `background` (light/dark pair) wins over single `backgroundImage`. */
@@ -139,7 +144,7 @@ function extractDshCss(packDir: string): string | undefined {
       const content = readFileSync(path, 'utf-8');
       if (content.length > 4 * 1024 * 1024) continue;
       const cssParts: string[] = [];
-      const pattern = /(?:const|let|var)\s+css\s*=\s*("(?:\\.|[^"\\])*")/g;
+      const pattern = /(?:const|let|var)\s+css[\w$]*\s*=\s*("(?:\\.|[^"\\])*")/g;
       for (const match of content.matchAll(pattern)) {
         try {
           const value = JSON.parse(match[1]!);
@@ -148,6 +153,18 @@ function extractDshCss(packDir: string): string | undefined {
       }
       if (cssParts.length) return cssParts.join('\n');
     } catch { /* optional stylesheet */ }
+  }
+  // Source distributions may ship CSS without a compiled CSS literal.
+  const sourceDir = join(packDir, 'src', 'client');
+  if (existsSync(sourceDir)) {
+    const parts: string[] = [];
+    for (const name of readdirSync(sourceDir)) {
+      if (!name.endsWith('.css')) continue;
+      try {
+        parts.push(inlineCssAssetUrlsFromDir(packDir, readFileSync(join(sourceDir, name), 'utf-8'), `src/client/${name}`));
+      } catch { /* optional source CSS */ }
+    }
+    if (parts.length) return parts.join('\n');
   }
   return undefined;
 }
@@ -243,7 +260,7 @@ export function sanitizePackId(id: string): string {
     .replace(/[^a-zA-Z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
-  return cleaned || 'theme-pack';
+  return !cleaned || cleaned === '.' || cleaned === '..' ? 'theme-pack' : cleaned;
 }
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif', '.apng', '.bmp', '.ico', '.tif', '.tiff', '.heic', '.jxl']);
@@ -343,7 +360,12 @@ export function convertDshSkinToManifest(
   };
 
   const customCss = extractDshCss(packDir);
-  if (customCss) manifest.customCss = inlineCssAssetUrlsFromDir(packDir, customCss, 'lib');
+  if (customCss) {
+    manifest.customCss = inlineCssAssetUrlsFromDir(packDir, customCss, 'lib/client.js');
+    manifest.colors = extractDshPalette(customCss, skin.bodyAttr);
+    // Palette-only skins also retain both light and dark mode metadata.
+    if (manifest.colors.dark) manifest.colors.supportedModes = ['light', 'dark'];
+  }
   const scripts = detectDshScripts(packDir);
   if (scripts.length) manifest.scripts = scripts;
 
@@ -353,7 +375,7 @@ export function convertDshSkinToManifest(
       ...(night ? { dark: `assets/${night}` } : {}),
     };
     // DSH skins are full-window artwork → scenic with glass panels.
-    manifest.colors = { ...(manifest.colors ?? {}), mode: 'scenic' };
+    manifest.colors = { ...(manifest.colors ?? {}), mode: 'scenic', ...(day && night ? { supportedModes: ['light', 'dark'] as ('light' | 'dark')[] } : {}) };
   }
 
   if (sidebar) manifest.sidebarTexture = `assets/${sidebar}`;
@@ -375,7 +397,7 @@ export function convertDshSkinToManifest(
     };
   }
 
-  if (skin.accent) {
+  if (skin.accent && !manifest.colors?.accent) {
     manifest.colors = { ...(manifest.colors ?? {}), accent: skin.accent };
   }
 
@@ -427,11 +449,13 @@ export function loadThemePack(id: string): ThemePack | null {
     if (!existsSync(manifestPath)) continue;
     try {
       const raw = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
       if (filename === 'skin.json') {
         const manifest = convertDshSkinToManifest(raw as DshSkinManifest, dir);
         return { id: safeId, dir, manifest, source: 'dsh', location: candidate.location };
       }
       const nativeManifest = loadPackStylesheets(dir, raw as ThemePackManifest);
+      if (typeof raw.name !== 'string' || !raw.name.trim()) return null;
       return { id: safeId, dir, manifest: nativeManifest, source: 'native', location: candidate.location };
     } catch (error) {
       debug(`[theme-pack] Failed to parse ${manifestPath}:`, error);
@@ -568,9 +592,8 @@ function inlineCssAssetUrlsFromDir(packDir: string, css: string, basePath: strin
     const fragment = hashIndex >= 0 ? url.slice(hashIndex) : '';
     const localUrl = (hashIndex >= 0 ? url.slice(0, hashIndex) : url).split('?', 1)[0] ?? url;
     const candidates = [
+      join(dirname(basePath), localUrl).replace(/\\/g, '/'),
       localUrl.replace(/^\.\//, ''),
-      join(basePath, '..', localUrl).replace(/\\/g, '/'),
-      join(basePath, localUrl).replace(/\\/g, '/'),
     ];
     for (const candidate of candidates) {
       const path = resolvePackRelativePath(packDir, candidate);
@@ -650,20 +673,28 @@ export function importThemePackFromFolder(sourceDir: string): ThemePack | null {
   if (hasNative) {
     try {
       const raw = JSON.parse(readFileSync(join(sourceDir, 'theme-pack.json'), 'utf-8')) as ThemePackManifest;
-      packId = sanitizePackId(raw.name ?? basename(sourceDir));
+      if (!raw || typeof raw.name !== 'string' || !raw.name.trim()) return null;
+      packId = sanitizePackId(raw.id ?? basename(sourceDir));
     } catch {
-      packId = sanitizePackId(basename(sourceDir));
+      return null;
     }
   } else {
     try {
       const raw = JSON.parse(readFileSync(join(sourceDir, 'skin.json'), 'utf-8')) as DshSkinManifest;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
       packId = sanitizePackId(raw.id ?? raw.nameEn ?? raw.name ?? basename(sourceDir));
     } catch {
-      packId = sanitizePackId(basename(sourceDir));
+      return null;
     }
   }
 
   const targetDir = join(ensureThemePacksDir(), packId);
+  // Importing an already installed folder must never delete its own source.
+  if (resolve(sourceDir) === resolve(targetDir)) return loadThemePack(packId);
+  const sourceRelativeToTarget = relative(targetDir, resolve(sourceDir));
+  if (sourceRelativeToTarget && !sourceRelativeToTarget.startsWith('..') && !sourceRelativeToTarget.includes(':')) return null;
+  const targetRelativeToSource = relative(resolve(sourceDir), targetDir);
+  if (targetRelativeToSource && !targetRelativeToSource.startsWith('..') && !targetRelativeToSource.includes(':')) return null;
   if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
 
   // Copy verbatim (images, manifests, previews, NOTICE/LICENSE included).

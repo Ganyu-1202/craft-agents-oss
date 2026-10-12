@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "词元鸟";
+"NSLocalNetworkUsageDescription" = "连接你在局域网中的 TokenBird 服务。";
+"NSCameraUsageDescription" = "拍摄照片或视频，作为对话附件发送。";
+"NSMicrophoneUsageDescription" = "录制视频附件时使用麦克风。";
+"NSPhotoLibraryUsageDescription" = "选择照片或视频，作为对话附件发送。";

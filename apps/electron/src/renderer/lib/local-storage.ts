@@ -32,6 +32,7 @@ export const KEYS = {
   // Theme
   theme: 'theme',
   themePackScripts: 'theme-pack-scripts',
+  themePresentation: 'theme-presentation',
   chatOpacity: 'chat-opacity',
 
   // Panel layouts (dynamic key suffix)

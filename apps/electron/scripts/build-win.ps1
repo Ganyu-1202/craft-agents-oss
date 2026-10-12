@@ -70,15 +70,21 @@ try {
 }
 Write-Host ""
 
-# 0. Kill any lingering processes that might lock files
-Write-Host "Killing any lingering node/npm processes..."
-$processesToKill = @('node', 'npm', 'electron', 'electron-builder')
-foreach ($procName in $processesToKill) {
-    Get-Process -Name $procName -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Host "  Killing $($_.ProcessName) (PID: $($_.Id))..." -ForegroundColor Yellow
-        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+# Only stop this checkout's release app or packaging helpers that hold build files.
+# Other Node/Electron apps and development servers may be doing unrelated work.
+function Stop-PackageProcesses {
+    $releaseRoot = [System.IO.Path]::GetFullPath((Join-Path $ElectronDir 'release')) + '\'
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        ($_.Name -in @('node.exe', 'electron.exe', 'electron-builder.exe', 'TokenBird.exe')) -and
+        (($_.ExecutablePath -and $_.ExecutablePath.StartsWith($releaseRoot, [StringComparison]::OrdinalIgnoreCase)) -or
+         ($_.CommandLine -and $_.CommandLine.Contains($RootDir) -and $_.CommandLine -match 'electron-builder'))
+    } | ForEach-Object {
+        Write-Host "  Stopping packaging process $($_.Name) (PID: $($_.ProcessId))..." -ForegroundColor Yellow
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 }
+Write-Host "Cleaning up this checkout's packaging processes..."
+Stop-PackageProcesses
 # Give processes time to fully terminate
 Start-Sleep -Seconds 2
 
@@ -522,10 +528,7 @@ while (-not $builderSuccess -and $builderRetry -lt $maxBuilderRetries) {
             Write-Host "  Waiting 10 seconds before retry..." -ForegroundColor Yellow
 
             # Kill any processes that might be holding file locks
-            Get-Process -Name 'node', 'npm' -ErrorAction SilentlyContinue | ForEach-Object {
-                Write-Host "    Killing $($_.ProcessName) (PID: $($_.Id))..." -ForegroundColor Yellow
-                Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-            }
+            Stop-PackageProcesses
 
             Start-Sleep -Seconds 10
         }

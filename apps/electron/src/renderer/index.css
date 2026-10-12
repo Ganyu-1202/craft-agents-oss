@@ -358,11 +358,11 @@ html[data-scenic]::before {
 
 /* Scenic mode dark: Dark overlay gradient to fade the background image
    Stronger on left (sidebar area) for readability, lighter on right to show more image */
-html.dark[data-scenic]::after {
+html[data-scenic]::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+  background: rgba(0, 0, 0, var(--theme-background-dim, 0.18));
   z-index: -1;
   pointer-events: none;
 }
@@ -379,8 +379,16 @@ html[data-scenic][data-theme-override]::before {
 
 /* Scenic mode: Make background color semi-transparent for glass effect
    Panels with bg-background will become translucent glass */
-html[data-scenic] {
+html:where(.dark[data-scenic]) {
   --background: oklch(0.2 0.005 270 / 0.55);
+}
+
+html:where(.light[data-scenic]) {
+  --background: oklch(0.98 0.003 265 / 0.75);
+}
+
+html[data-scenic] body {
+  background-color: transparent;
 }
 
 /* =============================================================================
@@ -419,7 +427,11 @@ html[data-theme-pack] [data-theme-area="sidebar"]::before {
 }
 
 [data-theme-area="chat"] .theme-message-assistant-bubble {
-  background-color: color-mix(in srgb, var(--message-tips-bg, var(--background)) var(--craft-chat-bubble-opacity, 100%), transparent);
+  background-color: color-mix(in srgb, var(--message-tips-bg, var(--paper, var(--background))) var(--craft-chat-bubble-opacity, 100%), transparent);
+}
+
+[data-theme-area="sidebar"] {
+  background-color: var(--navigator, var(--background));
 }
 
 [data-theme-area="chat"] .theme-message-user-bubble {
@@ -469,15 +481,19 @@ html[data-theme-pack] #theme-pack-character-stage {
   display: block;
 }
 
+html[data-theme-characters='hidden'] #theme-pack-character-stage {
+  display: none;
+}
+
 #theme-pack-character-stage img {
   position: absolute;
   bottom: var(--theme-pack-char-bottom, clamp(-34px, -2.4vh, -12px));
-  height: var(--theme-pack-char-height, clamp(560px, 96vh, 1180px));
+  height: calc(var(--theme-pack-char-height, clamp(560px, 96vh, 1180px)) * var(--theme-character-scale, 1));
   width: auto;
   max-width: none;
   object-fit: contain;
   object-position: center bottom;
-  opacity: var(--theme-pack-char-opacity, 0.92);
+  opacity: calc(var(--theme-pack-char-opacity, 0.92) * var(--theme-character-opacity, 1));
   filter: saturate(1.04) brightness(1.06) contrast(1.02)
     drop-shadow(0 20px 24px rgba(27, 44, 91, 0.14));
 }
@@ -488,6 +504,19 @@ html[data-theme-pack] #theme-pack-character-stage {
 
 #theme-pack-character-stage img[data-char='right'] {
   right: 0;
+}
+
+/* Keep corner artwork within compact windows and clear of the mobile composer. */
+@media (max-width: 768px) {
+  #theme-pack-character-stage img {
+    max-height: 62vh;
+    max-width: 48vw;
+    opacity: calc(var(--theme-pack-char-opacity, 0.92) * var(--theme-character-opacity, 1) * 0.55);
+  }
+}
+
+html[data-theme-pack] .input-container {
+  border-radius: var(--theme-pack-radius, 12px);
 }
 
 /* Inter Font - Opt-in via data-font="inter" attribute
@@ -505,6 +534,8 @@ html[data-font="inter"] {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
+  --color-paper: var(--paper);
+  --color-navigator: var(--navigator);
   --color-info: var(--info);
   --color-success: var(--success);
   --color-destructive: var(--destructive);
@@ -532,6 +563,9 @@ html[data-font="inter"] {
   --color-user-message-bubble: var(--user-message-bubble);
 
   /* === LEGACY COMPATIBILITY === */
+  /* Older panels still use primary utilities; follow the selected pack accent. */
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--background);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -856,8 +890,8 @@ html[data-font="inter"] {
 
   html[data-scenic] .shadow-middle,
   html[data-scenic] .shadow-strong {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--theme-glass-blur, var(--theme-pack-blur, 8px)));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur, var(--theme-pack-blur, 8px)));
   position: relative;
   /* Ensure panels are above the titlebar drag region (z-titlebar: 40) so header buttons are clickable.
      Without this, the position:relative creates a stacking context at z-index:auto which is below the fixed titlebar. */
@@ -867,7 +901,7 @@ html[data-font="inter"] {
 /* Scenic mode: Input field gets more transparency to show background through
    Uses a much lighter overlay to let the blurred background image show through */
 html[data-scenic] .input-container {
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--input);
 }
 
 /* Scenic mode: Gradient border effect for glass panels

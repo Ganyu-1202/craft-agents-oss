@@ -23,6 +23,8 @@ import type { AgentPluginManifest } from './types.ts';
 import { LOCAL_AGENT_HOST_TOOLS } from './local-tools.ts';
 import { getBrowserToolEnabled } from '../config/storage.ts';
 import { frameworkToolBlockReason } from './framework-tool-policy.ts';
+import { assertSuperAgentTools, filterSuperAgentTools } from '../agent/core/browser-tool-policy.ts';
+import { getSessionExecutionPolicy } from '../agent/core/session-execution-policy.ts';
 import { loadBackendFrameworkConfiguration } from './framework-storage.ts';
 import { defaultFrameworkConfiguration, defaultNativeOptions } from './frameworks.ts';
 
@@ -172,7 +174,7 @@ export class PluginAgent extends BaseAgent {
     const id = `plugin-tool-${randomUUID()}`;
     this.enqueue({ type: 'tool_start', toolUseId: id, toolName: params.toolName, input: params.input });
     let result;
-    try { result = await this.hostTools.execute(params.toolName, params.input); }
+    try { result = await this.hostTools.execute(params.toolName, params.input, id); }
     catch (error) { result = { content: error instanceof Error ? error.message : String(error), isError: true }; }
     if (this.turnId === params.turnId && !this.queue.isComplete) {
       this.enqueue({ type: 'tool_result', toolUseId: id, toolName: params.toolName, result: result.content, isError: result.isError });
@@ -192,10 +194,11 @@ export class PluginAgent extends BaseAgent {
         this.config.agentPrompt, this.config.modelPromptSettings, this.manifest.id), ...this.promptBuilder.buildStableContextParts()].join('\n\n');
       const framework = loadBackendFrameworkConfiguration(this.manifest.id) ?? defaultFrameworkConfiguration({ ...this.manifest, builtin: false });
       const tools = this.manifest.capabilities.includes('hostTools')
-        ? [...(framework.features.files === 'native' ? [] : LOCAL_AGENT_HOST_TOOLS),
+        ? filterSuperAgentTools([...(framework.features.files === 'native' ? [] : LOCAL_AGENT_HOST_TOOLS),
           ...getSessionToolProxyDefs().filter(tool => getBrowserToolEnabled() || !tool.name.endsWith('browser_tool')),
-          ...(this.config.mcpPool?.getProxyToolDefs(this.getActiveSourceSlugs()) ?? [])]
+          ...(this.config.mcpPool?.getProxyToolDefs(this.getActiveSourceSlugs()) ?? [])], getSessionExecutionPolicy(this._sessionId)?.role)
           .filter(tool => !frameworkToolBlockReason(this._sessionId, tool.name)) : [];
+      assertSuperAgentTools(tools, getSessionExecutionPolicy(this._sessionId)?.role);
       const context = this.promptBuilder.buildVolatileContextParts({ permissionMode: this.getPermissionMode() }, this.sourceManager.formatSourceState());
       request = client.request('agent/chat', { turnId: currentTurnId, message, attachments, systemPrompt,
         context, tools, model: this._model, thinkingLevel: options?.thinkingOverride ?? this._thinkingLevel,

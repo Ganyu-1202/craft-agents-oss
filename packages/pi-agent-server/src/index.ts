@@ -96,7 +96,7 @@ import { getSessionPlansPath, getSessionPath } from '../../shared/src/sessions/s
 import { buildCallLlmRequest } from '../../shared/src/agent/llm-tool.ts';
 import type { LLMQueryRequest, LLMQueryResult } from '../../shared/src/agent/llm-tool.ts';
 import { PI_TOOL_NAME_MAP, THINKING_TO_PI } from '../../shared/src/agent/backend/pi/constants.ts';
-import { filterInteractionTools, filterNativeWebTools } from '../../shared/src/agent/core/browser-tool-policy.ts';
+import { assertSuperAgentTools, filterInteractionTools, filterNativeWebTools, type SuperAgentToolRole } from '../../shared/src/agent/core/browser-tool-policy.ts';
 import { installCraftPiRetryClassifier } from '../../shared/src/agent/backend/pi/retry-policy.ts';
 import { getDefaultSummarizationModel } from '../../shared/src/config/models.ts';
 import { resolveBashShellPath } from './bash-shell-path.ts';
@@ -129,6 +129,7 @@ interface InitMessage {
   /** Super Agent sessions expose browser_tool for all web access. */
   browserToolOnly?: boolean;
   interactionOnly?: boolean;
+  superAgentRole?: SuperAgentToolRole;
   agentDir?: string;
   providerType?: string;
   authType?: string;
@@ -160,6 +161,7 @@ interface RuntimeConfigUpdateMessage {
   autoCompactionTokenLimit?: number;
   browserToolOnly?: boolean;
   interactionOnly?: boolean;
+  superAgentRole?: SuperAgentToolRole;
 }
 
 /** Messages from main process (stdin) */
@@ -696,7 +698,8 @@ async function ensureSession(): Promise<AgentSession> {
     createLsToolDefinition(cwd),
   ];
   const proxyTools = buildProxyTools();
-  const wrappedAll = wrapToolsWithHooks(filterInteractionTools([...builtinDefs, ...webTools, ...proxyTools], initConfig.interactionOnly));
+  const wrappedAll = wrapToolsWithHooks(filterInteractionTools([...builtinDefs, ...webTools, ...proxyTools], initConfig.interactionOnly, initConfig.superAgentRole));
+  assertSuperAgentTools(wrappedAll, initConfig.superAgentRole);
   const toolAllowlist = wrappedAll.map(t => t.name);
   debugLog(`Session tools: ${builtinDefs.length} builtin + ${webTools.length} web + ${proxyTools.length} proxy = ${wrappedAll.length} total`);
 
@@ -996,8 +999,9 @@ function buildProxyTools(): ToolDefinition<any, any>[] {
 
       const inputObj = params as Record<string, unknown>;
 
-      // Permission checking via main process
-      const approvedInput = await requestPreToolUseApproval(def.name, inputObj, toolCallId);
+      // wrapSingleTool already authorized and normalized this invocation. A
+      // second precheck here consumes its action lease again and can mistake
+      // the running durable operation for a replay, before dispatch ever occurs.
 
       // Execute via main process
       const requestId = `proxy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1007,7 +1011,7 @@ function buildProxyTools(): ToolDefinition<any, any>[] {
         requestId,
         toolCallId,
         toolName: def.name,
-        args: approvedInput,
+        args: inputObj,
       });
 
       const result = await new Promise<ProxyToolResult>((resolve) => {
@@ -1718,6 +1722,7 @@ async function handleUpdateRuntimeConfig(msg: RuntimeConfigUpdateMessage): Promi
     if (initConfig.autoCompactionTokenLimit !== msg.autoCompactionTokenLimit
       || (initConfig.browserToolOnly ?? false) !== (msg.browserToolOnly ?? initConfig.browserToolOnly ?? false)
       || (initConfig.interactionOnly ?? false) !== (msg.interactionOnly ?? initConfig.interactionOnly ?? false)
+      || initConfig.superAgentRole !== (msg.superAgentRole ?? initConfig.superAgentRole)
       || (initConfig.model !== msg.model && (initConfig.autoCompactionTokenLimit || msg.autoCompactionTokenLimit))) {
       toolsChanged = true;
     }
@@ -1734,6 +1739,7 @@ async function handleUpdateRuntimeConfig(msg: RuntimeConfigUpdateMessage): Promi
       autoCompactionTokenLimit: msg.autoCompactionTokenLimit,
       browserToolOnly: msg.browserToolOnly ?? initConfig.browserToolOnly,
       interactionOnly: msg.interactionOnly ?? initConfig.interactionOnly,
+      superAgentRole: msg.superAgentRole ?? initConfig.superAgentRole,
     };
 
     if (piModelRegistry && initConfig.baseUrl?.trim() && initConfig.customEndpoint) {

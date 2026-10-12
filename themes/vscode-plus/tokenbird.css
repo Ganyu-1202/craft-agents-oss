@@ -1,0 +1,13 @@
+/* Native adaptation: use the actual TokenBird surface hooks. */
+body[data-tokenbird-vscode-plus] {
+  --message-user-bg: color-mix(in srgb, var(--accent) 12%, var(--paper));
+  --message-tips-bg: var(--paper);
+}
+body[data-tokenbird-vscode-plus] [data-theme-area="sidebar"] {
+  background-color: var(--navigator);
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+}
+body[data-tokenbird-vscode-plus] .input-container {
+  background-color: var(--input);
+  border-radius: 14px;
+}

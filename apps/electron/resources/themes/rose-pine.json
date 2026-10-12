@@ -4,7 +4,10 @@
   "author": "Rosé Pine",
   "license": "MIT",
   "source": "https://github.com/rose-pine/rose-pine-theme",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "rose-pine-dawn",
     "dark": "rose-pine"
@@ -21,6 +24,16 @@
     "accent": "#c4a7e7",
     "info": "#f6c177",
     "success": "#31748f",
-    "destructive": "#eb6f92"
-  }
+    "destructive": "#eb6f92",
+    "paper": "#1f1d2e",
+    "navigator": "#161421",
+    "input": "#26233a",
+    "popover": "#1f1d2e",
+    "popoverSolid": "#1f1d2e"
+  },
+  "paper": "#fffaf3",
+  "navigator": "#f2e9e1",
+  "input": "#fffaf3",
+  "popover": "#fffaf3",
+  "popoverSolid": "#fffaf3"
 }

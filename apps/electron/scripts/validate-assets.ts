@@ -9,12 +9,21 @@ const requiredFiles = [
   'interceptor.cjs',
   'renderer/index.html',
   'resources/config-defaults.json',
+  ...['miku-mint', 'miku-sakura', 'teto-crimson', 'miku-teto-duet'].flatMap(id => [
+    `resources/theme-packs/${id}/theme-pack.json`,
+    `resources/theme-packs/${id}/assets/background-light.svg`,
+    `resources/theme-packs/${id}/assets/background-dark.svg`,
+    `resources/theme-packs/${id}/assets/character.webp`,
+    `resources/theme-packs/${id}/preview/light.svg`,
+    `resources/theme-packs/${id}/preview/dark.svg`,
+  ]),
 ];
 
 const requiredDirectories = [
   'renderer/assets',
   'resources/docs',
   'resources/themes',
+  'resources/theme-packs',
   'resources/permissions',
   'resources/tool-icons',
   'resources/skills',

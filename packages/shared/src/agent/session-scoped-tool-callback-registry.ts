@@ -140,6 +140,7 @@ export interface SessionScopedToolCallbacks {
   sendCollaborationMessageFn?: (targetMemberId: string, message: string) => Promise<import('@craft-agent/session-tools-core').SendAgentMessageResult>;
   /** Read the invoking session's collaboration snapshot. */
   getCollaborationFn?: (query?: { goalId?: string; taskId?: string; itemIds?: string[]; offset?: number; limit?: number }) => Promise<unknown>;
+  superAgentActionFn?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
   superAgentTaskFn?: (args: Record<string, unknown>) => Promise<unknown>;
   superAgentLibraryFn?: (args: Record<string, unknown>) => Promise<unknown>;
   /** Update one shared-board item as the invoking collaboration member. */

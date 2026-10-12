@@ -29,13 +29,131 @@ bun run android:build
 bun run android:build -- -ServerUrl "wss://your-agent-server.example:50003"
 ```
 
-The signed debug APK is written to `dist/android/tokenbird-debug.apk`. Build an unsigned release variant with:
+The signed debug APK is written to `dist/android/tokenbird-debug.apk`.
+
+## 发布版打包与签名
+
+本地发布流程在 **Windows / PowerShell + JDK 17** 上运行，重新构建 WebUI、本地服务器、Pi / MCP 和 ARM64 Bun 运行库。发布版必须配置签名；缺少密钥、密码或 alias 时会在构建资源前失败。直接运行 Gradle release 任务也执行此检查。
+
+### 1. 准备发布密钥
+
+已有发布密钥时直接复用。首次发布可以运行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File apps/android/build.ps1 -Release -ServerUrl "wss://your-agent-server.example:50003"
+powershell -ExecutionPolicy Bypass -File apps/android/tools/create-release-key.ps1
 ```
 
-Release output is `dist/android/tokenbird-release-unsigned.apk`. Configure a private Android signing key in your release pipeline before distributing it.
+脚本通过隐藏输入收集密码，默认生成 `%LOCALAPPDATA%/TokenBird/signing/release.p12`，alias 为 `tokenbird`，不会覆盖已有文件。也可传入 `-KeystorePath` 和 `-KeyAlias`；自动化生成可通过 `ANDROID_KEYSTORE_PASSWORD` 提供密码。生成的 PKCS12 私钥密码与密钥库密码相同。
+
+备份密钥、alias 和密码。后续更新必须保持相同应用 ID 和签名密钥；从 debug 签名迁移到 release 签名不能直接覆盖安装。需要先导出用户数据，或使用独立的 debug 包名并行测试。
+
+### 2. 配置签名
+
+```powershell
+Copy-Item apps/android/signing.properties.example apps/android/signing.properties
+```
+
+填写复制后的配置。`storeFile` 使用绝对路径，或相对于 properties 文件的路径；Windows 路径请使用 `/`。`signing.properties` 和常见密钥文件扩展名已加入 Git 忽略规则。其他文件名的私密配置请存放在仓库外。
+
+也可设置环境变量（优先于 properties 中对应字段）：
+
+| 环境变量 | properties 字段 | 用途 |
+| --- | --- | --- |
+| `ANDROID_KEYSTORE_PATH` | `storeFile` | 密钥文件 |
+| `ANDROID_KEYSTORE_PASSWORD` | `storePassword` | 密钥库密码 |
+| `ANDROID_KEY_ALIAS` | `keyAlias` | 签名密钥 alias |
+| `ANDROID_KEY_PASSWORD` | `keyPassword` | 私钥密码 |
+| `ANDROID_SIGNING_PROPERTIES` | — | 可选自定义配置文件路径 |
+
+脚本也支持 `-SigningProperties C:/private/signing.properties`。密码不通过命令行 `-P` 参数传递，不会复制到 APK / AAB 中。
+
+### 3. 校验与构建
+
+```powershell
+# 只验证密钥库、alias、密码与版本参数
+powershell -ExecutionPolicy Bypass -File apps/android/build.ps1 -Release -ValidateOnly
+
+# 可直接安装的签名 APK
+bun run android:release -- -VersionCode 4 -VersionName "26.10.11"
+
+# 签名 APK 和用于应用商店的 AAB
+bun run android:bundle -- -VersionCode 4 -VersionName "26.10.11"
+
+# 只生成 AAB，自定义服务器默认地址
+powershell -ExecutionPolicy Bypass -File apps/android/build.ps1 -Release -Artifact Aab -VersionCode 4 -ServerUrl "wss://your-agent-server.example:50003"
+
+# 汇总入口沿用相同签名配置，默认生成 release APK
+bun run build:all android --release
+```
+
+`VersionCode` 必须为 1–2100000000，每次发布更新时递增；也可通过 `ANDROID_VERSION_CODE` / `ANDROID_VERSION_NAME` 配置。默认值来自 Android Gradle 配置。只改变 `VersionName` 不能替代递增 `VersionCode`。
+
+产物写入 `dist/android/`：`tokenbird-release.apk`、`tokenbird-release.aab`，以及各自的 `.sha256` 校验文件。脚本先检查 APK 的 ZIP 对齐并逐项验证 v1 / v2 / v3 签名，AAB 则验证全部内容条目的 JAR 签名及签名证书一致性，验证通过才复制到发布目录。Release 关闭 debuggable。AAB 不能直接安装到手机；应用商店或 bundletool 需要从 AAB 生成设备安装包。
+
+### 4. GitHub Actions
+
+`.github/workflows/android.yml` 在 Windows runner 上复用完整本地构建脚本。push 构建 debug APK；手动运行时开启 `release`、填写版本号，生成签名 APK + AAB。
+
+在仓库 Actions Secrets 配置以下四项：
+
+- `ANDROID_KEYSTORE_BASE64`：发布密钥文件的 Base64 内容。
+- `ANDROID_KEYSTORE_PASSWORD`：密钥库密码。
+- `ANDROID_KEY_ALIAS`：密钥 alias。
+- `ANDROID_KEY_PASSWORD`：私钥密码。
+
+在本机转换密钥并复制 Base64 到剪贴板：
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:LOCALAPPDATA/TokenBird/signing/release.p12")) | Set-Clipboard
+```
+
+CI 临时密钥在任务结束时删除；验证后的构建产物上传到 Actions artifacts，不会自动发布到应用商店。
+
+## 安装失败排查
+
+厂商安装器的 `解析软件包时出现问题 (33) / packageInfo is null` 表示读取包信息失败，单凭此提示不能定位签名、文件损坏还是厂商扫描器问题。先确认安装的是 `.apk`，核对下载文件与发布产物的 SHA256；`.aab` 和下载错误页不能直接安装。客户端不依赖 GMS，缺少 Google Play 服务不是预期的安装阻碍。
+
+Android 11 起，面向 API 30 及以上的应用至少需要 v2 签名，只有 v1 不够；较新系统没有普遍强制使用 v3。v3 主要提供签名密钥轮换能力。本项目发布包同时提供 v1 / v2 / v3；这不保证解决所有厂商安装器的解析失败。
+
+- 当前 APK 最低支持 Android 8.0（API 26），只包含 `arm64-v8a` 原生运行库；32 位 ARM / x86 系统不兼容。CPU 支持 64 位不代表系统一定支持 ARM64 应用。
+- 使用 `apksigner verify --verbose --print-certs <apk>` 检查签名，`aapt dump badging <apk>` 检查 manifest、系统要求和 ABI。
+- 覆盖安装失败要核对现有包的签名与 versionCode。不要为解决签名冲突直接卸载并丢失本地会话数据。
+- 通过 `adb install -r <apk>` 获取系统错误码，并查看 `adb logcat` 中 PackageManager / PackageInstaller 的解析错误。`NO_MATCHING_ABIS`、`UPDATE_INCOMPATIBLE`、`VERSION_DOWNGRADE` 与 `PARSE_FAILED_*` 对应不同原因。
+- 如果 APK 签名及包结构正常，而某厂商文件扫描器仍失败，比较从系统文件管理器安装与 ADB 安装结果，保留型号、系统版本、安装来源和系统日志后再判断。
+
+### 小米 / MIUI 优化
+
+`packageInfo is null` 出现在安装前读取包信息的阶段。Android 的 `getPackageArchiveInfo` 在解析失败时也会返回 `null`，此提示不能单独证明 MIUI 优化开关造成了失败。MIUI / HyperOS 的厂商扫描、安装来源和文件读取路径可以作为排查方向；缺少目标设备日志时，不能把关闭 MIUI 优化当成已验证的修复。
+
+应用尚未安装时，TokenBird 的 Java / JavaScript 代码不会执行，因此应用不能自行修复系统安装器或切换 MIUI 优化。打包侧可以修复签名、损坏的包结构、资源格式和 ABI 不匹配；当前发布流程已提供 v1 / v2 / v3 签名及对齐验证。不要为排查盲目降低 targetSdk、关闭系统扫描或禁用原生库提取；后者会使内置 Bun 无法执行。
+
+在 Windows 上连接出问题的小米、开启 USB 调试并授权电脑，然后运行：
+
+```powershell
+# 默认只检查 APK、读取手机信息和现有安装日志
+powershell -ExecutionPolicy Bypass -File apps/android/tools/diagnose-install.ps1
+
+# 使用手机上实际安装失败的文件进行检查
+powershell -ExecutionPolicy Bypass -File apps/android/tools/diagnose-install.ps1 -ApkPath "C:/Downloads/tokenbird.apk"
+
+# 可选：尝试覆盖安装，获取 Android 的真实失败码（不会卸载或清除数据）
+powershell -ExecutionPolicy Bypass -File apps/android/tools/diagnose-install.ps1 -TryInstall
+```
+
+多台设备连接时加 `-Serial <adb设备序列号>`。报告在 `.build/android-install-diagnostics/<随机ID>/`，包含 APK SHA256、解析/签名/对齐结果、系统版本、CPU ABI、可读取的 MIUI 优化属性、目标应用信息和安装相关日志。属性不存在不代表开关已关闭；脚本不会修改系统设置或清空日志。
+
+| 诊断结果 | 处理方向 |
+| --- | --- |
+| APK 在电脑上也无法解析、签名无效或 SHA256 不同 | 重新构建或重新下载完整签名 APK |
+| `CPU_ABI_NOT_SUPPORTED` / `INSTALL_FAILED_NO_MATCHING_ABIS` | 当前系统不支持本包 ARM64 ABI；需要匹配架构的包 |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | 已安装版本的签名不同；保留数据并使用原签名更新 |
+| `INSTALL_FAILED_VERSION_DOWNGRADE` | 使用更高 versionCode 的包 |
+| `INSTALL_PARSE_FAILED_*` | 按完整错误及 PackageManager 日志修复对应格式、manifest 或签名问题 |
+| ADB 安装成功，系统文件管理器安装失败 | 缩小到图形安装器、安装来源权限、厂商扫描等路径；仍不能仅凭此认定是 MIUI 优化 |
+
+如需比较 MIUI 优化开关的影响，应保持手机、APK SHA256 和安装来源一致，并记录两种状态的结果；仅在关闭状态安装成功也只能说明相关性，需要结合安装器日志定位具体策略。
+
+## App behavior
 
 The app starts a localhost-only HTTP server inside the APK and loads the bundled frontend from it. Every fresh launch opens **Local chat** directly on supported devices and starts a new conversation; reloading a page preserves its current conversation. The APK extracts and starts the bundled ARM64 Bun backend on an available loopback port and connects with a generated per-launch token. Use the left drawer's mode entry to switch to **Server mode** later; URL and token fields are shown only there. Remote credentials are retained locally, but do not change the next fresh launch's local default. Devices that cannot run the local backend open the mode picker instead.
 

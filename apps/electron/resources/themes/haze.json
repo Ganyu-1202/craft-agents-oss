@@ -1,10 +1,11 @@
 {
   "name": "Haze",
-  "description": "If you know, you know.",
+  "description": "Soft haze with violet glass panels",
   "author": "TokenBird",
   "license": "MIT",
   "mode": "scenic",
-  "backgroundImage": "https://images.pexels.com/photos/764450/pexels-photo-764450.jpeg",
+  "backgroundImage": "haze-background.webp",
+  "backgroundImageAliases": ["https://images.pexels.com/photos/764450/pexels-photo-764450.jpeg"],
   "supportedModes": [
     "dark"
   ],
@@ -17,5 +18,9 @@
   "info": "#fbbf24",
   "success": "#22c55e",
   "destructive": "#ef4444",
-  "popoverSolid": "#2a2a2e"
+  "popoverSolid": "#24232b",
+  "paper": "rgba(30, 28, 35, 0.8)",
+  "navigator": "rgba(22, 20, 29, 0.82)",
+  "input": "rgba(30, 28, 35, 0.9)",
+  "popover": "#24232b"
 }

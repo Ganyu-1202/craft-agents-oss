@@ -1,3 +1,4 @@
+import { SUPER_AGENT_ACTION_TOOLS } from '@craft-agent/session-tools-core/super-agent-tools';
 import { z } from 'zod';
 import type { SessionPolicyPermissionScope } from '@craft-agent/core/types';
 import type { LLMQueryRequest, LLMQueryResult } from '../llm-tool.ts';
@@ -23,7 +24,9 @@ export function classifyActionGate(toolName: string, input: Record<string, unkno
     if (/send|post|publish|comment|email|announce/.test(tool)) return 'external-communication';
     return 'unknown';
   }
+  if (SUPER_AGENT_ACTION_TOOLS.some(def => def.name === tool)) return;
   const name = tool.replace(/_/g, '');
+  if (tool === 'super_agent_task' && input.action === 'install-skill') return 'state-change';
   if (tool === 'super_agent_library') {
     if (['library-list', 'library-get', 'memory-upsert', 'memory-delete'].includes(String(input.type))) return;
     return 'state-change';

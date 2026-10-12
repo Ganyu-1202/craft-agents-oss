@@ -74,7 +74,7 @@ function stubStorage(existing: config.LlmConnection | null = null) {
   return { add, update, setDefault, getLlmOAuth, setLlmOAuth, deleteLlmCredentials }
 }
 
-function stubTokenNestFetch(options?: { models?: string[]; modelStatus?: number; groupStatus?: number; groups?: Record<string, { desc: string; ratio: number; models: string[] }> }) {
+function stubTokenNestFetch(options?: { models?: string[]; modelStatus?: number; groupStatus?: number; profileStatus?: number; groups?: Record<string, { desc: string; ratio: number; models: string[] }> }) {
   const requests: Array<{ url: string; method: string; authorization?: string }> = []
   const models = options?.models ?? ['gpt-5', 'gpt-4.1']
   globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
@@ -98,6 +98,7 @@ function stubTokenNestFetch(options?: { models?: string[]; modelStatus?: number;
       default: { desc: 'Default', ratio: 1, models },
     } }, { status: options?.groupStatus ?? 200 })
     if (url.endsWith('/api/oauth2/revoke')) return new Response(null, { status: 200 })
+    if (url.endsWith('/api/oauth2/profile')) return Response.json({ success: true, data: { username: '星河用户' } }, { status: options?.profileStatus ?? 200 })
     throw new Error(`Unexpected request: ${method} ${url}`)
   }) as unknown as typeof fetch
   return requests
@@ -224,6 +225,7 @@ describe('TokenNest OAuth RPC handlers', () => {
       authType: 'oauth',
       oauthProvider: 'tokennest',
       baseUrl: 'https://openai.goldgom.top/v1',
+      oauthAccountUsername: '星河用户',
       models: ['gpt-5', 'gpt-4.1'],
       defaultModel: 'gpt-5',
     }))
@@ -231,6 +233,19 @@ describe('TokenNest OAuth RPC handlers', () => {
     expect(harness.reinitializeAuth).toHaveBeenCalledWith('tokennest')
     expect(requests.find(request => request.url.endsWith('/v1/models'))?.authorization)
       .toBe('Bearer new-access-token')
+    expect(requests.find(request => request.url.endsWith('/api/oauth2/profile'))?.authorization)
+      .toBe('Bearer new-access-token')
+  })
+
+  it('keeps login compatible with older servers and clears a previous user on reauthorization', async () => {
+    const existing: config.LlmConnection = {
+      slug: 'tokennest', name: 'TokenNest', providerType: 'pi_compat', authType: 'oauth',
+      oauthProvider: 'tokennest', createdAt: 1, oauthAccountUsername: 'Previous user', oauthAccountEmail: 'old@example.com',
+    }
+    const storage = stubStorage(existing)
+    stubTokenNestFetch({ profileStatus: 404 })
+    await expect(startAndComplete(createHarness())).resolves.toEqual({ success: true })
+    expect(storage.update).toHaveBeenCalledWith(existing.slug, expect.objectContaining({ oauthAccountUsername: '', oauthAccountEmail: '' }))
   })
 
   it('revokes the new token and does not persist when model discovery fails', async () => {
@@ -320,6 +335,7 @@ describe('TokenNest OAuth RPC handlers', () => {
       channelGroup: 'default',
       defaultModel: 'gpt-5.6-sol',
       channelGroups: [{ id: 'default', name: 'Default', ratio: 1, models: ['gpt-5.6-sol', 'gpt-5.6-terra'] }],
+      oauthAccountUsername: '星河用户',
     }))
     expect(harness.reinitializeAuth).toHaveBeenCalledWith(existing.slug)
   })

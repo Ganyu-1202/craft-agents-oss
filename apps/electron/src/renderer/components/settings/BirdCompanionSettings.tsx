@@ -11,6 +11,7 @@ export function BirdCompanionSettings() {
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const supported = !!window.electronAPI.getBirdCompanionPreferences
+  useEffect(() => window.electronAPI.onBirdCompanionPreferencesChanged?.(setPreferences), [])
   useEffect(() => {
     if (!supported) return
     let cancelled = false

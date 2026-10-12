@@ -13,6 +13,7 @@ export const DEFAULT_BIRD_COMPANION_PREFERENCES: BirdCompanionPreferences = {
 export const BIRD_COMPANION_IPC = {
   getPreferences: 'bird-companion:get-preferences',
   setPreferences: 'bird-companion:set-preferences',
+  preferencesChanged: 'bird-companion:preferences-changed',
   observe: 'bird-companion:observe',
   state: 'bird-companion:state',
   getState: 'bird-companion:get-state',
@@ -22,10 +23,12 @@ export const BIRD_COMPANION_IPC = {
   resizeBubble: 'bird-companion:resize-bubble',
   interactive: 'bird-companion:interactive',
   move: 'bird-companion:move',
+  contextMenu: 'bird-companion:context-menu',
 } as const
 
 export type BirdMood = 'idle' | 'thinking' | 'working' | 'waiting' | 'success' | 'error' | 'interrupted'
 export type BirdWindowRole = 'bird' | 'bubble'
+export type BirdGesture = 'wave' | 'nod' | 'stretch'
 export interface BirdCompanionState {
   visible: boolean
   bubbleVisible: boolean

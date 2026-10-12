@@ -3,7 +3,10 @@
   "description": "Clean purple-tinted neutral theme",
   "author": "TokenBird",
   "license": "MIT",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "github-dark"
@@ -20,6 +23,16 @@
     "accent": "#a78bfa",
     "info": "#fbbf24",
     "success": "#22c55e",
-    "destructive": "#ef4444"
-  }
+    "destructive": "#ef4444",
+    "paper": "#27262b",
+    "navigator": "#19181d",
+    "input": "#242329",
+    "popover": "#27262b",
+    "popoverSolid": "#27262b"
+  },
+  "paper": "#ffffff",
+  "navigator": "#f1eff6",
+  "input": "#ffffff",
+  "popover": "#ffffff",
+  "popoverSolid": "#ffffff"
 }

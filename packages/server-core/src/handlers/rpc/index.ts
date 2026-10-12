@@ -34,12 +34,14 @@ import { registerCollaborationHandlers } from './collaborations'
 import { registerStudioHandlers } from './studio'
 import { registerSuperAgentHandlers } from './super-agent'
 import { registerCloudHandlers } from './cloud'
+import { registerCredentialHandlers } from './credentials'
 
 export function registerCoreRpcHandlers(
   server: RpcServer,
   deps: HandlerDeps,
   serverCtx?: ServerHandlerContext,
 ): void {
+  registerCredentialHandlers(server, deps)
   if (serverCtx?.cloudTarget) {
     const cloud = registerCloudHandlers(server, deps, serverCtx.cloudTarget)
     serverCtx.onReady?.(() => cloud.start())

@@ -15,6 +15,16 @@ apps/android/app/src/main/assets/server/
 apps/android/app/src/main/jniLibs/
 apps/android/build/
 apps/android/local.properties
+apps/android/signing.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+apps/ios/TokenBird/WebUI/
+apps/ios/TokenBird/Assets.xcassets/AppIcon.appiconset/*.png
+apps/ios/build/
+apps/ios/**/*.xcuserstate
+apps/ios/**/xcuserdata/
 .toolchains/
 
 # code coverage
@@ -96,3 +106,8 @@ credentials.enc
 /.bun-cache/
 /deploy/cloud/cloud.env
 /data/cloud.sqlite*
+
+# Local scratch files and desktop shortcuts
+/.tmp-*
+/apps.lnk
+/apps/electron/src/renderer/.tmp-*/

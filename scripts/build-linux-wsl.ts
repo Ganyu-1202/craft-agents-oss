@@ -3,8 +3,9 @@
 
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = resolve(import.meta.dir, '..');
+const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const args = process.argv.slice(2);
 let distro: string | undefined;
 let checkOnly = false;
@@ -93,8 +94,11 @@ echo "Copying workspace into WSL: $workspace"
 tar -C "$source_dir" \
   --exclude='./.git' --exclude='./node_modules' --exclude='./dist' \
   --exclude='./.build' --exclude='./.build-all' \
+  --exclude='./.toolchains' --exclude='./artifacts' --exclude='./.tmp*' \
   --exclude='./apps/electron/node_modules' \
   --exclude='./apps/electron/vendor' --exclude='./apps/electron/release' \
+  --exclude='./apps/electron/release-*' --exclude='./apps/android/.gradle' \
+  --exclude='./apps/android/app/build' --exclude='./apps/ios/build' \
   -cf - . | tar -C "$workspace" -xf -
 
 if [ -d "$cache_dir/vendor" ]; then

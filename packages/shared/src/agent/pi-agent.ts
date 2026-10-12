@@ -676,6 +676,7 @@ export class PiAgent extends BaseAgent {
       miniModel: this.config.miniModel,
       browserToolOnly: hasSessionExecutionPolicy(sessionId),
       interactionOnly: ['coordinator', 'orchestrator'].includes(getSessionExecutionPolicy(sessionId)?.role ?? ''),
+      superAgentRole: getSessionExecutionPolicy(sessionId)?.role,
       providerType: this.config.providerType,
       authType: this.config.authType,
       oauthProvider: runtime.oauthProvider,
@@ -2343,6 +2344,7 @@ export class PiAgent extends BaseAgent {
         autoCompactionTokenLimit: update.autoCompactionTokenLimit,
         browserToolOnly: hasSessionExecutionPolicy(this._sessionId),
         interactionOnly: ['coordinator', 'orchestrator'].includes(getSessionExecutionPolicy(this._sessionId)?.role ?? ''),
+        superAgentRole: getSessionExecutionPolicy(this._sessionId)?.role,
       });
     });
   }

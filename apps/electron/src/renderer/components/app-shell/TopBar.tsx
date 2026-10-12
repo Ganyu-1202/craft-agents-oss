@@ -174,16 +174,14 @@ export function TopBar({
         style={{ paddingLeft: menuLeftPadding, paddingRight: isCompact ? 12 : 0 }}
       >
         <div className="flex items-center gap-0.5">
-        {!isCompact && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <TopBarButton onClick={onToggleSidebar} disabled={studioMode !== 'agent'} aria-label={t("menu.toggleSidebar")}>
+            <TopBarButton onClick={onToggleSidebar} aria-label={t("menu.toggleSidebar")}>
               <PanelLeftRounded className="h-[18px] w-[18px] text-foreground/70" />
             </TopBarButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">{t("menu.toggleSidebar")}</TooltipContent>
         </Tooltip>
-        )}
 
         <AppMenu
           onNewChat={onNewChat}

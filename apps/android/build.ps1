@@ -2,6 +2,12 @@ param(
     [string]$ServerUrl = "wss://agent.goldgom.top:50003",
     [string]$DebugApplicationIdSuffix = "",
     [switch]$Release,
+    [ValidateSet("Apk", "Aab", "Both")]
+    [string]$Artifact = "Apk",
+    [string]$SigningProperties = "",
+    [string]$VersionCode = "",
+    [string]$VersionName = "",
+    [switch]$ValidateOnly,
     [switch]$SkipToolchainInstall,
     [switch]$SkipServerRuntimeDownload
 )
@@ -11,6 +17,18 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $androidRoot = $PSScriptRoot
 $sdkRoot = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }
 $bunAndroidVersion = "1.3.14"
+
+if (($Artifact -ne "Apk" -or $SigningProperties -or $ValidateOnly) -and -not $Release) {
+    throw "-Artifact Aab/Both, -SigningProperties and -ValidateOnly require -Release."
+}
+if ($Release -and $DebugApplicationIdSuffix) { throw "-DebugApplicationIdSuffix only applies to debug builds." }
+$releaseArgs = @()
+if ($SigningProperties) {
+    $signingFile = (Resolve-Path -LiteralPath $SigningProperties).Path
+    $releaseArgs += "-PsigningProperties=$signingFile"
+}
+if ($VersionCode) { $releaseArgs += "-PversionCode=$VersionCode" }
+if ($VersionName) { $releaseArgs += "-PversionName=$VersionName" }
 
 function Find-Jdk17 {
     $candidates = @()
@@ -45,6 +63,18 @@ if (-not (Test-Path $sdkRoot)) {
 }
 if (-not (Test-Path (Join-Path $sdkRoot "platforms\android-36"))) {
     throw "Android SDK platform android-36 is missing at $sdkRoot. Install it with sdkmanager."
+}
+
+$env:JAVA_HOME = $jdkHome
+$env:ANDROID_HOME = $sdkRoot
+$env:ANDROID_SDK_ROOT = $sdkRoot
+if ($Release) {
+    Push-Location $androidRoot
+    try {
+        & .\gradlew.bat validateReleaseSigning @releaseArgs
+        if ($LASTEXITCODE -ne 0) { throw "Release signing validation failed." }
+    } finally { Pop-Location }
+    if ($ValidateOnly) { Write-Output "Release signing configuration is valid."; exit 0 }
 }
 
 # Build and bundle the browser frontend so the APK does not require the remote
@@ -203,24 +233,22 @@ $webuiDist = Join-Path $projectRoot "apps\webui\dist"
 # Source maps are useful during web development but are not needed in the APK.
 # Excluding them keeps the embedded WebView bundle small and avoids shipping
 # several hundred MB of debugging data.
-Get-ChildItem -LiteralPath $webuiDist -Recurse -File |
-    Where-Object { $_.Extension -ne ".map" } |
-    ForEach-Object {
-        $relativePath = $_.FullName.Substring($webuiDist.Length).TrimStart("\", "/")
-        $destination = Join-Path $assetRoot $relativePath
-        $destinationDirectory = Split-Path -Parent $destination
-        New-Item -ItemType Directory -Force $destinationDirectory | Out-Null
-        Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
-    }
+# Thousands of draw.io files make per-file PowerShell provider operations very
+# slow on Windows. Robocopy batches the same copy and excludes source maps.
+Write-Output "Bundling WebUI assets..."
+& robocopy.exe $webuiDist $assetRoot /E /XF '*.map' /R:2 /W:1 /MT:8 /NFL /NDL /NJH /NJS /NP
+if ($LASTEXITCODE -ge 8) { throw "WebUI asset copy failed (robocopy exit $LASTEXITCODE)." }
 
 $env:JAVA_HOME = $jdkHome
 $env:ANDROID_HOME = $sdkRoot
 $env:ANDROID_SDK_ROOT = $sdkRoot
-$task = if ($Release) { "assembleRelease" } else { "assembleDebug" }
+$tasks = if (-not $Release) { @("assembleDebug") } elseif ($Artifact -eq "Both") {
+    @("assembleRelease", "bundleRelease")
+} elseif ($Artifact -eq "Aab") { @("bundleRelease") } else { @("assembleRelease") }
 # The WebView assets are replaced on every build. Clean first so Gradle's
 # incremental ZIP packager cannot retain deleted hashed chunks as unreferenced
 # data in the APK.
-$gradleArgs = @("clean", $task, "-PserverUrl=$ServerUrl")
+$gradleArgs = @("clean") + $tasks + @("-PserverUrl=$ServerUrl") + $releaseArgs
 if (-not $Release -and $DebugApplicationIdSuffix) {
     $gradleArgs += "-PdebugApplicationIdSuffix=$DebugApplicationIdSuffix"
 }
@@ -234,16 +262,56 @@ try {
 }
 
 $variant = if ($Release) { "release" } else { "debug" }
-$apkCandidates = @(
-    (Join-Path $androidRoot "app\build\outputs\apk\$variant\app-$variant.apk"),
-    (Join-Path $androidRoot "app\build\outputs\apk\$variant\app-$variant-unsigned.apk")
-)
-$apk = $apkCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $apk) { throw "Gradle completed but no $variant APK was found." }
 $outputDir = Join-Path $projectRoot "dist\android"
 New-Item -ItemType Directory -Force $outputDir | Out-Null
-$outputName = if ($Release -and $apk.EndsWith("-unsigned.apk")) { "tokenbird-$variant-unsigned.apk" } else { "tokenbird-$variant.apk" }
-if (-not $Release -and $DebugApplicationIdSuffix) { $outputName = "tokenbird-debug-device.apk" }
-$outputApk = Join-Path $outputDir $outputName
-Copy-Item $apk $outputApk -Force
-Write-Output "APK: $outputApk"
+$outputs = @()
+if ($Artifact -ne "Aab") {
+    $apk = Join-Path $androidRoot "app\build\outputs\apk\$variant\app-$variant.apk"
+    if (-not (Test-Path -LiteralPath $apk)) { throw "Gradle completed but no signed $variant APK was found." }
+    $buildTools = Get-ChildItem -LiteralPath (Join-Path $sdkRoot "build-tools") -Directory |
+        Where-Object { Test-Path (Join-Path $_.FullName "apksigner.bat") } |
+        Sort-Object { [version]($_.Name -replace '-.*$', '') } -Descending | Select-Object -First 1
+    if (-not $buildTools) { throw "Android SDK build-tools with apksigner and zipalign are required." }
+    & (Join-Path $buildTools.FullName "zipalign.exe") -c -P 16 4 $apk
+    if ($LASTEXITCODE -ne 0) { throw "APK alignment verification failed." }
+    # Force a lower verifier range on release to actually exercise the v1
+    # fallback as well as v2/v3, despite the app's higher manifest minSdk.
+    $verifyArgs = @("verify", "--verbose", "--print-certs")
+    if ($Release) { $verifyArgs += @("--min-sdk-version", "23") }
+    $signatureReport = & (Join-Path $buildTools.FullName "apksigner.bat") @verifyArgs $apk
+    if ($LASTEXITCODE -ne 0) { throw "APK signature verification failed." }
+    $signatureReport | Write-Output
+    if ($Release) {
+        $reportText = $signatureReport -join "`n"
+        foreach ($scheme in @("v1", "v2", "v3")) {
+            if ($reportText -notmatch "Verified using $scheme scheme [^\r\n]*: true") {
+                throw "Release APK did not verify using the required $scheme signature scheme."
+            }
+        }
+    }
+    $outputName = if (-not $Release -and $DebugApplicationIdSuffix) { "tokenbird-debug-device.apk" } else { "tokenbird-$variant.apk" }
+    $outputs += @{ Source = $apk; Name = $outputName }
+}
+if ($Release -and $Artifact -ne "Apk") {
+    $aab = Join-Path $androidRoot "app\build\outputs\bundle\release\app-release.aab"
+    if (-not (Test-Path -LiteralPath $aab)) { throw "Gradle completed but no release AAB was found." }
+    $verificationLog = Join-Path (Split-Path -Parent $aab) "signature-verification.txt"
+    & (Join-Path $jdkHome "bin\jarsigner.exe") -verify $aab *> $verificationLog
+    if ($LASTEXITCODE -ne 0) {
+        Get-Content -LiteralPath $verificationLog -Tail 20 | Write-Output
+        throw "AAB signature verification failed."
+    }
+    # jarsigner returns zero even for an unsigned archive. Require every payload
+    # entry to carry a signature, and fully read entries to trigger verification.
+    & (Join-Path $jdkHome "bin\java.exe") (Join-Path $androidRoot "tools\VerifyBundle.java") $aab
+    if ($LASTEXITCODE -ne 0) { throw "AAB payload signature verification failed." }
+    $outputs += @{ Source = $aab; Name = "tokenbird-release.aab" }
+}
+foreach ($output in $outputs) {
+    $destination = Join-Path $outputDir $output.Name
+    Copy-Item -LiteralPath $output.Source -Destination $destination -Force
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
+    Set-Content -LiteralPath "$destination.sha256" -Value "$hash  $($output.Name)" -Encoding ascii
+    Write-Output "Artifact: $destination"
+    Write-Output "SHA256: $hash"
+}

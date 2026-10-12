@@ -39,6 +39,10 @@ export function attachSessionSelfManagementBindings(
     get() { return getSessionScopedToolCallbacks(sessionId)?.savedCredentialsFn; },
     configurable: true, enumerable: true,
   });
+  Object.defineProperty(context, 'superAgentAction', {
+    get() { return getSessionScopedToolCallbacks(sessionId)?.superAgentActionFn; },
+    configurable: true, enumerable: true,
+  });
   Object.defineProperty(context, 'superAgentTask', {
     get() { return getSessionScopedToolCallbacks(sessionId)?.superAgentTaskFn; },
     configurable: true, enumerable: true,

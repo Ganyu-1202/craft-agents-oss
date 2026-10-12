@@ -1,0 +1,8 @@
+/* Native semantic colors follow the light/dark palette in theme-pack.json. */
+body[data-tokenbird-singer] {
+  --message-user-bg: color-mix(in srgb, var(--accent) 12%, var(--paper));
+  --message-tips-bg: var(--paper);
+}
+body[data-tokenbird-singer] [data-theme-area="sidebar"] {
+  background-color: var(--navigator);
+}

@@ -43,6 +43,7 @@ beforeEach(async () => {
     onAgentPluginsChanged: mock((callback: () => void) => { notifyChanged = callback; return () => {}; }),
     testBackendFramework: mock(async () => ({ success: true, checks: [{ kind: 'location', success: true }, { kind: 'runtime', success: true }, { kind: 'protocol', success: true }], version: '1.0.0' })),
     saveBackendFramework: mock(async (draft: any) => { const item = catalog.frameworks.find((item: any) => item.id === draft.id); item.configuration = structuredClone(draft); item.enabled = true; item.setupRequired = false; }),
+    saveAgentPlugin: mock(async (manifest: any) => { catalog.frameworks.push({ ...manifest, builtin: false, configuration: { ...defaultFrameworkConfiguration(manifest), executablePath: manifest.transport.command } }); }),
     onBackendFrameworkInstallProgress: mock(() => () => {}),
     installBackendFramework: mock(async (id: string) => { const entry = catalog.frameworks.find((entry: any) => entry.id === id);
       const configuration = { ...entry.configuration, executablePath: '/managed/python', projectPath: id === 'plugin:hermes' ? '/managed/hermes' : '' };
@@ -67,6 +68,47 @@ test('shows five collapsed frameworks in Chinese with no translation keys or cod
   expect(body()).not.toContain('settings.ai.');
 });
 
+test('Claude native plugin directories are saved without enabling unrelated framework features', async () => {
+  await click(row('claude-code').querySelector('button')!);
+  await click(button('claude-code', '添加本地插件'));
+  await change(field('插件目录 1'), '/host/claude-plugin');
+  await click(button('claude-code', '保存配置'));
+  expect(api.saveBackendFramework.mock.calls[0][0].nativeOptions.claudePlugins).toEqual(['/host/claude-plugin']);
+  expect(row('claude-code').textContent).toContain('Super Agent 节点不会加载原生插件');
+  await click(button('claude-code', '移除'));
+  await click(button('claude-code', '保存配置'));
+  expect(api.saveBackendFramework.mock.calls[1][0].nativeOptions.claudePlugins).toEqual([]);
+});
+
+async function selectManifest(value: string) {
+  const input = field('插件清单（.json）') as HTMLInputElement;
+  const file = new dom.File([value], 'plugin.json', { type: 'application/json' });
+  Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+  await React.act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
+  await flush();
+}
+
+test('Agent plugin import previews the manifest, handles failures and refreshes the framework catalog', async () => {
+  await selectManifest('invalid JSON');
+  expect(body()).toContain('请选择有效的 TokenBird Agent 插件清单');
+  expect(api.saveAgentPlugin.mock.calls).toHaveLength(0);
+  const manifest = { schemaVersion: 1, id: 'plugin:custom', name: 'Custom Agent', description: 'Bridge fixture', version: '1', enabled: true,
+    capabilities: ['hostTools'], compatibility: { providerTypes: ['pi_compat'] }, transport: { type: 'stdio', command: '/host/bridge', args: [] }, useConnectionCredentials: true };
+  await selectManifest(JSON.stringify(manifest));
+  expect(document.querySelector('[data-plugin-preview="plugin:custom"]')!.textContent).toContain('/host/bridge');
+  expect(body()).toContain('此插件请求使用所选模型连接的凭据');
+  const install = [...document.querySelectorAll('button')].find(item => item.textContent === '安装 Agent 插件')!;
+  api.saveAgentPlugin.mockRejectedValueOnce(new Error('host rejected manifest'));
+  await click(install);
+  expect(body()).toContain('host rejected manifest');
+  expect(document.querySelector('[data-plugin-preview="plugin:custom"]')).not.toBeNull();
+  await click(install);
+  expect(api.saveAgentPlugin.mock.calls[1][0]).toEqual(manifest);
+  expect(row('plugin:custom').textContent).toContain('Custom Agent');
+  expect(document.querySelector('[data-plugin-preview]')).toBeNull();
+  expect(body()).toContain('Agent 插件已安装');
+});
+
 test('expansion exposes only supported implementations and readable configuration labels', async () => {
   await click(row('plugin:dsh').querySelector('button')!);
   expect(body()).toContain('后端位置'); expect(body()).toContain('功能实现方式');
@@ -74,7 +116,13 @@ test('expansion exposes only supported implementations and readable configuratio
   expect((field('DeepSeek Harness 执行中追加指令') as HTMLSelectElement).disabled).toBe(true);
   expect(field('DeepSeek Harness 文件与命令').value).toBe('native');
   await click(row('codex').querySelector('button')!);
-  expect((field('Codex 文件与命令') as HTMLSelectElement).options).toHaveLength(1);
+  expect((field('Codex 文件与命令') as HTMLSelectElement).options).toHaveLength(3);
+  expect(field('Codex 执行中追加指令').value).toBe('native');
+  expect(row('codex').textContent).toContain('特色优势');
+  expect(row('codex').textContent).toContain('适用任务');
+  expect(row('codex').textContent).toContain('接入说明');
+  expect(row('codex').textContent).toContain('Pi 兼容');
+  expect(row('plugin:dsh').textContent).toContain('不支持原生会话恢复');
   expect(body()).not.toContain('settings.ai.');
 });
 

@@ -18,6 +18,7 @@ import AppSettingsPage from './AppSettingsPage'
 import UsageSettingsPage from './UsageSettingsPage'
 import RechargeSettingsPage from './RechargeSettingsPage'
 import AiSettingsPage from './AiSettingsPage'
+import BackendSettingsPage from './BackendSettingsPage'
 import CredentialsSettingsPage from './CredentialsSettingsPage'
 import AppearanceSettingsPage from './AppearanceSettingsPage'
 import InputSettingsPage from './InputSettingsPage'
@@ -43,6 +44,7 @@ export const SETTINGS_PAGE_COMPONENTS: Record<SettingsSubpage, ComponentType> = 
   usage: UsageSettingsPage,
   recharge: RechargeSettingsPage,
   ai: AiSettingsPage,
+  backends: BackendSettingsPage,
   credentials: CredentialsSettingsPage,
   appearance: AppearanceSettingsPage,
   input: InputSettingsPage,

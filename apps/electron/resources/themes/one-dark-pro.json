@@ -4,7 +4,10 @@
   "author": "Binaryify",
   "license": "MIT",
   "source": "https://github.com/Binaryify/OneDark-Pro",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "one-light",
     "dark": "one-dark-pro"
@@ -21,6 +24,16 @@
     "accent": "#61afef",
     "info": "#e5c07b",
     "success": "#98c379",
-    "destructive": "#e06c75"
-  }
+    "destructive": "#e06c75",
+    "paper": "#2c313c",
+    "navigator": "#21252b",
+    "input": "#252932",
+    "popover": "#2c313c",
+    "popoverSolid": "#2c313c"
+  },
+  "paper": "#ffffff",
+  "navigator": "#f0f1f3",
+  "input": "#ffffff",
+  "popover": "#ffffff",
+  "popoverSolid": "#ffffff"
 }

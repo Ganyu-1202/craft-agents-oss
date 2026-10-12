@@ -59,15 +59,24 @@ async function connectSftp(config: RemoteServerSftpConfig): Promise<{ client: Cl
   }
 
   const client = new Client()
-  await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error) => reject(error)
-    client.once('ready', () => {
-      client.off('error', onError)
-      resolve()
+  // ssh2 may emit connection errors after ready during a long transfer.
+  // Keep a listener installed so these cannot become uncaught process errors;
+  // pending SFTP operations report the interrupted connection via callbacks.
+  client.on('error', () => {})
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => reject(error)
+      client.once('ready', () => {
+        client.off('error', onError)
+        resolve()
+      })
+      client.once('error', onError)
+      client.connect(options)
     })
-    client.once('error', onError)
-    client.connect(options)
-  })
+  } catch (error) {
+    client.end()
+    throw error
+  }
 
   try {
     const sftp = await new Promise<SFTPWrapper>((resolve, reject) => {

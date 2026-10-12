@@ -384,6 +384,7 @@ const SETTINGS_ICONS: Record<SettingsSubpage, string> = {
   usage: 'ChartNoAxesCombined',
   recharge: 'WalletCards',
   ai: 'Sparkles',
+  backends: 'Server',
   appearance: 'Palette',
   input: 'Keyboard',
   workspace: 'Building2',

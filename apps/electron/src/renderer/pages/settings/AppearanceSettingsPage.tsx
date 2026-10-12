@@ -46,6 +46,8 @@ import { Info_DataTable, SortableHeader } from '@/components/info/Info_DataTable
 import { Info_Badge } from '@/components/info/Info_Badge'
 import type { PresetTheme } from '@config/theme'
 import { BirdCompanionSettings } from '@/components/settings/BirdCompanionSettings'
+import { ThemePresetGallery } from '@/components/settings/ThemePresetGallery'
+import { ThemePresentationSettings } from '@/components/settings/ThemePresentationSettings'
 
 export const meta: DetailsPageMeta = {
   navigator: 'settings',
@@ -113,6 +115,7 @@ export default function AppearanceSettingsPage() {
 
   const {
     mode,
+    isDark,
     setMode,
     colorTheme,
     setColorTheme,
@@ -141,23 +144,25 @@ export default function AppearanceSettingsPage() {
   // Preset themes for the color theme dropdown
   const [presetThemes, setPresetThemes] = useState<PresetTheme[]>([])
 
-  // Theme pack previews (pack id -> data URL of the light preview)
+  // Match preview artwork to the current appearance and load packs in parallel.
   const [packPreviews, setPackPreviews] = useState<Record<string, string>>({})
   useEffect(() => {
     let cancelled = false
     const loadPreviews = async () => {
       const previews: Record<string, string> = {}
-      for (const pack of themePacks) {
-        const ref = pack.manifest.preview?.light ?? pack.manifest.preview?.dark
-        if (!ref) continue
-        const asset = await window.electronAPI?.getThemePackAsset?.(pack.id, ref)
-        if (asset?.dataUrl) previews[pack.id] = asset.dataUrl
-      }
+      await Promise.all(themePacks.map(async (pack) => {
+        const ref = isDark ? pack.manifest.preview?.dark ?? pack.manifest.preview?.light : pack.manifest.preview?.light ?? pack.manifest.preview?.dark
+        if (!ref) return
+        try {
+          const asset = await window.electronAPI?.getThemePackAsset?.(pack.id, ref)
+          if (asset?.dataUrl) previews[pack.id] = asset.dataUrl
+        } catch { /* an unavailable preview should not hide the pack list */ }
+      }))
       if (!cancelled) setPackPreviews(previews)
     }
     void loadPreviews()
     return () => { cancelled = true }
-  }, [themePacks])
+  }, [themePacks, isDark])
 
   const [importingPack, setImportingPack] = useState(false)
   const handleImportPack = useCallback(async () => {
@@ -350,8 +355,6 @@ export default function AppearanceSettingsPage() {
         <ScrollArea className="h-full">
           <div className="px-5 py-7 max-w-3xl mx-auto">
             <div className="space-y-8">
-              <BirdCompanionSettings />
-
               {/* Default Theme */}
               <SettingsSection title={t("settings.appearance.defaultTheme")}>
                 <SettingsCard>
@@ -369,10 +372,11 @@ export default function AppearanceSettingsPage() {
                   <SettingsRow label={t("settings.appearance.colorTheme")}>
                     <SettingsMenuSelect
                       value={colorTheme}
-                      onValueChange={setColorTheme}
+                      onValueChange={(id) => { setThemePack(null); setColorTheme(id) }}
                       options={themeOptions}
                     />
                   </SettingsRow>
+                  <ThemePresetGallery themes={presetThemes} selected={themePackId ? null : colorTheme} dark={isDark} onSelect={(id) => { setThemePack(null); setColorTheme(id) }} />
                   <SettingsRow label={t("settings.appearance.font")}>
                     <SettingsSegmentedControl
                       value={font}
@@ -404,6 +408,8 @@ export default function AppearanceSettingsPage() {
                     </div>
                   </SettingsRow>
                 </SettingsCard>
+                {themePackId && <p className="mt-2 text-xs text-muted-foreground">{t('settings.appearance.packPaletteNotice')}</p>}
+                {!themePackId && <ThemePresentationSettings />}
                 {themeLoadError && (
                   <p className="mt-2 text-xs text-info">
                     {t("settings.appearance.themeWarning")} {themeLoadError} ({themeResolvedFrom === 'fallback' ? t("settings.appearance.usingBundledFallback") : t("settings.appearance.usingDefaultTheme")})
@@ -493,12 +499,12 @@ export default function AppearanceSettingsPage() {
                   </SettingsRow>
 
                   {themePacks.length > 0 && (
-                    <div className="flex flex-col gap-2 py-2">
+                    <div className="grid gap-3 px-4 py-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))' }}>
                       {themePacks.map((pack: ThemePack) => (
                         <div
                           key={pack.id}
                           className={
-                            "flex items-center gap-3 rounded-lg border px-3 py-2 " +
+                            "flex flex-col overflow-hidden rounded-xl border " +
                             (pack.id === themePackId
                               ? "border-accent bg-accent/5"
                               : "border-foreground/10")
@@ -508,27 +514,30 @@ export default function AppearanceSettingsPage() {
                             <img
                               src={packPreviews[pack.id]}
                               alt={pack.manifest.name}
-                              className="h-12 w-20 rounded object-cover"
+                              loading="lazy"
+                              className="aspect-[8/5] w-full object-cover"
                             />
                           ) : (
-                            <div className="h-12 w-20 rounded bg-foreground/5" />
+                            <div className="aspect-[8/5] w-full bg-foreground/5" />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate text-sm font-medium">
+                          <div className="flex-1 min-w-0 p-3">
+                            <div className="text-sm font-medium">
                               {pack.manifest.name}
                               {pack.source === 'dsh' && (
                                 <Info_Badge color="muted" className="ml-2">dsh</Info_Badge>
                               )}
                               {pack.location === 'builtin' && (
-                                <Info_Badge color="muted" className="ml-2">built-in</Info_Badge>
+                                <Info_Badge color="muted" className="ml-2">{t("settings.promptOverview.source.builtin")}</Info_Badge>
                               )}
                             </div>
                             {(pack.manifest.tagline || pack.manifest.author) && (
-                              <div className="truncate text-xs text-muted-foreground">
+                              <div className="mt-1 text-xs text-muted-foreground">
                                 {pack.manifest.tagline ?? pack.manifest.author}
                               </div>
                             )}
+                            {pack.manifest.artwork?.map(art => <div key={art.sourceUrl} className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">{art.credit}</div>)}
                           </div>
+                          <div className="flex items-center justify-between gap-2 border-t border-foreground/5 px-3 py-2">
                           {pack.id === themePackId ? (
                             <Info_Badge color="success">{t("settings.appearance.themePackInUse")}</Info_Badge>
                           ) : (
@@ -550,12 +559,13 @@ export default function AppearanceSettingsPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
                     <Button
                       variant="outline"
                       size="sm"
@@ -570,7 +580,7 @@ export default function AppearanceSettingsPage() {
                       {t("settings.appearance.themePackOpenFolder")}
                     </Button>
                   </div>
-                  <div className="mt-3 border-t border-foreground/10 pt-3">
+                  <div className="border-t border-foreground/10 py-1">
                     <SettingsToggle
                       label={t("settings.appearance.themePackScripts")}
                       description={t("settings.appearance.themePackScriptsDesc")}
@@ -579,7 +589,10 @@ export default function AppearanceSettingsPage() {
                     />
                   </div>
                 </SettingsCard>
+                {themePackId && <ThemePresentationSettings />}
               </SettingsSection>
+
+              <BirdCompanionSettings />
 
               {/* Interface */}
               <SettingsSection title={t("settings.appearance.interface")}>

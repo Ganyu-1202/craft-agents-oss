@@ -4,7 +4,10 @@
   "author": "Arctic Ice Studio",
   "license": "MIT",
   "source": "https://github.com/nordtheme/nord",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "nord"
@@ -21,6 +24,16 @@
     "accent": "#88c0d0",
     "info": "#ebcb8b",
     "success": "#a3be8c",
-    "destructive": "#bf616a"
-  }
+    "destructive": "#bf616a",
+    "paper": "#3b4252",
+    "navigator": "#272d38",
+    "input": "#353c4a",
+    "popover": "#3b4252",
+    "popoverSolid": "#3b4252"
+  },
+  "paper": "#e5e9f0",
+  "navigator": "#d8dee9",
+  "input": "#f5f7fa",
+  "popover": "#e5e9f0",
+  "popoverSolid": "#e5e9f0"
 }

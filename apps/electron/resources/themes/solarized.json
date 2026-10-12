@@ -4,7 +4,10 @@
   "author": "Ethan Schoonover",
   "license": "MIT",
   "source": "https://github.com/altercation/solarized",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "solarized-light",
     "dark": "solarized-dark"
@@ -21,6 +24,16 @@
     "accent": "#268bd2",
     "info": "#b58900",
     "success": "#859900",
-    "destructive": "#dc322f"
-  }
+    "destructive": "#dc322f",
+    "paper": "#073642",
+    "navigator": "#00212b",
+    "input": "#073642",
+    "popover": "#073642",
+    "popoverSolid": "#073642"
+  },
+  "paper": "#eee8d5",
+  "navigator": "#e6dfcc",
+  "input": "#fffaf0",
+  "popover": "#eee8d5",
+  "popoverSolid": "#eee8d5"
 }

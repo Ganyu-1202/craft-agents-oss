@@ -1,4 +1,5 @@
 import type { ThinkingLevel } from '../agent/thinking-levels'
+import type { AgentRuntimeProtocol } from '../config/llm-connections'
 import type { SuperAgentArchive, SuperAgentMemory, SuperAgentLibraryCommand } from './library'
 import type { PermissionMode } from '../agent/mode-types'
 import type { SessionPolicyPermissionScope } from '@craft-agent/core/types'
@@ -14,6 +15,12 @@ export interface SuperAgentNode {
   avatar: string
   description: string
   llmConnection: string
+  /** Omitted means follow the connection; an explicit backend is local to this node. */
+  agentRuntime?: AgentRuntimeProtocol
+  /** Reusable skills assigned to this node. Empty or omitted assigns none. */
+  skillSlugs?: string[]
+  /** Last applied preset defaults; tracks user additions/removals across preset changes. */
+  defaultSkillSlugs?: string[]
   model: string
   thinkingLevel: ThinkingLevel
   /** Upper bound on model turns started per minute, not token generation speed. */
@@ -153,6 +160,8 @@ export interface SuperAgentTask {
 
 export interface SuperAgentNodeRuntime {
   nodeId: string
+  /** Consecutive suppressed duplicate responses; rotate the model context after two. */
+  repeatedResponses?: number
   sessionId?: string
   status: 'idle' | 'preparing' | 'working' | 'recovering' | 'error'
   retryAt?: number
@@ -161,11 +170,15 @@ export interface SuperAgentNodeRuntime {
   activeTaskId?: string
   lastStartedAt?: number
   lastCompletedAt?: number
+  /** Bounded diagnostics from the real workflow SDK, never a dispatch/recovery authority. */
+  workflow?: { turnId: string; events: Array<{ type: string; executorId?: string; state?: string; at: number }> }
   error?: string
 }
 
 export interface SuperAgentMessage {
   id: string
+  /** Evidence snapshot for response deduplication; not an execution authority. */
+  responseProgressKey?: string
   fromNodeId: string | 'user' | 'system'
   toNodeId: string | 'user' | 'all'
   kind: 'chat' | 'message' | 'task' | 'result' | 'inspection' | 'script' | 'error'
@@ -174,6 +187,8 @@ export interface SuperAgentMessage {
   createdAt: number
   /** Explicitly selected for the user, including useful background replies. */
   userFacing?: boolean
+  /** Explicit stage interaction or final handoff, selected by the intent node. */
+  delivery?: import('./delivery').SuperAgentDelivery
   /** Actual host outcome of model control actions, independent of prose claims. */
   actionReceipt?: SuperAgentActionReceipt
   /** Durable display record; never used to restore or grant an approval. */
@@ -205,6 +220,7 @@ export interface SuperAgentPlanItem {
   /** 1 is the highest priority. */
   priority: number
   note: string
+  blocker?: import('./blockers').SuperAgentPlanBlocker
   revision: number
   updatedBy: string
   updatedAt: number
@@ -301,6 +317,10 @@ export interface SuperAgentEnvironmentStatus {
 }
 
 export interface SuperAgentSnapshot {
+  /** A user-requested inspection is queued or executing, including retry delays. */
+  inspectionPending?: boolean
+  /** Explicit user stop pauses internal verification until work is resumed. */
+  recoverySuspended?: boolean
   readiness?: SuperAgentReadiness
   config: SuperAgentConfig | null
   state: SuperAgentState
@@ -384,12 +404,13 @@ export type SuperAgentCommand =
   | { type: 'chat'; text: string }
   | ({ type: 'task' } & SuperAgentTaskContract)
   | { type: 'continuous-work'; enabled: boolean }
-  | { type: 'plan-upsert'; item: Pick<SuperAgentPlanItem, 'title' | 'instructions' | 'status' | 'priority' | 'note' | 'goalId'> & { id?: string }; expectedRevision: number }
+  | { type: 'plan-upsert'; item: Pick<SuperAgentPlanItem, 'title' | 'instructions' | 'status' | 'priority' | 'note' | 'goalId' | 'blocker'> & { id?: string }; expectedRevision: number }
   | { type: 'task-resume'; taskId: string }
   | { type: 'plan-delete'; id: string; expectedRevision: number }
   | { type: 'cancel'; taskId?: string }
   | { type: 'inspect' }
   | { type: 'node-refresh'; nodeId: string }
+  | { type: 'node-reset'; nodeId: string; confirmed: true }
   | { type: 'history-cleanup'; before: number; keepRecentMessages: number; expectedRevision: number }
   | { type: 'history-compact'; nodeIds: string[]; expectedRevision: number }
   | { type: 'history-delete-sessions'; sessions: Array<{ id: string; lastMessageAt: number }>; before: number; expectedRevision: number }
@@ -420,6 +441,8 @@ export interface SuperAgentSessionPolicy {
   runPrograms: boolean
   browser: boolean
   allowSources: string[]
+  allowSkills?: string[]
+  agentRuntime?: AgentRuntimeProtocol
   allowSubagents: false
   /** Runtime-only verified container; never persist a stale container identity. */
   containerExecutor?: { runtimePath: string; containerId: string; workingDirectory: string }

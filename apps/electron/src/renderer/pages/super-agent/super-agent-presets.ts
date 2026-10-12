@@ -1,9 +1,11 @@
 import type { SuperAgentConfig, SuperAgentNode } from '@craft-agent/shared/super-agent'
+import type { SuperAgentPresetProfile } from '@craft-agent/shared/super-agent'
 
 export const SUPER_AGENT_PRESETS = ['daily', 'coding', 'research', 'work', 'operations'] as const
 export type SuperAgentPreset = 'custom' | typeof SUPER_AGENT_PRESETS[number]
-type Profile = 'intentLead' | 'operationsLead' | 'diagnostician' | 'operator' | 'operationsReviewer' | 'dailyLead' | 'dailyWorker' | 'organizer' | 'collaborationAssistant' | 'codeLead' | 'developer' | 'tester' | 'codeReviewer' | 'codeAssistant' | 'checkRunner' | 'researchLead' | 'literature' | 'experiment' | 'researchReviewer' | 'workLead' | 'analyst' | 'producer' | 'workReviewer'
+type Profile = SuperAgentPresetProfile
 type NodeRecipe = { role: SuperAgentNode['role']; profile: Profile; model: 'standard' | 'fast' | 'deep'; thinking: SuperAgentNode['thinkingLevel']; rate: number; rating: number }
+const computerUseNode: NodeRecipe = { role: 'worker', profile: 'computerUse', model: 'standard', thinking: 'high', rate: 6, rating: 4 }
 
 /** Scenario and role defaults live together; the runtime protocol remains on the server. */
 export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workflow: NonNullable<SuperAgentConfig['workflow']>; continuousWork: boolean; idleInspectionMinutes: number; nodes: NodeRecipe[] }> = {
@@ -11,6 +13,7 @@ export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workf
     { role: 'coordinator', profile: 'intentLead', model: 'standard', thinking: 'medium', rate: 8, rating: 3 },
     { role: 'orchestrator', profile: 'dailyLead', model: 'standard', thinking: 'medium', rate: 6, rating: 4 },
     { role: 'worker', profile: 'dailyWorker', model: 'fast', thinking: 'medium', rate: 8, rating: 3 },
+    computerUseNode,
     { role: 'worker', profile: 'organizer', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
     { role: 'worker', profile: 'collaborationAssistant', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
   ] },
@@ -20,6 +23,7 @@ export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workf
     { role: 'worker', profile: 'developer', model: 'standard', thinking: 'high', rate: 6, rating: 4 },
     { role: 'worker', profile: 'tester', model: 'standard', thinking: 'medium', rate: 6, rating: 4 },
     { role: 'worker', profile: 'codeReviewer', model: 'deep', thinking: 'high', rate: 4, rating: 5 },
+    computerUseNode,
     { role: 'worker', profile: 'codeAssistant', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
     { role: 'worker', profile: 'checkRunner', model: 'fast', thinking: 'max', rate: 6, rating: 2 },
   ] },
@@ -29,6 +33,7 @@ export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workf
     { role: 'worker', profile: 'literature', model: 'standard', thinking: 'high', rate: 6, rating: 4 },
     { role: 'worker', profile: 'experiment', model: 'standard', thinking: 'high', rate: 6, rating: 4 },
     { role: 'worker', profile: 'researchReviewer', model: 'deep', thinking: 'high', rate: 4, rating: 5 },
+    computerUseNode,
     { role: 'worker', profile: 'organizer', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
     { role: 'worker', profile: 'collaborationAssistant', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
   ] },
@@ -38,6 +43,7 @@ export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workf
     { role: 'worker', profile: 'analyst', model: 'standard', thinking: 'medium', rate: 8, rating: 4 },
     { role: 'worker', profile: 'producer', model: 'fast', thinking: 'medium', rate: 10, rating: 3 },
     { role: 'worker', profile: 'workReviewer', model: 'standard', thinking: 'medium', rate: 6, rating: 4 },
+    computerUseNode,
     { role: 'worker', profile: 'organizer', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
     { role: 'worker', profile: 'collaborationAssistant', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
   ] },
@@ -47,6 +53,7 @@ export const PRESET_RECIPES: Record<Exclude<SuperAgentPreset, 'custom'>, { workf
     { role: 'worker', profile: 'diagnostician', model: 'standard', thinking: 'high', rate: 6, rating: 4 },
     { role: 'worker', profile: 'operator', model: 'standard', thinking: 'high', rate: 6, rating: 4 },
     { role: 'worker', profile: 'operationsReviewer', model: 'deep', thinking: 'high', rate: 4, rating: 5 },
+    computerUseNode,
     { role: 'worker', profile: 'organizer', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
     { role: 'worker', profile: 'collaborationAssistant', model: 'fast', thinking: 'max', rate: 8, rating: 2 },
   ] },
@@ -82,9 +89,12 @@ export function presetRequirements(preset: SuperAgentPreset): NonNullable<SuperA
 }
 
 export const presetStrings = {
+  computerUseName: ['桌面操作与界面验证', 'Computer Use and UI verification'],
+  computerUseDescription: ['使用 computer_use 观察并操作宿主桌面，完成应用操作与界面验证。', 'Observe and operate the host desktop with computer_use for application tasks and UI verification.'],
+  computerUsePreferences: ['先调用 computer_use status，确认桌面可用，再读取窗口、截图或 UI Automation。根据当前界面逐步操作，每次输入后重新观察并核验结果；使用真实窗口 ID 和物理坐标，不猜测操作成功。桌面任务声明独占资源 host-desktop，避免团队同时改变焦点。保存检查点、产物与核验证据；连接、锁屏或权限问题按实际结果报告。浏览器页面任务优先使用 browser_tool。', 'Check computer_use status, then inspect windows, screenshots or UI Automation. Act on the current UI step by step and observe again after input. Use real window IDs and physical coordinates; verify outcomes. Declare the exclusive host-desktop resource to avoid competing focus changes. Preserve checkpoints, artifacts and evidence; report actual availability or permission failures. Prefer browser_tool for browser page tasks.'],
   intentLeadName: ['意图理解与用户交互', 'Intent and user interaction'],
   intentLeadDescription: ['理解目标、约束与验收条件，交给编排节点；转交结果和必要澄清。', 'Understand goals, constraints and acceptance; hand off to the orchestrator and relay results or clarifications.'],
-  intentLeadPreferences: ['只处理用户意图和交互；通过 intent 交接，不拆任务、不执行工具。状态询问复用已有报告，不重新下达原目标。', 'Handle intent and interaction only. Hand off with intent; reuse existing reports for status requests.'],
+  intentLeadPreferences: ['只处理用户意图和交互；调用 super_agent_intent 交接目标，使用协作工具通信和交付。任务拆解与实际研究、执行交给编排和工作节点。状态询问复用已有报告，不重新下达原目标。', 'Handle user intent and interaction. Call super_agent_intent to hand off goals and use collaboration tools for communication and delivery. Leave decomposition, research and execution to the orchestrator and workers. Reuse existing reports for status requests.'],
   operations: ['故障诊断与运维', 'Incident response and operations'],
   operationsDescription: ['证据诊断 → 授权修复 → 独立验证；同一服务修改互斥，保留恢复检查点。', 'Evidence-based diagnosis, authorized remediation and independent verification, with exclusive service ownership and recovery checkpoints.'],
   operationsLeadName: ['故障流程编排', 'Incident orchestrator'],
@@ -109,7 +119,7 @@ export const presetStrings = {
   work: ['高效工作智能体', 'Efficient work agent'],
   workDescription: ["按交付物组织任务依赖图：输入整理 → 并行分析/制作 → 质检汇总。", "Organize a deliverable DAG: input preparation, parallel analysis and production, then quality review."],
   presetUnavailable: ['连接可用的文本模型后即可使用推荐方案。', 'Connect an available text model to use a recommended setup.'],
-  presetReplaceHint: ['应用方案会更新节点分工、模型和持续工作设置；保留环境权限及已有资源绑定。保存后生效。', 'Applying a setup updates roles, models and continuous work. Environment permissions and existing resource bindings are retained. Save to apply.'],
+  presetReplaceHint: ['应用方案会更新节点分工、模型、默认 Skills 和持续工作设置；保留环境权限、自定义技能与已有资源绑定。保存后生效。', 'Applying a setup updates roles, models, default skills and continuous work. Environment permissions, custom skills and resource bindings are retained. Save to apply.'],
   dailyLeadName: ["日常任务编排", "daily orchestrator"],
   dailyLeadDescription: ["拆解该场景意图，编排依赖、资源和证据验收。", "Plan scenario tasks, dependencies, resources and evidence-based acceptance."],
   dailyLeadPreferences: ["把用户意图交日常执行；简单任务执行者自检，资料提取与辅助核对按需启用。必要时创建 dependencies 和 acceptanceCriteria，保持短流程与低通信量。", "Use short flows with worker self-checks for simple tasks. Assign organization and artifact checks only when needed; declare dependencies and acceptance criteria."],
@@ -117,20 +127,20 @@ export const presetStrings = {
   dailyWorkerDescription: ['完成检索、文件整理、日常文稿和已授权的生活事务。', 'Handle searches, file organization, everyday writing and authorized errands.'],
   dailyWorkerPreferences: ['先查看现有资料，使用最少必要工具完成任务。交付简洁结果、相关来源或文件路径及实际操作状态；日程、价格和时效信息以最新来源为准。对外发送、付款或预约遵循用户已给出的授权范围。', 'Inspect existing material and use only necessary tools. Return concise results, sources or file paths and actual status. Verify current schedules and prices. Follow the user’s authorization for sending, payment and booking.'],
   organizerName: ['资料提取与整理', 'Material extraction and organization'],
-  organizerDescription: ['从指定材料提取字段、分类去重、整理索引与格式，不独立作复杂分析。', 'Extract fields, classify, deduplicate, index and format supplied material; leave complex analysis to specialists.'],
-  organizerPreferences: ['只处理主节点指定的文件、来源和字段，按给定模板提取与整理，保留原文位置、链接、单位和日期。缺失字段标为未提供，冲突项单独列出，不补造事实或引用；去重保留来源，改动原文件需明确授权。交付结构化表格或索引及路径，核对条目数量和字段完整性。来源可靠性、研究结论、统计解释或复杂公式交主节点协调。', 'Use only assigned files, sources and fields. Follow the supplied template and retain source locations, links, units and dates. Mark missing fields and list conflicts without inventing facts or citations; retain provenance when deduplicating and require authorization to change originals. Return structured tables or indexes with paths, counts and field checks. Escalate source credibility, research conclusions, statistical interpretation and complex formulas to the coordinator.'],
+  organizerDescription: ['负责资料、文档、数据与设计产物；按分配的 Skill 承接跨场景研究分析与证据核对。', 'Organize information, documents, data and design artifacts; use assigned skills for cross-scenario research, analysis and evidence checks.'],
+  organizerPreferences: ['只处理主节点指定的文件、来源和字段，按给定模板提取与整理，保留原文位置、链接、单位和日期。缺失字段标为未提供，冲突项单独列出，不补造事实或引用；去重保留来源，改动原文件需明确授权。交付结构化表格或索引及路径，核对条目数量和字段完整性。跨场景资料、分析和设计任务按编排明确分配的 Skill 执行；优先交专业岗位，复杂方法由编排拆成可验证阶段。', 'Use only assigned files, sources and fields. Follow the supplied template and retain source locations, links, units and dates. Mark missing fields and list conflicts without inventing facts or citations; retain provenance when deduplicating and require authorization to change originals. Return structured tables or indexes with paths, counts and field checks. Use the assigned skills for explicitly scoped cross-scenario information, analysis and design work. Prefer specialists; ask the orchestrator to split complex methods into verifiable stages.'],
   collaborationAssistantName: ['协作执行与产物核对', 'Collaborative execution and artifact checks'],
-  collaborationAssistantDescription: ['按明确步骤辅助已有节点，检查产物结构、链接与完整性，整理执行证据。', 'Assist existing workers with explicit steps; check artifact structure, links and completeness, and organize execution evidence.'],
-  collaborationAssistantPreferences: ['由主节点指定协作对象、输入版本、路径、步骤和验收清单。依赖产物就绪后执行明确的辅助操作，核对文件可打开性、字段与附件完整性、链接和来源对应关系，整理检查记录与遗漏。只修改明确分配给自己的文件，不与原节点同时修改同一产物；不重复专业节点的分析与审查，不自行改变结论、公式或验收标准。遇到冲突、复杂判断或失败时带原始证据交主节点协调，报告实际完成与未验证项。', 'Use the collaborator, input revision, paths, steps and acceptance checklist assigned by the coordinator. Wait for dependencies, perform explicit supporting operations, check file usability, fields, attachments, links and source mappings, and record omissions and evidence. Edit only assigned files without concurrent edits to another worker’s artifact. Avoid repeating specialist analysis or review and do not independently change conclusions, formulas or acceptance criteria. Escalate conflicts, complex decisions and failures with original evidence; report actual completion and unverified items.'],
+  collaborationAssistantDescription: ['辅助协作与产物核对；按分配的 Skill 承接代码、运维、日常事务、桌面操作与配置制作。', 'Assist collaboration and artifact checks; use assigned skills for coding, operations, everyday tasks, desktop interaction and configuration authoring.'],
+  collaborationAssistantPreferences: ['由主节点指定协作对象、输入版本、路径、步骤和验收清单。依赖产物就绪后执行明确的辅助操作，核对文件可打开性、字段与附件完整性、链接和来源对应关系，整理检查记录与遗漏。只修改明确分配给自己的文件，不与原节点同时修改同一产物；优先复用专业节点的分析与审查，不自行改变结论、公式或验收标准。没有场景专岗时，按编排分配的范围和绑定 Skill 承接跨场景执行。遇到冲突、复杂判断或失败时带原始证据交主节点协调，报告实际完成与未验证项。', 'Use the collaborator, input revision, paths, steps and acceptance checklist assigned by the coordinator. Wait for dependencies, perform explicit supporting operations, check file usability, fields, attachments, links and source mappings, and record omissions and evidence. Edit only assigned files without concurrent edits to another worker’s artifact. Reuse specialist analysis and review without independently changing conclusions, formulas or acceptance criteria. When no scenario specialist exists, handle the orchestrator’s bounded cross-scenario assignment using the bound skills. Escalate conflicts, complex decisions and failures with original evidence; report actual completion and unverified items.'],
   codeLeadName: ["工程流程编排", "code orchestrator"],
   codeLeadDescription: ["拆解该场景意图，编排依赖、资源和证据验收。", "Plan scenario tasks, dependencies, resources and evidence-based acceptance."],
   codeLeadPreferences: ["按需求建立接口与验收契约，再派开发。测试与审查用 reviewOf 依赖同一代码版本，独立执行；同一文件只归一个修改者，通过 resources 防止并发冲突。失败按证据安排修复与复核，不重做成功阶段。", "Define interfaces and acceptance before development. Use reviewOf for independent tests and review of the same revision. Declare exclusive file resources; repair failures using evidence without repeating successful stages."],
   codeAssistantName: ['代码检索与轻量维护', 'Code lookup and routine maintenance'],
   codeAssistantDescription: ['定位文件与调用点，整理接口信息，执行已明确范围的机械修改。', 'Locate files and call sites, summarize interfaces and perform explicitly scoped mechanical edits.'],
-  codeAssistantPreferences: ['先读仓库规范，按指定符号和路径查找，给出文件位置与原文证据。修改仅限主节点明确指定的文档、命名替换或重复性改动，保留用户变更；不得自行重构、改变公共接口、鉴权或业务逻辑。核对完整差异并执行指定检查，报告修改路径、命令和实际结果。遇到歧义、依赖冲突或非机械问题时交主节点协调开发处理。', 'Read repository rules and search assigned symbols and paths, returning locations and source evidence. Limit edits to explicitly assigned documentation, renames or repetitive changes; preserve user edits. Do not independently refactor or change public interfaces, authorization or business logic. Inspect the full diff, run assigned checks and report paths, commands and actual results. Escalate ambiguity, dependency conflicts and nonmechanical issues for developer handling.'],
+  codeAssistantPreferences: ['先读仓库规范，按指定符号和路径查找，给出文件位置与原文证据。代码修改仅限主节点明确指定的文档、命名替换或重复性改动，保留用户变更；不得自行重构、改变公共接口、鉴权或业务逻辑。核对完整差异并执行指定检查，报告修改路径、命令和实际结果。代码任务遇到歧义、依赖冲突或非机械问题时交主节点协调开发处理；其他场景按编排明确分配的范围使用绑定 Skill 执行。', 'Read repository rules and search assigned symbols and paths, returning locations and source evidence. Limit code edits to explicitly assigned documentation, renames or repetitive changes; preserve user edits. Do not independently refactor or change public interfaces, authorization or business logic. Inspect the full diff, run assigned checks and report paths, commands and actual results. Escalate coding ambiguity, dependency conflicts and nonmechanical issues for developer handling. Use bound skills for other scenarios only within the orchestrator’s explicit assignment.'],
   checkRunnerName: ['构建与检查执行', 'Build and check runner'],
   checkRunnerDescription: ['执行已指定的构建、测试和静态检查，整理真实输出与失败证据。', 'Run specified builds, tests and static checks, preserving actual output and failure evidence.'],
-  checkRunnerPreferences: ['等待指定版本和依赖就绪，在明确目录按给定命令执行；记录版本、命令、退出码、日志路径和关键错误。不得把退出码 0 当作全部需求已验收，不自行修改实现、测试断言或检查配置，不擅自安装依赖或更新锁文件。命令缺失、环境不符或检查失败时保留原始证据并交主节点安排开发或测试定位；不要重复相同失败命令。', 'Wait for the assigned revision and dependencies; run supplied commands in the specified directory. Record revision, commands, exit codes, log paths and key errors. Exit code zero alone does not establish acceptance. Do not change implementation, assertions or check configuration, or independently install dependencies or update lockfiles. Escalate missing commands, environment mismatches and failures with original evidence for developer or tester diagnosis; avoid repeating failed commands.'],
+  checkRunnerPreferences: ['构建检查任务等待指定版本和依赖就绪，在明确目录按给定命令执行；记录版本、命令、退出码、日志路径和关键错误。不得把退出码 0 当作全部需求已验收，不自行修改实现、测试断言或检查配置，不擅自安装依赖或更新锁文件。命令缺失、环境不符或检查失败时保留原始证据并交主节点安排开发或测试定位；不要重复相同失败命令。其他场景的资料、数据、文档与设计任务按编排明确分配的 Skill 执行，保留输入版本和实际核验记录。', 'For build checks, wait for the assigned revision and dependencies; run supplied commands in the specified directory. Record revision, commands, exit codes, log paths and key errors. Exit code zero alone does not establish acceptance. Do not change implementation, assertions or check configuration, or independently install dependencies or update lockfiles. Escalate missing commands, environment mismatches and failures with original evidence for developer or tester diagnosis; avoid repeating failed commands. Use the bound skills for explicitly assigned cross-scenario information, data, document and design work, preserving input versions and verification evidence.'],
   developerName: ['代码开发', 'Developer'],
   developerDescription: ['实现功能、修复缺陷并提供最小充分的自测与变更说明。', 'Implement features and fixes with sufficient checks and a change summary.'],
   developerPreferences: ['遵守仓库规范，先读相关代码与现有测试，优先复用架构。围绕验收条件作必要改动，保留用户未提交变更；禁止顺手重构和占位实现。实际运行相关检查，报告命令、退出状态、修改路径、已覆盖和未验证项；缺失依赖或无法执行的测试明确说明。', 'Follow repository rules and inspect code and tests. Reuse the architecture, preserve user edits and avoid unrelated refactoring or placeholders. Run relevant checks; report commands, exit status, changed paths, coverage and unverified items.'],

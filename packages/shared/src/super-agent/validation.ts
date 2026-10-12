@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { SuperAgentLibraryCommandSchemas } from './library'
+import { SuperAgentPlanBlockerSchema } from './blockers'
 import { THINKING_LEVEL_IDS } from '../agent/thinking-levels'
 import type { SuperAgentCommand, SuperAgentConfig, SuperAgentState } from './types'
 
@@ -10,6 +11,7 @@ const slug = z.string().trim().min(1).max(200)
 const avatar = z.string().max(2_000_000)
 const text = z.string().trim().min(1).max(32_000)
 const list = z.array(slug).max(100)
+const skillSlug = slug.refine(value => !/[\\/:\0]/.test(value) && value !== '.' && value !== '..', 'Skill must be a directory slug')
 
 const ConfigSchema = z.object({
   version: z.literal(1),
@@ -19,6 +21,9 @@ const ConfigSchema = z.object({
     id, role: z.enum(['coordinator', 'orchestrator', 'worker']), name, avatar,
     description: z.string().max(4_000),
     llmConnection: slug, model: slug,
+    agentRuntime: z.union([z.enum(['pi', 'claude-code', 'codex']), z.string().regex(/^plugin:[a-z0-9][a-z0-9_-]*$/).max(200).transform(value => value as `plugin:${string}`)]).optional(),
+    skillSlugs: z.array(skillSlug).max(100).optional(),
+    defaultSkillSlugs: z.array(skillSlug).max(100).optional(),
     thinkingLevel: z.enum(THINKING_LEVEL_IDS),
     maxCallsPerMinute: z.number().finite().min(0.1).max(60),
     intelligenceRating: z.number().int().min(1).max(5),
@@ -77,6 +82,8 @@ export function validateSuperAgentConfig(value: unknown): SuperAgentConfig {
   const allowedSources = new Set(config.sourceSlugs)
   for (const node of config.nodes) {
     unique(node.sourceSlugs, 'node sources')
+    unique(node.skillSlugs ?? [], 'node skills')
+    unique(node.defaultSkillSlugs ?? [], 'node default skills')
     for (const slug of node.sourceSlugs) if (!allowedSources.has(slug)) throw new Error(`Node source is outside the team authorization pool: ${slug}`)
     unique(node.abilityProfileIds, 'node ability profiles')
     for (const profileId of node.abilityProfileIds) if (!profiles.has(profileId)) throw new Error(`Unknown ability profile: ${profileId}`)
@@ -101,12 +108,13 @@ const CommandSchema = z.discriminatedUnion('type', [
     dependsOn: z.array(id).max(32).optional(), resources: z.array(slug).max(32).optional(),
     acceptanceCriteria: z.array(text).max(16).optional(), requiresIndependentReview: z.boolean().optional(), reviewOf: id.optional() }).strict(),
   z.object({ type: z.literal('continuous-work'), enabled: z.boolean() }).strict(),
-  z.object({ type: z.literal('plan-upsert'), item: z.object({ id: id.optional(), goalId: id.optional(), title: name, instructions: text, status: z.enum(['planned', 'active', 'blocked', 'completed', 'cancelled']), priority: z.number().int().min(1).max(5), note: z.string().max(4_000) }).strict(), expectedRevision: z.number().int().min(0) }).strict(),
+  z.object({ type: z.literal('plan-upsert'), item: z.object({ id: id.optional(), goalId: id.optional(), title: name, instructions: text, status: z.enum(['planned', 'active', 'blocked', 'completed', 'cancelled']), priority: z.number().int().min(1).max(5), note: z.string().max(4_000), blocker: SuperAgentPlanBlockerSchema.optional() }).strict(), expectedRevision: z.number().int().min(0) }).strict(),
   z.object({ type: z.literal('task-resume'), taskId: id }).strict(),
   z.object({ type: z.literal('plan-delete'), id, expectedRevision: z.number().int().min(1) }).strict(),
   z.object({ type: z.literal('cancel'), taskId: id.optional() }).strict(),
   z.object({ type: z.literal('inspect') }).strict(),
   z.object({ type: z.literal('node-refresh'), nodeId: id }).strict(),
+  z.object({ type: z.literal('node-reset'), nodeId: id, confirmed: z.literal(true) }).strict(),
   z.object({ type: z.literal('history-cleanup'), before: z.number().finite().min(0), keepRecentMessages: z.number().int().min(0).max(500), expectedRevision: z.number().int().min(0) }).strict(),
   z.object({ type: z.literal('history-compact'), nodeIds: z.array(id).min(1).max(32), expectedRevision: z.number().int().min(0) }).strict(),
   z.object({ type: z.literal('history-delete-sessions'), sessions: z.array(z.object({ id: z.string().trim().min(1).max(200), lastMessageAt: z.number().finite().min(0) }).strict()).min(1).max(100), before: z.number().finite().min(0), expectedRevision: z.number().int().min(0) }).strict(),

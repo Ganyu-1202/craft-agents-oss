@@ -1,0 +1,50 @@
+name: iPhone and iPad
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/ios/**"
+      - "apps/webui/**"
+      - "apps/electron/src/renderer/**"
+      - "apps/electron/src/shared/**"
+      - "apps/electron/src/transport/**"
+      - "packages/ui/**"
+      - "packages/shared/**"
+      - "scripts/build-ios.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - "scripts/build-ios.ts"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Compile simulator app (iPhone and iPad)
+        run: bun run ios:build:simulator
+      - name: Compile universal device app without signing
+        run: bun run ios:build -- --skip-webui
+      - name: Upload apps and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokenbird-ios-unsigned
+          path: dist/ios/
+          if-no-files-found: error

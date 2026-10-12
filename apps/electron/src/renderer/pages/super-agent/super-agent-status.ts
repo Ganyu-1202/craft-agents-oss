@@ -5,6 +5,12 @@ import type { PermissionRequest } from '../../../shared/types'
 export type SuperAgentWorkStatus = 'idle' | 'thinking' | 'working' | 'preparing' | 'recovering'
   | 'waiting_permission' | 'error' | 'queued' | 'blocked' | 'waiting' | 'unavailable'
 
+function blockedTaskStatus(snapshot: SuperAgentSnapshot, task: SuperAgentSnapshot['state']['tasks'][number]): SuperAgentWorkStatus {
+  if (snapshot.recoverySuspended) return 'waiting'
+  const plan = snapshot.state.plans.find(plan => plan.id === task.planId)
+  return plan?.blocker?.kind === 'user' ? 'blocked' : 'recovering'
+}
+
 /** Use live events only while they belong to the node's current session and turn. */
 export function nodeWorkStatus(
   snapshot: SuperAgentSnapshot,
@@ -35,7 +41,8 @@ export function nodeWorkStatus(
   const tasks = snapshot.state.tasks.filter(task => task.nodeId === nodeId)
   if (tasks.some(task => task.status === 'running' && task.phase !== 'waiting')) return 'working'
   if (tasks.some(task => task.status === 'queued' && task.phase !== 'waiting' && !superAgentTaskBlocker(snapshot.state, task))) return 'queued'
-  if (tasks.some(task => task.status === 'queued' && superAgentTaskBlocker(snapshot.state, task))) return 'blocked'
+  const blocked = tasks.filter(task => task.status === 'queued' && superAgentTaskBlocker(snapshot.state, task))
+  if (blocked.length) return blocked.some(task => blockedTaskStatus(snapshot, task) === 'blocked') ? 'blocked' : blockedTaskStatus(snapshot, blocked[0]!)
   if (tasks.some(task => (task.status === 'queued' || task.status === 'running') && task.phase === 'waiting')) return 'waiting'
   return 'idle'
 }
@@ -52,9 +59,10 @@ export function teamWorkStatus(snapshot: SuperAgentSnapshot, pendingPermissions:
   const nodeIds = new Set(nodes.map(node => node.nodeId))
   for (const task of snapshot.state.tasks.filter(task => !nodeIds.has(task.nodeId))) {
     if (task.status !== 'running' && task.status !== 'queued') continue
-    statuses.add(task.status === 'queued' && superAgentTaskBlocker(snapshot.state, task) ? 'blocked' : task.phase === 'waiting' ? 'waiting' : task.status === 'running' ? 'working' : 'queued')
+    statuses.add(task.status === 'queued' && superAgentTaskBlocker(snapshot.state, task) ? blockedTaskStatus(snapshot, task) : task.phase === 'waiting' ? 'waiting' : task.status === 'running' ? 'working' : 'queued')
   }
-  if (snapshot.state.plans.some(plan => plan.status === 'blocked')) statuses.add('blocked')
+  if (snapshot.state.plans.some(plan => plan.status === 'blocked' && plan.blocker?.kind === 'user')) statuses.add('blocked')
+  if (!snapshot.recoverySuspended && snapshot.state.plans.some(plan => plan.status === 'blocked' && plan.blocker?.kind !== 'user')) statuses.add('recovering')
   const status: SuperAgentWorkStatus = !snapshot.environment.available ? 'unavailable'
     : priority.find(value => statuses.has(value)) ?? 'idle'
   return { status, nodes }

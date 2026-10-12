@@ -10,7 +10,7 @@ process.env.TOKENBIRD_CONFIG_DIR = join(root, 'config');
 const { saveAgentPluginManifest } = await import('./storage.ts');
 const { getBackendFrameworkCatalog, saveBackendFrameworkConfiguration, getBackendFrameworkFingerprint,
   validateBackendFrameworkConfiguration, setDetectedFrameworkLocation } = await import('./framework-storage.ts');
-const { defaultFrameworkConfiguration, frameworkFeatureOptions } = await import('./frameworks.ts');
+const { defaultFrameworkConfiguration, frameworkFeatureOptions, defaultNativeOptions, claudeFrameworkPlugins } = await import('./frameworks.ts');
 const { testBackendFrameworkConfiguration } = await import('./framework-probe.ts');
 const { configureFrameworkAgent } = await import('./framework-runtime.ts');
 const { frameworkToolBlockReason, registerFrameworkToolPolicy } = await import('./framework-tool-policy.ts');
@@ -37,7 +37,24 @@ test('catalog shows supported frameworks and editable locations without transpor
   expect(catalog.frameworks.map(item => item.id)).toEqual(expect.arrayContaining(['pi', 'codex', 'claude-code', 'plugin:hermes', 'plugin:dsh']));
   expect(JSON.stringify(catalog)).not.toContain('never-return-in-ui');
   expect(configuration().executablePath).toBe(process.execPath);
-  expect(frameworkFeatureOptions(catalog.frameworks.find(item => item.id === 'codex')!, 'files')).toEqual(['native']);
+  expect(frameworkFeatureOptions(catalog.frameworks.find(item => item.id === 'codex')!, 'files')).toEqual(['native', 'host', 'disabled']);
+});
+
+test('Claude native plugin settings validate directories, persist and stay disabled for supervised nodes', () => {
+  const configuration = defaultFrameworkConfiguration(getBackendFrameworkCatalog().frameworks.find(item => item.id === 'claude-code')!);
+  const plugin = join(root, 'claude-plugin');
+  configuration.nativeOptions = { ...defaultNativeOptions(), claudePlugins: [plugin] };
+  expect(() => validateBackendFrameworkConfiguration(configuration)).toThrow('plugin.json');
+  mkdirSync(join(plugin, '.claude-plugin'), { recursive: true });
+  writeFileSync(join(plugin, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'fixture-plugin' }));
+  const saved = saveBackendFrameworkConfiguration(configuration);
+  expect(getBackendFrameworkCatalog().frameworks.find(item => item.id === 'claude-code')!.configuration.nativeOptions?.claudePlugins).toEqual([plugin]);
+  expect(claudeFrameworkPlugins(saved, false)).toEqual([{ type: 'local', path: plugin }]);
+  expect(claudeFrameworkPlugins(saved, true)).toEqual([]);
+  expect(() => validateBackendFrameworkConfiguration({ ...saved, nativeOptions: { ...saved.nativeOptions, claudePlugins: ['relative-path'] } })).toThrow('absolute');
+  expect(() => validateBackendFrameworkConfiguration({ ...saved, nativeOptions: { ...saved.nativeOptions, claudePlugins: [plugin, plugin] } })).toThrow('Duplicate');
+  const pi = defaultFrameworkConfiguration(getBackendFrameworkCatalog().frameworks.find(item => item.id === 'pi')!);
+  expect(() => validateBackendFrameworkConfiguration({ ...pi, nativeOptions: saved.nativeOptions })).toThrow('Claude Code');
 });
 
 test('unsupported routes and ambiguous relative locations are rejected before storing changes', () => {
@@ -122,6 +139,20 @@ test('shared auxiliary inference replaces both query and title paths and cleans 
   expect((await native.queryLlm!({ prompt: 'summary' })).text).toBe('shared');
   expect(nativeCalls).toBe(0);
   native.destroy(); expect(disposed).toBe(true);
+});
+
+test('restarting a framework releases shared inference and the session tool policy', async () => {
+  let disposed = false;
+  let utilityDisposed = false;
+  const native = { destroy: () => {}, disposeForRestart: async () => { disposed = true; } } as unknown as AgentBackend;
+  const draft = { ...configuration(), features: { ...configuration().features, utility: 'host' as const, files: 'disabled' as const } };
+  configureFrameworkAgent(native, draft, { session: { id: 'framework-restart' } } as any,
+    () => ({ queryLlm: async () => ({ text: 'shared' }), destroy: () => { utilityDisposed = true; } } as unknown as AgentBackend));
+  await native.queryLlm!({ prompt: 'summary' });
+  expect(frameworkToolBlockReason('framework-restart', 'Write')).toBeDefined();
+  await native.disposeForRestart!();
+  expect(disposed).toBe(true); expect(utilityDisposed).toBe(true);
+  expect(frameworkToolBlockReason('framework-restart', 'Write')).toBeUndefined();
 });
 
 test('local validity tests negotiate a real adapter without saving the draft or requesting credentials', async () => {

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('birdCompanion', {
   getState: () => ipcRenderer.invoke(IPC.getState),
   dismissBubble: () => ipcRenderer.invoke(IPC.dismissBubble),
   showBubble: () => ipcRenderer.invoke(IPC.showBubble),
+  contextMenu: () => ipcRenderer.invoke(IPC.contextMenu),
   resizeBubble: (height: number) => ipcRenderer.invoke(IPC.resizeBubble, height),
   interactive: (value: boolean) => ipcRenderer.invoke(IPC.interactive, value),
   move: (x: number, y: number) => ipcRenderer.invoke(IPC.move, { x, y }),

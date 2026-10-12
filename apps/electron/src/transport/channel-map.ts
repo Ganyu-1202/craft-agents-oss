@@ -17,6 +17,11 @@ function listener(channel: string) {
 }
 
 export const CHANNEL_MAP = {
+  getCredentialAccess: invoke(RPC_CHANNELS.credentials.ACCESS),
+  requestCredentialAccess: invoke(RPC_CHANNELS.credentials.REQUEST_ACCESS),
+  getNativeCredentialStatus: invoke(RPC_CHANNELS.credentials.STATUS),
+  listNativeCredentials: invoke(RPC_CHANNELS.credentials.LIST),
+  applyNativeCredentialChanges: invoke(RPC_CHANNELS.credentials.APPLY),
   getCloudConfig: invoke(RPC_CHANNELS.cloud.GET_CONFIG),
   setCloudConfig: invoke(RPC_CHANNELS.cloud.SET_CONFIG),
   getCloudStatus: invoke(RPC_CHANNELS.cloud.GET_STATUS),
@@ -468,6 +473,7 @@ export const CHANNEL_MAP = {
   getLlmConnectionApiKey: invoke(RPC_CHANNELS.llmConnections.GET_API_KEY),
   saveLlmConnection: invoke(RPC_CHANNELS.llmConnections.SAVE),
   deleteLlmConnection: invoke(RPC_CHANNELS.llmConnections.DELETE),
+  logoutLlmConnection: invoke(RPC_CHANNELS.llmConnections.LOGOUT),
   testLlmConnection: invoke(RPC_CHANNELS.llmConnections.TEST),
   setDefaultLlmConnection: invoke(RPC_CHANNELS.llmConnections.SET_DEFAULT),
   setWorkspaceDefaultLlmConnection: invoke(RPC_CHANNELS.llmConnections.SET_WORKSPACE_DEFAULT),

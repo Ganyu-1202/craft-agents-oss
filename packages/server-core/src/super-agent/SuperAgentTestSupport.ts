@@ -23,6 +23,9 @@ export class SuperAgentTestHost implements SuperAgentSessionHost {
   pendingPermissions = new Map<string, { sessionId: string; resolve: (allowed: boolean) => void }>()
   permissionResponses: Array<{ sessionId: string; requestId: string; allowed: boolean; alwaysAllow: boolean }> = []
   permissionGrantClears: string[] = []
+  fullControlChanges: Array<{ workspaceId: string; enabled: boolean }> = []
+
+  async setSuperAgentFullControl(workspaceId: string, enabled: boolean) { this.fullControlChanges.push({ workspaceId, enabled }) }
 
   clearSuperAgentPermissionGrants(workspaceId: string) { this.permissionGrantClears.push(workspaceId) }
 
@@ -124,7 +127,7 @@ afterEach(async () => {
 })
 
 export async function superAgentFixture(options: Partial<Pick<SuperAgentServiceDeps,
-  'spawnScript' | 'resolveEnvironment' | 'prepareEnvironment' | 'onConfigChanged' | 'onChanged' | 'workflow' | 'upgradeArchitecture' | 'actionGates' | 'checkReadiness'>> = {}) {
+  'spawnScript' | 'resolveEnvironment' | 'prepareEnvironment' | 'onConfigChanged' | 'onChanged' | 'workflow' | 'upgradeArchitecture' | 'actionGates' | 'checkReadiness' | 'resolveNodeSkills' | 'describeNodeBackend' | 'describeNodeSkills' | 'describeResources'>> = {}) {
   const root = await mkdtemp(join(tmpdir(), fixturePrefix))
   const workingDirectory = join(root, 'work')
   await mkdir(workingDirectory)

@@ -33,6 +33,15 @@ export function SuperAgentResources({ config, sources, skills, onSave }: {
     setAbility(next); setAssignedNodeIds(config.nodes.filter(node => node.abilityProfileIds.includes(next.id)).map(node => node.id)); setError('')
   }
   return <div className="h-full min-h-0 overflow-y-auto"><div className="mx-auto max-w-3xl space-y-6 p-6">
+    <FormSection title={text('resourceActivation')} description={text('resourceActivationHint')}>
+      <div className="space-y-3">{config.nodes.filter(node => node.role === 'worker').map(node => <div key={node.id} className="rounded-lg border border-border/60 p-3">
+        <p className="text-sm font-medium">{node.name}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {(node.skillSlugs ?? []).map(slug => <span key={`skill:${slug}`} className="inline-flex items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 text-[11px] text-muted-foreground"><BookOpen className="size-3" />{skills.find(skill => skill.slug === slug)?.metadata.name ?? slug}</span>)}
+          {node.sourceSlugs.map(slug => <span key={`source:${slug}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"><Database className="size-3" />{sources.find(source => source.config.slug === slug)?.config.name ?? slug}</span>)}
+        </div>
+      </div>)}</div>
+    </FormSection>
     <FormSection title={text('sources')} description={text('sourcesHint')}>
       {sources.length > 0 ? <ChoiceList items={sources.map(source => ({ id: source.config.slug, name: source.config.name, description: source.config.tagline ?? source.config.provider }))}
         selected={sourceSlugs} onChange={setSourceSlugs} /> : <EmptyResource icon={Database} message={text('noSources')} />}

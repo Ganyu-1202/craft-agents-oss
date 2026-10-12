@@ -212,7 +212,7 @@ describe('separated Super Agent architecture', () => {
     const planner = buildSuperAgentNodePrompt(f.config, f.config.nodes[1]!)
     expect(main).toContain('不要拆解任务')
     expect(main).toContain('intent 必须包含')
-    expect(planner).toContain('禁止 userReply')
+    expect(planner).toContain('禁止用户交付工具')
     expect(planner).toContain('reviewOf')
     expect(planner).toContain('collaboration_board')
   })

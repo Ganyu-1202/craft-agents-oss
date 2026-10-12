@@ -4,7 +4,10 @@
   "author": "Pavel Pertsev",
   "license": "MIT",
   "source": "https://github.com/morhetz/gruvbox",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "vitesse-dark"
@@ -21,6 +24,16 @@
     "accent": "#83a598",
     "info": "#fabd2f",
     "success": "#b8bb26",
-    "destructive": "#fb4934"
-  }
+    "destructive": "#fb4934",
+    "paper": "#32302f",
+    "navigator": "#1d2021",
+    "input": "#3c3836",
+    "popover": "#32302f",
+    "popoverSolid": "#32302f"
+  },
+  "paper": "#f2e5bc",
+  "navigator": "#ebdbb2",
+  "input": "#f9f5d7",
+  "popover": "#f2e5bc",
+  "popoverSolid": "#f2e5bc"
 }

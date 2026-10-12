@@ -564,7 +564,7 @@ export type SessionEvent =
   | { type: 'complete'; sessionId: string; tokenUsage?: Session['tokenUsage']; hasUnread?: boolean; backgroundTasksAlive?: boolean }
   | { type: 'interrupted'; sessionId: string; message?: Message; queuedMessages?: string[] }
   | { type: 'status'; sessionId: string; message: string; statusType?: 'compacting' }
-  | { type: 'info'; sessionId: string; message: string; statusType?: 'compaction_complete'; level?: 'info' | 'warning' | 'error' | 'success'; timestamp?: number }
+  | { type: 'info'; sessionId: string; message: string; statusType?: 'compaction_complete' | 'retrying'; level?: 'info' | 'warning' | 'error' | 'success'; timestamp?: number }
   | { type: 'title_generated'; sessionId: string; title: string }
   | { type: 'title_regenerating'; sessionId: string; isRegenerating: boolean }
   | { type: 'async_operation'; sessionId: string; isOngoing: boolean }

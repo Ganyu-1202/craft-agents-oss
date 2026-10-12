@@ -4,7 +4,9 @@
   "author": "enkia",
   "license": "MIT",
   "source": "https://github.com/enkia/tokyo-night-vscode-theme",
-  "supportedModes": ["dark"],
+  "supportedModes": [
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "tokyo-night"
@@ -21,6 +23,16 @@
     "accent": "#7aa2f7",
     "info": "#e0af68",
     "success": "#9ece6a",
-    "destructive": "#f7768e"
-  }
+    "destructive": "#f7768e",
+    "paper": "#24283b",
+    "navigator": "#16161e",
+    "input": "#202337",
+    "popover": "#24283b",
+    "popoverSolid": "#24283b"
+  },
+  "paper": "#24283b",
+  "navigator": "#16161e",
+  "input": "#202337",
+  "popover": "#24283b",
+  "popoverSolid": "#24283b"
 }

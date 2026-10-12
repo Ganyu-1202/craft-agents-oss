@@ -7,6 +7,7 @@
 
 import type { Message, StoredMessage, MessageRole } from '@craft-agent/core'
 import { isParentTaskTool } from '@craft-agent/shared/utils/toolNames'
+import { isRecoveryInfo } from '@craft-agent/shared/utils/recovery-info'
 import { storedToMessage } from '@craft-agent/core'
 
 export { storedToMessage }
@@ -33,6 +34,37 @@ function stripErrorTags(content: string | undefined): string | undefined {
     .replace(/<\/?tool_use_error>/gi, '')
     .replace(/^\[ERROR]\s*/i, '')
     .trim()
+}
+
+/** SDKs can report one failed request as both a raw and a structured error. */
+function mergeRequestErrors(previous: Message, incoming: Message): Message | undefined {
+  if (previous.role !== 'error' || incoming.role !== 'error') return
+
+  const diagnosticText = (message: Message) =>
+    [message.content, message.errorOriginal, ...(message.errorDetails ?? [])].filter(Boolean).join('\n')
+  const requestIds = (message: Message) => new Set(
+    Array.from(diagnosticText(message).matchAll(/request[\s_-]*id["']?\s*[:=]\s*["']?([\w-]+)/gi), match => match[1]),
+  )
+  const previousIds = requestIds(previous)
+  const incomingIds = requestIds(incoming)
+  // Compare request identity, never just a friendly title shared by unrelated failures.
+  if (!Array.from(previousIds).some(id => incomingIds.has(id))) return
+
+  const preferred = incoming.errorCode ? incoming : previous
+  const other = preferred === incoming ? previous : incoming
+  const details = Array.from(new Set([
+    ...(previous.errorDetails ?? []),
+    ...(incoming.errorDetails ?? []),
+    ...(!other.errorCode && other.content !== preferred.content ? [`Raw: ${other.content}`] : []),
+    ...(other.errorOriginal && other.errorOriginal !== preferred.errorOriginal ? [`Raw: ${other.errorOriginal}`] : []),
+  ]))
+  return {
+    ...other,
+    ...preferred,
+    id: previous.id,
+    timestamp: previous.timestamp,
+    errorDetails: details.length ? details : undefined,
+  }
 }
 
 // ============================================================================
@@ -485,8 +517,8 @@ export function groupMessagesByTurn(messages: Message[], options: GroupTurnsOpti
     if (message.role === 'info' && message.statusType === 'compaction_complete') {
       let updatedStatus = false
       if (currentTurn) {
-        const statusIdx = currentTurn.activities.findIndex(
-          a => a.type === 'status' && a.statusType === 'compacting'
+        const statusIdx = currentTurn.activities.findLastIndex(
+          a => a.type === 'status' && a.statusType === 'compacting' && a.status === 'running'
         )
         const existingActivity = currentTurn.activities[statusIdx]
         if (statusIdx !== -1 && existingActivity) {
@@ -498,23 +530,55 @@ export function groupMessagesByTurn(messages: Message[], options: GroupTurnsOpti
           updatedStatus = true
         }
       }
-      // Transient progress messages are omitted from persisted history. Keep
-      // the completion visible when there is no live progress activity to update.
+      // Persisted history omits transient progress. Keep completion inside an
+      // open assistant turn so compression never finalizes intermediate text
+      // or splits the ongoing activity card when history is reloaded.
       if (!updatedStatus) {
-        if (currentTurn) currentTurn.isComplete = true
-        flushCurrentTurn()
-        turns.push({ type: 'system', message, timestamp: message.timestamp })
+        if (currentTurn) {
+          currentTurn.activities.push({
+            id: message.id,
+            type: 'status',
+            status: 'completed',
+            content: message.content,
+            timestamp: message.timestamp,
+            statusType: 'compacting',
+            depth: 0,
+          })
+        } else {
+          turns.push({ type: 'system', message, timestamp: message.timestamp })
+        }
       }
       continue
     }
 
-    // Error/info/warning messages are standalone
+    // Recovery is part of the same user task. Preserve its notice inside the
+    // activity tree, including older history without a structured status tag.
+    if (message.role === 'info' && (message.statusType === 'retrying' || isRecoveryInfo(message.content)) && currentTurn) {
+      currentTurn.activities.push({
+        id: message.id,
+        type: 'status',
+        status: 'completed',
+        content: message.content,
+        timestamp: message.timestamp,
+        statusType: 'retrying',
+        depth: 0,
+      })
+      continue
+    }
+
+    // Errors, warnings and actual interruption notices remain standalone.
     if (message.role === 'error' || message.role === 'info' || message.role === 'warning') {
       // Flush current turn first (mark as interrupted if info message)
       const isInterruption = message.role === 'info'
       // For error/warning (not info), the previous turn is complete
       if (currentTurn && !isInterruption) currentTurn.isComplete = true
       flushCurrentTurn(isInterruption)
+      const previous = turns.at(-1)
+      const merged = previous?.type === 'system' ? mergeRequestErrors(previous.message, message) : undefined
+      if (merged && previous?.type === 'system') {
+        previous.message = merged
+        continue
+      }
       turns.push({
         type: 'system',
         message,

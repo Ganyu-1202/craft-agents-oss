@@ -62,6 +62,7 @@ export const SETTINGS_ICONS: Record<SettingsSubpage, React.ComponentType<IconPro
   usage: UsageSettingsIcon,
   recharge: ({ className }) => <WalletCards className={className} />,
   ai: AiSettingsIcon,
+  backends: ({ className }) => <Server className={className} />,
   credentials: CredentialsSettingsIcon,
   appearance: AppearanceIcon,
   input: InputIcon,

@@ -34,6 +34,7 @@ export {
   // Config operations
   loadWorkspaceConfig,
   saveWorkspaceConfig,
+  isLocalMcpEnabled,
   // Load operations
   loadWorkspace,
   getWorkspaceSummary,

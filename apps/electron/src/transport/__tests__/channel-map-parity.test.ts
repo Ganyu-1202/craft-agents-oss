@@ -18,6 +18,7 @@ type ApiToChannelMapKeys = Exclude<
   | 'openTokenNestRecharge' // direct native IPC; opens a window on the user's device
   | 'getBirdCompanionPreferences' // desktop companion is client-local native IPC
   | 'setBirdCompanionPreferences'
+  | 'onBirdCompanionPreferencesChanged'
   | 'observeBirdCompanionProgress'
   | 'getTransportConnectionState'
   | 'getRuntimeEnvironment'
@@ -25,9 +26,6 @@ type ApiToChannelMapKeys = Exclude<
   | 'reconnectTransport'
   | 'isChannelAvailable'
   | 'getSystemWarnings' // reads env var set at startup — no IPC needed
-  | 'getNativeCredentialStatus' // native IPC; never expose credential management over WS
-  | 'listNativeCredentials'
-  | 'applyNativeCredentialChanges'
   | 'migrateNativeCredentials'
   | 'relaunchApp' // direct IPC to main process — not through WS RPC
   | 'removeWorkspace' // direct IPC to main process — modifies local config

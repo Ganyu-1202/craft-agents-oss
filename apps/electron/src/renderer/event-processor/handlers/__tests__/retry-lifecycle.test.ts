@@ -49,6 +49,15 @@ function messageIds(state: SessionState): string[] {
 }
 
 describe('Pi retry lifecycle event processing', () => {
+  it('retains a structured recovery notice after retry progress clears and processing completes', () => {
+    let state = beginBackoff(makeState())
+    state = applyEvent(state, { type: 'info', sessionId: SESSION_ID, message: 'Recovered after 2 retries', statusType: 'retrying', timestamp: 10 })
+    state = applyEvent(state, { type: 'retry', sessionId: SESSION_ID, phase: 'end' })
+    state = applyEvent(state, { type: 'complete', sessionId: SESSION_ID })
+    expect(retryRows(state)).toHaveLength(0)
+    expect(state.session.messages).toHaveLength(1)
+    expect(state.session.messages[0]).toMatchObject({ role: 'info', statusType: 'retrying', content: 'Recovered after 2 retries', timestamp: 10 })
+  })
   it('routes text_discard through the processor and removes only unfinished assistant text for its turn', () => {
     const state = makeState([
       { id: 'user', role: 'user', content: 'hello', timestamp: 1 },

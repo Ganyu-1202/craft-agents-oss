@@ -33,9 +33,11 @@ export function selectSuperAgentWorker(document: SuperAgentDocument, now: number
     || (document.state.nodes.find(node => node.nodeId === a.node.id)?.lastStartedAt ?? 0) - (document.state.nodes.find(node => node.nodeId === b.node.id)?.lastStartedAt ?? 0))[0]?.node
 }
 
-/** Prompt/display edits retain transcripts; provider, thinking, sources and environment changes do not. */
+/** Prompt/display edits retain transcripts; model, backend, thinking and resource bindings define session identity. */
 export function sameNodeSessionIdentity(before: SuperAgentNode | undefined, after: SuperAgentNode): boolean {
   return !!before && before.role === after.role && before.llmConnection === after.llmConnection
     && before.model === after.model && before.thinkingLevel === after.thinkingLevel
+    && before.agentRuntime === after.agentRuntime
+    && [...(before.skillSlugs ?? [])].sort().join('\0') === [...(after.skillSlugs ?? [])].sort().join('\0')
     && [...before.sourceSlugs].sort().join('\0') === [...after.sourceSlugs].sort().join('\0')
 }

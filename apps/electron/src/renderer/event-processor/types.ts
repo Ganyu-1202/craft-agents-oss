@@ -254,7 +254,7 @@ export interface InfoEvent {
   type: 'info'
   sessionId: string
   message: string
-  statusType?: 'compaction_complete'
+  statusType?: 'compaction_complete' | 'retrying'
   level?: 'info' | 'warning' | 'error' | 'success'
   /** Timestamp from main process for consistent ordering */
   timestamp?: number

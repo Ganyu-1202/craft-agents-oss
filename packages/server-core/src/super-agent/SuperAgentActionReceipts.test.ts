@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'bun:test'
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { loadSuperAgentDocument } from '@craft-agent/shared/super-agent'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 
 const block = (actions: unknown) => `<super_agent_actions>${JSON.stringify(actions)}</super_agent_actions>`
 const assignment = { tasks: [{ title: 'Actual assignment', instructions: 'Verify the current artifact', nodeId: 'worker' }] }
+// Exercise long result framing with distinct evidence, not a degenerate character loop.
+const longText = (length: number) => Array.from({ length: Math.ceil(length / 64) }, (_, i) => createHash('sha256').update(String(i)).digest('hex')).join('').slice(0, length)
 
 describe('Super Agent control outcomes', () => {
   test('dispatches valid actions after long text or across the old display truncation boundary', async () => {
@@ -13,7 +16,7 @@ describe('Super Agent control outcomes', () => {
       await service.save('alpha', config)
       await service.command('alpha', { type: 'chat', text: 'Perform the authorized work' })
       const active = await until(() => service.get('alpha'), value => value.state.nodes[0]?.status === 'working')
-      host.complete(active.state.nodes[0]!.sessionId!, `${'x'.repeat(length)}\n${block(assignment)}`)
+      host.complete(active.state.nodes[0]!.sessionId!, `${longText(length)}\n${block(assignment)}`)
       const result = await until(() => service.get('alpha'), value => value.state.tasks[0]?.status === 'running')
       expect(result.state.tasks).toHaveLength(1)
       expect(result.state.tasks[0]!.title).toBe('Actual assignment')
@@ -122,11 +125,11 @@ describe('Super Agent control outcomes', () => {
     await service.command('alpha', { type: 'board-upsert', item: { id: 'shared', title: 'Result', content: 'Original' }, expectedRevision: 0 })
     await service.command('alpha', { type: 'task', title: 'Long evidence report', instructions: 'Publish actual result' })
     const active = await until(() => service.get('alpha'), value => value.state.tasks[0]?.status === 'running')
-    host.complete(active.state.nodes[1]!.sessionId!, `${'x'.repeat(65_000)}\n${block({ board: [{ id: 'shared', title: 'Result', content: 'Rejected', expectedRevision: 0 }] })}`)
+    host.complete(active.state.nodes[1]!.sessionId!, `${longText(65_000)}\n${block({ board: [{ id: 'shared', title: 'Result', content: 'Rejected', expectedRevision: 0 }] })}`)
     await until(() => service.get('alpha'), value => value.state.nodes[0]?.status === 'working')
     const packet = host.sends.at(-1)!.message
     expect(packet).toContain('Action receipt (actual host outcome)')
-    expect(packet.indexOf('Action receipt')).toBeLessThan(packet.indexOf('x'.repeat(100)))
+    expect(packet.indexOf('Action receipt')).toBeLessThan(packet.indexOf(longText(100)))
     expect(packet).toContain('use worker-provided verification evidence before marking it completed')
   })
 })

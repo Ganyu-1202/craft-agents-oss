@@ -29,6 +29,12 @@ const MAX_FRAME = 16 * 1024 * 1024
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
 const credentialMatches = (value: string, expected: string) => timingSafeEqual(Buffer.from(digest(value), 'hex'), Buffer.from(digest(expected), 'hex'))
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+// Android serves its bundled WebUI on a random IPv4 loopback port. This
+// exception only admits client sockets; device access still requires a ticket.
+function isAndroidWebUiOrigin(origin: string): boolean {
+  const match = origin.match(/^http:\/\/127\.0\.0\.1:([1-9]\d{0,4})$/)
+  return !!match && Number(match[1]) <= 65535
+}
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
 class RateLimitError extends Error {}
 
@@ -281,7 +287,9 @@ export function startCloudServer(options: CloudServerOptions) {
         }
         const hostMatch = url.pathname.match(/^\/v1\/tunnel\/([a-f0-9-]{36})$/)
         const clientMatch = url.pathname.match(/^\/v1\/connect\/([a-f0-9-]{36})$/)
-        if ((hostMatch || clientMatch) && req.headers.has('Origin') && req.headers.get('Origin') !== publicUrl) return json({ error: 'WebSocket origin is not allowed' }, 403)
+        const origin = req.headers.get('Origin')
+        if ((hostMatch || clientMatch) && origin !== null && origin !== publicUrl
+          && !(clientMatch && isAndroidWebUiOrigin(origin))) return json({ error: 'WebSocket origin is not allowed' }, 403)
         if (hostMatch) {
           const key = digest(req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '')
           const grant = tickets.get(key)
@@ -412,7 +420,10 @@ export function startCloudServer(options: CloudServerOptions) {
           if (ws.data.role === 'host') {
             const frame = JSON.parse(text) as TunnelFrame
             if (hosts.get(ws.data.deviceId) !== ws) return
-            if (frame.type === 'capabilities') { ws.data.directCapable = frame.direct === true; return }
+            // Older hosts open local RPC before negotiation and exhaust its
+            // five-second handshake deadline on slow mobile NAT. Keep them on
+            // relay until they advertise deferred local socket admission.
+            if (frame.type === 'capabilities') { ws.data.directCapable = frame.direct === true && frame.deferredHandshake === true; return }
             const client = streams.get(frame.streamId)
             if (!client || client.data.deviceId !== ws.data.deviceId || hosts.get(ws.data.deviceId) !== ws) return
             if (client.data.expiresAt <= Date.now()) { client.close(1008, 'Connection expired'); return }

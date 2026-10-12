@@ -25,6 +25,12 @@ class ModelHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        # Hermes probes localhost endpoints for Ollama capabilities before inference.
+        # This fixture is a Chat Completions server, so answer that probe explicitly.
+        if self.path == '/api/show':
+            self.send_response(404); self.send_header('Content-Type', 'application/json'); self.end_headers()
+            self.wfile.write(b'{"error":"This fixture is not an Ollama server"}')
+            return
         self.requests.append(body)
         names = [item['function']['name'] for item in body.get('tools') or []]
         completed = [item for item in body['messages'] if item.get('role') == 'tool']

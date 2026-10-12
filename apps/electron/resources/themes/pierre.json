@@ -4,7 +4,10 @@
   "author": "Pierre Computer Company",
   "license": "MIT",
   "source": "https://github.com/pierrecomputer/theme",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "github-dark"
@@ -21,6 +24,16 @@
     "accent": "#69b1ff",
     "info": "#ffa359",
     "success": "#5ecc71",
-    "destructive": "#ff678d"
-  }
+    "destructive": "#ff678d",
+    "paper": "#161b22",
+    "navigator": "#090d12",
+    "input": "#161b22",
+    "popover": "#161b22",
+    "popoverSolid": "#161b22"
+  },
+  "paper": "#f6f8fa",
+  "navigator": "#f1f5f9",
+  "input": "#ffffff",
+  "popover": "#f6f8fa",
+  "popoverSolid": "#f6f8fa"
 }

@@ -97,6 +97,7 @@ import { getValidClaudeOAuthToken } from '@craft-agent/shared/auth'
 import { resolveAuthEnvVars } from '@craft-agent/shared/config'
 import { toolMetadataStore, getLastApiError } from '@craft-agent/shared/interceptor'
 import { isParentTaskTool } from '@craft-agent/shared/utils/toolNames'
+import { isRecoveryInfo } from '@craft-agent/shared/utils/recovery-info'
 import { restoreFiles } from '@craft-agent/shared/utils/bundle-files'
 import { getCredentialManager } from '@craft-agent/shared/credentials'
 import { runSavedCredentialOperation, saveRequestedCredential } from './saved-credentials'
@@ -1822,6 +1823,7 @@ export class SessionManager implements ISessionManager {
     // A separate runtime, no chat transcript, tools, inherited grants or worker instructions.
     const wsConfig = loadWorkspaceConfig(managed.workspace.rootPath)
     const resolvedContext = resolveBackendContext({ sessionConnectionSlug: managed.llmConnection,
+      sessionAgentRuntime: managed.executionPolicy?.agentRuntime,
       workspaceDefaultConnectionSlug: wsConfig?.defaults?.defaultLlmConnection, managedModel: managed.model })
     // Native Codex utility sessions retain built-in tools. Use its existing Pi transport for review.
     const context = resolvedContext.agentRuntime === 'codex' ? { ...resolvedContext, agentRuntime: 'pi' as const } : resolvedContext
@@ -2954,9 +2956,10 @@ export class SessionManager implements ISessionManager {
   }
 
   /** Includes retired nodes whose persisted execution policy still identifies ownership. */
-  getSuperAgentSessionIds(workspaceId: string): string[] {
+  getSuperAgentSessionIds(workspaceId: string, nodeId?: string): string[] {
     return Array.from(this.sessions.values())
       .filter(session => session.workspace.id === workspaceId && !!session.executionPolicy)
+      .filter(session => !nodeId || session.executionPolicy?.nodeId === nodeId)
       .map(session => session.id)
   }
 
@@ -4013,6 +4016,7 @@ export class SessionManager implements ISessionManager {
     const workspaceConfig = loadWorkspaceConfig(managed.workspace.rootPath)
     const backendContext = resolveBackendContext({
       sessionConnectionSlug: managed.llmConnection,
+      sessionAgentRuntime: managed.executionPolicy?.agentRuntime,
       workspaceDefaultConnectionSlug: workspaceConfig?.defaults?.defaultLlmConnection,
       managedModel: managed.model,
     })
@@ -4193,6 +4197,7 @@ export class SessionManager implements ISessionManager {
     const workspaceConfig = loadWorkspaceConfig(managed.workspace.rootPath)
     const backendContext = resolveBackendContext({
       sessionConnectionSlug: managed.llmConnection,
+      sessionAgentRuntime: managed.executionPolicy?.agentRuntime,
       workspaceDefaultConnectionSlug: workspaceConfig?.defaults?.defaultLlmConnection,
       managedModel: managed.model,
     })
@@ -5338,6 +5343,8 @@ export class SessionManager implements ISessionManager {
           if (!session) return null
           return {
             id: session.id,
+            workspaceId: session.workspace.id,
+            workspaceRootPath: session.workspace.rootPath,
             name: session.name ?? session.id,
             labels: session.labels ?? [],
             status: session.sessionStatus ?? 'todo',
@@ -5433,6 +5440,10 @@ export class SessionManager implements ISessionManager {
           if (byLabel) return { resolved: byLabel.id, available, category: byLabel.category }
 
           return { resolved: null, available }
+        },
+        superAgentActionFn: async (toolName, args) => {
+          if (!managed.executionPolicy) throw new Error('This is not a Super Agent node')
+          return getSuperAgentService(this).callNodeActionTool(managed.workspace.id, managed.id, toolName, args)
         },
         superAgentTaskFn: async args => {
           if (!managed.executionPolicy) throw new Error('This is not a Super Agent node')
@@ -7396,6 +7407,7 @@ export class SessionManager implements ISessionManager {
 
       const messageBackendContext = resolveBackendContext({
         sessionConnectionSlug: managed.llmConnection,
+        sessionAgentRuntime: managed.executionPolicy?.agentRuntime,
         workspaceDefaultConnectionSlug: loadWorkspaceConfig(workspaceRootPath)?.defaults?.defaultLlmConnection,
         managedModel: managed.model,
       })
@@ -9498,10 +9510,16 @@ export class SessionManager implements ISessionManager {
 
       case 'info': {
         const isCompactionComplete = event.message.startsWith('Compacted')
+        const isRecovery = isRecoveryInfo(event.message)
         const infoTimestamp = this.monotonic()
 
+        if (isRecovery) {
+          managed.messages.push({ id: generateMessageId(), role: 'info', content: event.message, timestamp: infoTimestamp, statusType: 'retrying' })
+          this.persistSession(managed)
+        }
+
         // Persist compaction messages so they survive reload
-        // Other info messages are transient (just sent to renderer)
+        // Recovery notices are persisted above; other info stays transient.
         if (isCompactionComplete) {
           const compactionMessage: Message = {
             id: generateMessageId(),
@@ -9537,7 +9555,7 @@ export class SessionManager implements ISessionManager {
           type: 'info',
           sessionId,
           message: event.message,
-          statusType: isCompactionComplete ? 'compaction_complete' : undefined,
+          statusType: isCompactionComplete ? 'compaction_complete' : isRecovery ? 'retrying' : undefined,
           timestamp: infoTimestamp,
         }, workspaceId)
         break
@@ -10212,6 +10230,7 @@ export class SessionManager implements ISessionManager {
     const defaultModel = wsConfig?.defaults?.model
     const backendContext = resolveBackendContext({
       sessionConnectionSlug: managed.llmConnection,
+      sessionAgentRuntime: managed.executionPolicy?.agentRuntime,
       workspaceDefaultConnectionSlug: wsConfig?.defaults?.defaultLlmConnection,
       managedModel: managed.model || defaultModel,
     })

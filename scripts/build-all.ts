@@ -14,7 +14,7 @@ const dist = join(root, 'dist');
 const runId = `${Date.now()}-${process.pid}`;
 const stagingRelative = `.build-all/runs/${runId}`;
 const staging = join(root, stagingRelative);
-const allTargets = ['win', 'linux', 'android', 'linux-headless', 'win-headless', 'mac-headless', 'cloud-server'] as const;
+const allTargets = ['win', 'linux', 'android', 'ios', 'linux-headless', 'win-headless', 'mac-headless', 'cloud-server'] as const;
 type Target = typeof allTargets[number];
 
 const args = new Set(process.argv.slice(2));
@@ -49,6 +49,9 @@ function commandAvailable(command: string): boolean {
 }
 
 function unavailableReason(target: Target): string | undefined {
+  if (target === 'ios' && (process.platform !== 'darwin' || !commandAvailable('xcodebuild'))) {
+    return 'iPhone/iPad compilation requires macOS and Xcode; use bun run ios:prepare to prepare assets on this host';
+  }
   if (target === 'win' && process.platform !== 'win32') return 'Windows Electron packaging requires a Windows host';
   if (target === 'linux' && process.platform !== 'linux') return 'Linux Electron packaging requires a Linux host';
   if (target === 'android' && !commandAvailable(process.platform === 'win32' ? 'powershell.exe' : 'pwsh')) {
@@ -92,7 +95,7 @@ async function writeChecksums(): Promise<void> {
     const directory = join(dist, target);
     if (!existsSync(directory)) continue;
     for (const file of readdirSync(directory, { withFileTypes: true })) {
-      if (file.isFile() && /\.(?:exe|msi|AppImage|dmg|zip|apk|tar\.gz)$/i.test(file.name)) {
+      if (file.isFile() && /\.(?:exe|msi|AppImage|dmg|zip|apk|aab|ipa|tar\.gz)$/i.test(file.name)) {
         artifacts.push(`${target}/${file.name}`);
       }
     }
@@ -152,6 +155,7 @@ async function main(): Promise<void> {
     }
     if (!target.endsWith('-headless') && target !== 'cloud-server') removeTargetOutput(target);
     if (target === 'cloud-server') await run('bun', ['run', 'scripts/build-cloud-server.ts']);
+    else if (target === 'ios') await run('bun', ['run', 'scripts/build-ios.ts', ...(release ? ['--release'] : [])]);
     else if (target === 'win' || target === 'linux') await buildDesktop(target);
     else if (target === 'android') {
       const androidArgs = ['-ExecutionPolicy', 'Bypass', '-File', 'apps/android/build.ps1'];

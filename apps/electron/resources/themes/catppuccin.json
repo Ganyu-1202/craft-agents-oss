@@ -4,7 +4,10 @@
   "author": "Catppuccin Org",
   "license": "MIT",
   "source": "https://github.com/catppuccin/catppuccin",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "catppuccin-latte",
     "dark": "catppuccin-mocha"
@@ -21,6 +24,16 @@
     "accent": "#cba6f7",
     "info": "#fab387",
     "success": "#a6e3a1",
-    "destructive": "#f38ba8"
-  }
+    "destructive": "#f38ba8",
+    "paper": "#313244",
+    "navigator": "#181825",
+    "input": "#242437",
+    "popover": "#313244",
+    "popoverSolid": "#313244"
+  },
+  "paper": "#e6e9ef",
+  "navigator": "#dce0e8",
+  "input": "#ffffff",
+  "popover": "#e6e9ef",
+  "popoverSolid": "#e6e9ef"
 }

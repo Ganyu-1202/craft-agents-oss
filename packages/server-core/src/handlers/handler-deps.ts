@@ -27,6 +27,7 @@ export interface HandlerDeps<
   browserPaneManager?: TBrowserPaneManager
   oauthFlowStore: TOAuthFlowStore
   messagingRegistry?: IMessagingGatewayRegistry
+  remoteCredentialHost?: import('./rpc/credentials').RemoteCredentialHost
   /** Electron injects its main-only writer; standalone hosts keep legacy storage. */
   prepareRemoteWorkspaceConfig?: (config: import('@craft-agent/core/types').RemoteServerConfig, ownerId?: string) => Promise<import('@craft-agent/core/types').RemoteServerConfig>
 }

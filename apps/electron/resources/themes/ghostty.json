@@ -4,7 +4,9 @@
   "author": "Mitchell Hashimoto",
   "license": "MIT",
   "source": "https://ghostty.org",
-  "supportedModes": ["dark"],
+  "supportedModes": [
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "vitesse-dark"
@@ -21,6 +23,16 @@
     "accent": "#83a5d6",
     "info": "#e0af68",
     "success": "#b7bd73",
-    "destructive": "#c55757"
-  }
+    "destructive": "#c55757",
+    "paper": "#343841",
+    "navigator": "#23262c",
+    "input": "#31353d",
+    "popover": "#343841",
+    "popoverSolid": "#343841"
+  },
+  "paper": "#343841",
+  "navigator": "#23262c",
+  "input": "#31353d",
+  "popover": "#343841",
+  "popoverSolid": "#343841"
 }

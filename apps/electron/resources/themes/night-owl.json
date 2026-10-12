@@ -4,7 +4,9 @@
   "author": "Sarah Drasner",
   "license": "MIT",
   "source": "https://github.com/sdras/night-owl-vscode-theme",
-  "supportedModes": ["dark"],
+  "supportedModes": [
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "night-owl"
@@ -21,6 +23,16 @@
     "accent": "#82aaff",
     "info": "#ecc48d",
     "success": "#addb67",
-    "destructive": "#ef5350"
-  }
+    "destructive": "#ef5350",
+    "paper": "#082638",
+    "navigator": "#01111f",
+    "input": "#0b293b",
+    "popover": "#082638",
+    "popoverSolid": "#082638"
+  },
+  "paper": "#082638",
+  "navigator": "#01111f",
+  "input": "#0b293b",
+  "popover": "#082638",
+  "popoverSolid": "#082638"
 }

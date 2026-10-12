@@ -1,34 +1,73 @@
-name: Android APK
+name: Android APK / AAB
 
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: Build signed release APK and AAB (requires signing secrets)
+        type: boolean
+        default: false
+      version_code:
+        description: Android versionCode (increment for each release)
+        type: string
+        required: true
+        default: "4"
+      version_name:
+        description: Optional versionName override
+        type: string
+      server_url:
+        description: Default remote server WebSocket URL
+        type: string
+        default: wss://agent.goldgom.top:50003
   push:
     paths:
       - "apps/android/**"
+      - "apps/webui/**"
+      - "apps/electron/src/renderer/**"
+      - "apps/electron/resources/**"
+      - "packages/**"
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/android.yml"
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    # Reuse the complete local packaging path, including Bun, Pi, MCP, and NDK.
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      BUILD_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.release }}
+      ANDROID_VERSION_CODE: ${{ inputs.version_code || '4' }}
+      ANDROID_VERSION_NAME: ${{ inputs.version_name }}
+      TOKENBIRD_SERVER_URL: ${{ inputs.server_url || 'wss://agent.goldgom.top:50003' }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Prepare release signing key
+        if: env.BUILD_RELEASE == 'true'
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          foreach ($name in @('KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD')) {
+            if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Missing release secret: $name" }
+          }
+          $keystoreFile = Join-Path $env:RUNNER_TEMP 'tokenbird-release.p12'
+          [IO.File]::WriteAllBytes($keystoreFile, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          "ANDROID_KEYSTORE_PATH=$keystoreFile" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Build and bundle web UI
-        run: |
-          bun install --frozen-lockfile
-          bun run webui:build
-          rm -rf apps/android/app/src/main/assets/webui
-          mkdir -p apps/android/app/src/main/assets/webui
-          cp -R apps/webui/dist/. apps/android/app/src/main/assets/webui/
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,17 +78,43 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.1.0"
-
-      - name: Build debug APK
-        working-directory: apps/android
+      - name: Install Android SDK and NDK packages
+        shell: pwsh
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug -PserverUrl=wss://agent.goldgom.top:50003
+          & sdkmanager.bat "platform-tools" "platforms;android-36" "build-tools;36.1.0" "ndk;28.2.13676358"
+          if ($LASTEXITCODE -ne 0) { throw 'Android SDK installation failed.' }
 
-      - name: Upload APK
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and verify APK / AAB
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          $buildArgs = @{ ServerUrl = $env:TOKENBIRD_SERVER_URL; SkipToolchainInstall = $true }
+          if ($env:BUILD_RELEASE -eq 'true') {
+            $buildArgs.Release = $true
+            $buildArgs.Artifact = 'Both'
+          }
+          & ./apps/android/build.ps1 @buildArgs
+          if ($LASTEXITCODE -ne 0) { throw 'Android build failed.' }
+
+      - name: Upload verified artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: craft-agent-android-debug
-          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          name: tokenbird-android-${{ env.BUILD_RELEASE == 'true' && 'release' || 'debug' }}
+          path: |
+            dist/android/*.apk
+            dist/android/*.aab
+            dist/android/*.sha256
+          if-no-files-found: error
+
+      - name: Remove temporary signing key
+        if: always() && env.BUILD_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $keystoreFile = Join-Path $env:RUNNER_TEMP 'tokenbird-release.p12'
+          if (Test-Path -LiteralPath $keystoreFile) { Remove-Item -LiteralPath $keystoreFile -Force }

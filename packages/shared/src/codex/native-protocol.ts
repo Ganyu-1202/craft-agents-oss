@@ -76,6 +76,8 @@ export interface ThreadStartParams {
   developerInstructions?: string | null;
   ephemeral?: boolean | null;
   dynamicTools?: DynamicToolSpec[] | null;
+  /** Empty disables native shell, patch and image environments in 0.154.x. */
+  environments?: [];
   experimentalRawEvents?: boolean;
 }
 
@@ -100,6 +102,7 @@ export interface TurnStartParams {
   approvalPolicy?: AskForApproval | null;
   model?: string | null;
   effort?: ReasoningEffort | null;
+  environments?: [];
   outputSchema?: JsonValue | null;
 }
 

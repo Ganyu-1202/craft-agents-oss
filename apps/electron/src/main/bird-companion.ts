@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, Menu, ipcMain, screen, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
 import { loadPreferences, updatePreferences } from '@craft-agent/shared/config/preferences'
 import { i18n } from '@craft-agent/shared/i18n'
@@ -7,7 +7,7 @@ import { BirdCompanionProgress } from './bird-companion-progress'
 import { BIRD_WIDTH, BIRD_HEIGHT, BUBBLE_HEIGHT, defaultBirdBounds, bubbleBounds } from './bird-companion-layout'
 import {
   BIRD_COMPANION_IPC as IPC,
-  toBirdProgressEvent, type BirdCompanionPreferences, type BirdProgressEvent, type BirdWindowRole,
+  toBirdProgressEvent, type BirdCompanionPreferences, type BirdProgressEvent, type BirdWindowRole, type BirdGesture,
 } from '../shared/bird-companion'
 import type { SessionEvent } from '@craft-agent/shared/protocol'
 import type { NativeAuthorityEvent } from './native-window-authority'
@@ -42,6 +42,7 @@ export class BirdCompanionManager {
   private disposed = false
   private resultTimer: ReturnType<typeof setTimeout> | null = null
   private lastPosition: { x: number; y: number } | null = null
+  private contextMenu: Menu | null = null
 
   constructor(assertAppSender: (event: NativeAuthorityEvent) => { workspaceId: string }) {
     const saved = loadPreferences().birdCompanion
@@ -59,6 +60,7 @@ export class BirdCompanionManager {
       this.progress.clearFinished()
       this.progress.setPreferences(preferences)
       this.render()
+      this.broadcastPreferences()
       return preferences
     })
     ipcMain.handle(IPC.observe, (event, progress: unknown) => {
@@ -77,6 +79,38 @@ export class BirdCompanionManager {
     })
     ipcMain.handle(IPC.dismissBubble, event => { this.assertCompanionSender(event, 'bubble'); this.progress.dismissBubble(); this.render() })
     ipcMain.handle(IPC.showBubble, event => { this.assertCompanionSender(event, 'bird'); this.progress.showBubble(); this.render() })
+    ipcMain.handle(IPC.contextMenu, async event => {
+      const window = this.assertCompanionSender(event, 'bird')
+      // Only one native menu may own the pointer at a time.
+      if (this.contextMenu) return null
+      window.setIgnoreMouseEvents(false)
+      return new Promise<BirdGesture | null>(resolve => {
+        let gesture: BirdGesture | null = null
+        const menu = Menu.buildFromTemplate([
+          { label: i18n.t('birdCompanion.menu.progress'), click: () => { this.progress.showBubble(); this.render() } },
+          { type: 'separator' },
+          ...(['wave', 'nod', 'stretch'] as const).map(action => ({
+            label: i18n.t(`birdCompanion.menu.${action}`), click: () => { gesture = action },
+          })),
+          { type: 'separator' },
+          { label: i18n.t('birdCompanion.menu.hide'), click: () => { this.progress.dismissCompanion(); this.render() } },
+          { label: i18n.t('birdCompanion.menu.close'), click: () => {
+            const preferences = { alwaysVisible: false, autoShowComputerUse: false }
+            updatePreferences({ birdCompanion: preferences })
+            this.progress.setPreferences(preferences)
+            this.render()
+            this.broadcastPreferences()
+          } },
+        ])
+        this.contextMenu = menu
+        menu.popup({ window, callback: () => {
+          this.contextMenu = null
+          // Pointer-leave can occur while the native menu is open.
+          if (!window.isDestroyed()) window.setIgnoreMouseEvents(true, { forward: true })
+          resolve(gesture)
+        } })
+      })
+    })
     ipcMain.handle(IPC.resizeBubble, (event, height: number) => {
       this.assertCompanionSender(event, 'bubble')
       if (!Number.isFinite(height)) return
@@ -88,7 +122,7 @@ export class BirdCompanionManager {
     ipcMain.handle(IPC.interactive, (event, interactive: boolean) => {
       const window = this.assertCompanionSender(event)
       if (typeof interactive !== 'boolean') return
-      window.setIgnoreMouseEvents(!interactive, { forward: true })
+      if (!this.contextMenu) window.setIgnoreMouseEvents(!interactive, { forward: true })
     })
     ipcMain.handle(IPC.move, (event, delta: { x: number; y: number }) => {
       const window = this.assertCompanionSender(event, 'bird')
@@ -112,6 +146,11 @@ export class BirdCompanionManager {
   }
 
   private languageChanged = () => this.render()
+  private broadcastPreferences(): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(IPC.preferencesChanged, this.progress.preferences)
+    }
+  }
   private displayChanged = () => {
     if (!this.window || this.window.isDestroyed()) return
     const bounds = this.window.getBounds()
@@ -240,12 +279,13 @@ export class BirdCompanionManager {
 
   dispose(): void {
     this.disposed = true
+    this.contextMenu?.closePopup()
     if (this.resultTimer) clearTimeout(this.resultTimer)
     i18n.off('languageChanged', this.languageChanged)
     screen.off('display-removed', this.displayChanged)
     screen.off('display-metrics-changed', this.displayChanged)
     if (this.window && !this.window.isDestroyed()) this.window.destroy()
     if (this.bubbleWindow && !this.bubbleWindow.isDestroyed()) this.bubbleWindow.destroy()
-    for (const channel of Object.values(IPC)) if (channel !== IPC.state) ipcMain.removeHandler(channel)
+    for (const channel of Object.values(IPC)) if (channel !== IPC.state && channel !== IPC.preferencesChanged) ipcMain.removeHandler(channel)
   }
 }

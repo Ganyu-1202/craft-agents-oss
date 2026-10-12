@@ -10,7 +10,7 @@ export function withSuperAgentOrchestrator(config: SuperAgentConfig): SuperAgent
   const planner = { ...main, id, role: 'orchestrator' as const, name: '任务编排', avatar: '◇',
     description: '拆解已授权意图，编排依赖与资源，维护计划并依据工作节点证据验收。',
     workPreferences: '按职责与负载派工；先满足依赖，避免同一资源并发修改。受阻时调整计划，需要用户决定时交意图主节点。',
-    sourceSlugs: [], abilityProfileIds: [] }
+    sourceSlugs: [], skillSlugs: [], abilityProfileIds: [] }
   return { ...config, nodes: [main, planner, ...config.nodes.filter(node => node.id !== main.id)] }
 }
 

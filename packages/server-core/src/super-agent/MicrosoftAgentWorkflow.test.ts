@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { MicrosoftAgentWorkflow } from './MicrosoftAgentWorkflow'
+import { MicrosoftAgentWorkflow, type SuperAgentWorkflowEvent } from './MicrosoftAgentWorkflow'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
-import { withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { join } from 'node:path'
 
 const workflows: MicrosoftAgentWorkflow[] = []
 afterEach(() => { for (const workflow of workflows.splice(0)) workflow.close() })
@@ -10,6 +11,24 @@ function workflow() { const value = new MicrosoftAgentWorkflow(); workflows.push
 
 // An explicit interpreter opts into the real SDK integration suite on developer/CI hosts.
 describe.skipIf(!process.env.TOKENBIRD_AGENT_FRAMEWORK_PYTHON)('Microsoft Agent Framework session orchestration', () => {
+  test('suspends for an external session response, streams SDK events, then resumes without reinvocation', async () => {
+    const engine = workflow()
+    const events: SuperAgentWorkflowEvent[] = []
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let calls = 0
+    let completed = false
+    const execution = engine.run({ nodeId: 'worker', kind: 'task', nodes }, async () => { calls++; await gate }, event => events.push(event)).then(() => { completed = true })
+    await until(async () => calls, value => value === 1)
+    await until(async () => events, values => values.some(event => event.type === 'status' && event.state === 'IDLE_WITH_PENDING_REQUESTS'))
+    expect(completed).toBe(false)
+    expect(events.some(event => event.executorId === 'team-router')).toBe(true)
+    release()
+    await execution
+    expect(calls).toBe(1)
+    expect(events.filter(event => event.type === 'executor_invoked' && event.executorId === 'session:worker')).toHaveLength(2)
+    expect(events.some(event => event.type === 'status' && event.state === 'IDLE')).toBe(true)
+  }, 150_000)
   test('runs intent, orchestration and execution through the real three-role graph', async () => {
     const engine = workflow()
     await engine.prepare()
@@ -71,6 +90,9 @@ describe.skipIf(!process.env.TOKENBIRD_AGENT_FRAMEWORK_PYTHON)('Microsoft Agent 
     expect(worker.message).not.toContain('Current team state')
     expect(worker.context).toContain('"fromNodeId":"main"')
     expect(context.host.options.get(worker.sessionId)!.agentSystemPrompt).toContain('长期分工')
+    await until(() => context.service.get('alpha'), state => !!state.state.nodes.find(node => node.nodeId === 'worker')?.workflow?.events.some(event => event.type === 'status'))
+    const persisted = await loadSuperAgentDocument(join(context.root, 'alpha'))
+    expect(persisted.state.nodes.find(node => node.nodeId === 'worker')!.workflow!.events.length).toBeGreaterThan(0)
     context.host.complete(worker.sessionId, '已验证完成：report.md；证据：输入逐项核对。')
     expect((await until(() => context.service.get('alpha'), state => state.state.tasks[0]?.status === 'completed')).state.tasks[0]!.output).toContain('report.md')
   }, 150_000)

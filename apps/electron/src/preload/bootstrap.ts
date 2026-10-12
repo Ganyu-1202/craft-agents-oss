@@ -609,11 +609,13 @@ const invokeCurrentCollaboration = (nativeChannel: string, rpcChannel: string, .
 ;(api as ElectronAPI).listCollaborationCandidates = () => invokeCurrentCollaboration('__collaboration:localCandidates', RPC_CHANNELS.collaborations.LIST_CANDIDATES)
 ;(api as ElectronAPI).createCollaboration = (primaryId, selections) => invokeCurrentCollaboration('__collaboration:createLocal', RPC_CHANNELS.collaborations.CREATE, primaryId, selections)
 
-// Credential management has the same native-only boundary. Main validates the
-// real sender's current local workspace; no caller-supplied workspace or RPC fallback.
-;(api as ElectronAPI).getNativeCredentialStatus = () => ipcRenderer.invoke(NATIVE_CREDENTIAL_IPC.STATUS)
-;(api as ElectronAPI).listNativeCredentials = () => ipcRenderer.invoke(NATIVE_CREDENTIAL_IPC.LIST)
-;(api as ElectronAPI).applyNativeCredentialChanges = request => ipcRenderer.invoke(NATIVE_CREDENTIAL_IPC.APPLY, request)
+// Remote operations run on the owning host and require its explicit approval.
+const remoteCredentials = () => isClientOnly || !!ipcRenderer.sendSync('__get-workspace-remote-config')
+;(api as ElectronAPI).getCredentialAccess = () => remoteCredentials() ? client.invoke(RPC_CHANNELS.credentials.ACCESS) : Promise.resolve({ state: 'local' as const })
+;(api as ElectronAPI).requestCredentialAccess = () => client.invoke(RPC_CHANNELS.credentials.REQUEST_ACCESS)
+;(api as ElectronAPI).getNativeCredentialStatus = () => invokeCurrentCollaboration(NATIVE_CREDENTIAL_IPC.STATUS, RPC_CHANNELS.credentials.STATUS)
+;(api as ElectronAPI).listNativeCredentials = () => invokeCurrentCollaboration(NATIVE_CREDENTIAL_IPC.LIST, RPC_CHANNELS.credentials.LIST)
+;(api as ElectronAPI).applyNativeCredentialChanges = request => invokeCurrentCollaboration(NATIVE_CREDENTIAL_IPC.APPLY, RPC_CHANNELS.credentials.APPLY, request)
 ;(api as ElectronAPI).migrateNativeCredentials = request => ipcRenderer.invoke(NATIVE_CREDENTIAL_IPC.MIGRATE, request)
 
 // Saved-profile collaboration calls require native Electron sender identity.
@@ -648,6 +650,11 @@ const invokeCurrentCollaboration = (nativeChannel: string, rpcChannel: string, .
 // i18n: sync language changes to main process (for native menus/dialogs)
 ;(api as ElectronAPI).changeLanguage = (lang: string) => ipcRenderer.invoke('i18n:changeLanguage', lang)
 ;(api as ElectronAPI).getBirdCompanionPreferences = () => ipcRenderer.invoke(BIRD_COMPANION_IPC.getPreferences)
+;(api as ElectronAPI).onBirdCompanionPreferencesChanged = callback => {
+  const listener = (_event: Electron.IpcRendererEvent, preferences: import('../shared/bird-companion').BirdCompanionPreferences) => callback(preferences)
+  ipcRenderer.on(BIRD_COMPANION_IPC.preferencesChanged, listener)
+  return () => ipcRenderer.removeListener(BIRD_COMPANION_IPC.preferencesChanged, listener)
+}
 ;(api as ElectronAPI).setBirdCompanionPreferences = updates => ipcRenderer.invoke(BIRD_COMPANION_IPC.setPreferences, updates)
 ;(api as ElectronAPI).observeBirdCompanionProgress = event => ipcRenderer.invoke(BIRD_COMPANION_IPC.observe, event)
 

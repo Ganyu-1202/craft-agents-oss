@@ -2,13 +2,85 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { WsRpcClient, WsRpcServer, CLIENT_OPEN_EXTERNAL, CLIENT_SFTP_TRANSFER } from '@craft-agent/server-core/transport'
 import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
 import { createNativeWindowAuthority, advanceNativeWindowBinding, type NativeAuthorityEvent } from './native-window-authority'
-import { registerNativeRemoteTransport, type MainRemoteTarget, type NativeRemoteTransportDependencies } from './native-remote-transport'
+import { registerNativeRemoteTransport, REMOTE_ATTACHMENT_INLINE_LIMIT, type MainRemoteTarget, type NativeRemoteTransportDependencies } from './native-remote-transport'
+import { readFile } from 'node:fs/promises'
 import { NativeRemoteClient } from '../preload/native-remote-client'
 import { NATIVE_REMOTE_TRANSPORT as IPC, type NativeRemotePacket } from '../shared/native-remote-transport'
 import { retrySessionListRequest } from '../renderer/lib/session-load'
 import { reconcileSessionPermissionModes } from '../renderer/lib/session-permission-reconciliation'
 
 const cleanup: Array<() => void> = []
+
+test('large attachments without SFTP are rejected before reaching the server', async () => {
+  const f = await fixture(); const w = f.window(1)
+  let requests = 0
+  f.server.handle(RPC_CHANNELS.file.STORE_ATTACHMENT, async () => { requests++; return {} })
+  const error = await w.adapter.invoke(RPC_CHANNELS.file.STORE_ATTACHMENT, 'session', {
+    type: 'unknown', name: 'large.tar.gz', size: REMOTE_ATTACHMENT_INLINE_LIMIT + 1,
+  }).catch(error => error)
+  expect(error.code).toBe('FILE_TOO_LARGE')
+  expect(error.message).toContain('请先')
+  expect(requests).toBe(0)
+  expect(await w.adapter.invoke(RPC_CHANNELS.sessions.GET)).toHaveProperty('workspace')
+})
+
+test('large attachments transfer through SFTP with metadata-only RPC and chat payloads', async () => {
+  const bytes = Buffer.alloc(REMOTE_ATTACHMENT_INLINE_LIMIT + 1, 71)
+  let localPath = ''; let transfers = 0
+  const f = await fixture({ transferSftp: async (_target, request, assertCurrent) => {
+    await assertCurrent()
+    const upload = request as { localPath: string; remotePath: string; direction: string }
+    localPath = upload.localPath
+    expect(upload.direction).toBe('upload')
+    expect(upload.remotePath).toBe('/remote/session/staged.upload')
+    expect(await readFile(localPath)).toEqual(bytes)
+    transfers++
+    return { success: true }
+  } })
+  Object.assign(f.target, { profileId: 'profile', profileRevision: 'revision', sftpEnabled: true })
+  const stages: string[] = []
+  f.server.handle(RPC_CHANNELS.file.STORE_ATTACHMENT, async (_ctx, _session, attachment, options) => {
+    expect(attachment.base64).toBeUndefined()
+    expect(attachment.text).toBeUndefined()
+    stages.push(options.sftpStage)
+    return { id: 'upload', storedPath: options.sftpStage === 'prepare' ? '/remote/session/staged.upload' : '/remote/session/large.tar.gz' }
+  })
+  f.server.handle(RPC_CHANNELS.sessions.SEND_MESSAGE, async (_ctx, _session, _message, attachments) => {
+    expect(attachments[0].base64).toBeUndefined()
+    expect(attachments[0].storedPath).toBe('/remote/session/large.tar.gz')
+    return { accepted: true }
+  })
+  const w = f.window(1)
+  const attachment = { type: 'unknown', path: '', name: 'large.tar.gz', mimeType: 'application/gzip', size: bytes.length, base64: bytes.toString('base64') }
+  const result = await w.adapter.invoke(RPC_CHANNELS.file.STORE_ATTACHMENT, 'session', attachment) as { storedPath: string }
+  expect(stages).toEqual(['prepare', 'finish'])
+  expect(transfers).toBe(1)
+  expect(await readFile(localPath).catch(() => null)).toBeNull()
+  expect(await w.adapter.invoke(RPC_CHANNELS.sessions.SEND_MESSAGE, 'session', 'read this', [{ ...attachment, storedPath: result.storedPath }])).toEqual({ accepted: true })
+})
+
+test('failed SFTP uploads cancel server staging and clean local temporary files', async () => {
+  let localPath = ''
+  const f = await fixture({ transferSftp: async (_target, request) => {
+    localPath = (request as { localPath: string }).localPath
+    throw new Error('sensitive-provider-details')
+  } })
+  Object.assign(f.target, { profileId: 'profile', profileRevision: 'revision', sftpEnabled: true })
+  const stages: string[] = []
+  f.server.handle(RPC_CHANNELS.file.STORE_ATTACHMENT, async (_ctx, _session, _attachment, options) => {
+    stages.push(options.sftpStage)
+    return { id: 'upload', storedPath: '/remote/staged.upload' }
+  })
+  const w = f.window(1)
+  const size = REMOTE_ATTACHMENT_INLINE_LIMIT + 1
+  const error = await w.adapter.invoke(RPC_CHANNELS.file.STORE_ATTACHMENT, 'session', {
+    size, name: 'archive', base64: Buffer.alloc(size).toString('base64'),
+  }).catch(error => error)
+  expect(error.code).toBe('SFTP_FAILED')
+  expect(error.message).not.toContain('sensitive-provider-details')
+  expect(stages).toEqual(['prepare', 'cancel'])
+  expect(await readFile(localPath).catch(() => null)).toBeNull()
+})
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn() })
 const delay = (ms = 5) => new Promise(resolve => setTimeout(resolve, ms))
 async function until(check: () => boolean) { const end = Date.now() + 3000; while (!check()) { if (Date.now() > end) throw new Error('Timed out'); await delay() } }

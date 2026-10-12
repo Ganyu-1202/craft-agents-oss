@@ -58,9 +58,10 @@ export default defineConfig({
     // default target can emit syntax those WebViews cannot parse even though
     // the native shell itself supports API 26. Chrome 67 matches the original
     // Android 8.1 WebView generation while remaining compatible with current
-    // browsers.
-    target: 'chrome67',
-    cssTarget: 'chrome67',
+    // browsers. iPhone/iPad uses the same bundle on Safari 15.4 or newer,
+    // including iPad Air 2 devices running iPadOS 15.8.
+    target: ['chrome67', 'safari15.4'],
+    cssTarget: ['chrome67', 'safari15.4'],
     // Remove previous hashed chunks before every build. The Android packager
     // copies dist wholesale, so the old misspelled option caused the APK to
     // grow on every build.

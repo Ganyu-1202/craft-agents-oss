@@ -145,6 +145,7 @@ export const HANDLED_CHANNELS = [
   RPC_CHANNELS.llmConnections.GET_API_KEY,
   RPC_CHANNELS.llmConnections.SAVE,
   RPC_CHANNELS.llmConnections.DELETE,
+  RPC_CHANNELS.llmConnections.LOGOUT,
   RPC_CHANNELS.llmConnections.TEST,
   RPC_CHANNELS.llmConnections.SET_DEFAULT,
   RPC_CHANNELS.llmConnections.SET_WORKSPACE_DEFAULT,
@@ -184,7 +185,7 @@ export async function refreshConnectionModels(slug: string, deps: HandlerDeps): 
     }
 
     if (connection.oauthProvider === 'tokennest') {
-      const { getValidTokenNestCredentials, fetchTokenNestChannelGroups, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
+      const { getValidTokenNestCredentials, fetchTokenNestChannelGroups, fetchTokenNestProfile, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
       const credentialManager = getCredentialManager()
       let credentials = await getValidTokenNestCredentials(slug, credentialManager)
       if (!credentials) return { success: false, error: 'TokenNest authentication has expired. Please sign in again.' }
@@ -204,6 +205,7 @@ export async function refreshConnectionModels(slug: string, deps: HandlerDeps): 
       }
       if (!discovered.models.length) return { success: false, error: discovered.error || 'TokenNest returned no available models' }
       const channelGroups = await fetchTokenNestChannelGroups(credentials.accessToken)
+      const profile = await fetchTokenNestProfile(credentials.accessToken).catch(() => null)
       const models = [...new Set([
         ...discovered.models.map(model => model.id),
         ...channelGroups.flatMap(group => group.models ?? []),
@@ -215,6 +217,7 @@ export async function refreshConnectionModels(slug: string, deps: HandlerDeps): 
         ? connection.defaultModel
         : selectableModels[0] ?? models.find(model => !isImageGenerationModelId(model)) ?? models[0]
       const updated = updateLlmConnection(slug, {
+        ...(profile ? { oauthAccountUsername: profile.username } : {}),
         models,
         channelGroups,
         channelGroup,
@@ -797,6 +800,30 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     }
   })
 
+  // Sign out of one connection without deleting its config or any conversation.
+  server.handle(RPC_CHANNELS.llmConnections.LOGOUT, async (_ctx, slug: string): Promise<{ success: boolean; error?: string }> => {
+    const connection = getLlmConnection(slug)
+    if (!connection) return { success: false, error: 'Connection not found' }
+    if (connection.authType === 'none' || connection.authType === 'environment') {
+      return { success: false, error: 'This connection does not use stored credentials' }
+    }
+    try {
+      await getCredentialManager().deleteLlmCredentials(slug)
+      balanceCache.delete(slug)
+      // Live agents reload credentials at the next turn boundary.
+      await sessionManager.notifyStoredCredentialChanges?.(
+        (['llm_api_key', 'llm_oauth', 'llm_iam', 'llm_service_account'] as const)
+          .map(type => ({ op: 'delete' as const, id: { type, connectionSlug: slug } })),
+      )
+      if (getDefaultLlmConnection() === slug) await sessionManager.reinitializeAuth()
+      server.push(RPC_CHANNELS.llmConnections.CHANGED, { to: 'all' })
+      return { success: true }
+    } catch (error) {
+      deps.platform.logger?.error('Failed to sign out of LLM connection:', error)
+      return { success: false, error: 'Failed to clear connection credentials' }
+    }
+  })
+
   // Test an LLM connection (validate credentials and connectivity with actual API call)
   server.handle(RPC_CHANNELS.llmConnections.TEST, async (_ctx, slug: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -1067,7 +1094,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     }
 
     try {
-      const { exchangeTokenNestTokens, fetchTokenNestChannelGroups, revokeTokenNestToken, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
+      const { exchangeTokenNestTokens, fetchTokenNestChannelGroups, fetchTokenNestProfile, revokeTokenNestToken, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
       const credentialManager = getCredentialManager()
       const tokens = await exchangeTokenNestTokens(args.code, flow.codeVerifier, flow.redirectUri)
       const discovered = await listCustomModels({
@@ -1089,6 +1116,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
         ...channelGroups.flatMap(group => group.models ?? []),
       ])]
       const existing = getLlmConnection(flow.connectionSlug)
+      const profile = await fetchTokenNestProfile(tokens.accessToken).catch(() => null)
       const channelGroup = preferredTokenNestGroup(channelGroups, existing?.channelGroup)
       const groupModels = channelGroups.find(group => group.id === channelGroup)?.models
       const selectableModels = (groupModels?.length ? groupModels : models).filter(model => !isImageGenerationModelId(model))
@@ -1101,6 +1129,9 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
         providerType: 'pi_compat',
         authType: 'oauth',
         oauthProvider: 'tokennest',
+        // Reauthorization can select a different user. Never retain old identity.
+        oauthAccountUsername: profile?.username ?? '',
+        oauthAccountEmail: '',
         piAuthProvider: 'openai',
         baseUrl: TOKENNEST_OAUTH_CONFIG.apiBaseUrl,
         customEndpoint: { api: 'openai-completions' },

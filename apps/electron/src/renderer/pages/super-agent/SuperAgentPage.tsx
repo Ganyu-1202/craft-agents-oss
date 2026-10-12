@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Activity, ArrowLeft, BookOpen, Bot, BrainCircuit, Check, ChevronDown, ClipboardList, Code2, ExternalLink,
   FolderOpen, Layers3, LoaderCircle, MessagesSquare, Plus, RefreshCw,
-  Settings2, ShieldCheck, Square, Wrench, Archive,
+  Settings2, ShieldCheck, Square, Wrench, Archive, PanelLeftOpen,
 } from 'lucide-react'
 import type { SuperAgentCommand, SuperAgentConfig, SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
 import { superAgentTaskBlocker } from '@craft-agent/shared/super-agent'
@@ -12,6 +12,8 @@ import type { LoadedSkill, LoadedSource } from '../../../shared/types'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { useContainerWidth } from '@/hooks/useContainerWidth'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
+import { PageSidebar } from '@/components/app-shell/PageSidebar'
+import { usePageSidebar } from '@/context/PageSidebarContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -33,6 +35,8 @@ import { SuperAgentConversation, SuperAgentPermissionHistory } from './SuperAgen
 import { SuperAgentFileContext } from './SuperAgentFileContext'
 import { SuperAgentStatistics } from './SuperAgentStatistics'
 import { THINKING_LEVEL_IDS, type ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
+import { resolveAgentRuntime } from '@craft-agent/shared/config/llm-connections'
+import { agentRuntimeLabel } from '../settings/BackendFrameworkSettings'
 import { formatTimestamp, useSuperAgentText, withExecuteMode } from './super-agent-ui'
 import { recentActivityEntries, taskActivity, tasklessWorkerActivities, visibleActivityText, type SuperAgentActivity } from './super-agent-activity'
 
@@ -56,6 +60,10 @@ const settingsSections: Array<{ id: SettingsSection; icon: typeof Bot }> = [
 
 export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpenSession }: SuperAgentPageProps) {
   const text = useSuperAgentText()
+  const { t } = useTranslation()
+  const pageSidebar = usePageSidebar()
+  const [localSidebarVisible, setLocalSidebarVisible] = useState(true)
+  const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
   const {
     activeWorkspaceId, llmConnections, workspaceDefaultLlmConnection,
     refreshLlmConnections, pendingPermissions, leadingAction, rightSidebarButton,
@@ -73,6 +81,10 @@ export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpen
   const pageRef = useRef<HTMLDivElement>(null)
   const pageWidth = useContainerWidth(pageRef)
   const compact = pageWidth < 920
+  const sidebarCompact = pageSidebar?.compact ?? compact
+  const sidebarVisible = pageSidebar?.visible ?? localSidebarVisible
+  const setSidebarOpen = pageSidebar?.setOpen ?? setLocalSidebarOpen
+  const toggleSidebar = pageSidebar?.toggle ?? (() => sidebarCompact ? setLocalSidebarOpen(open => !open) : setLocalSidebarVisible(visible => !visible))
   const requestRef = useRef(0)
   const mutationRef = useRef(false)
   const refreshInFlightRef = useRef(false)
@@ -203,14 +215,32 @@ export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpen
       : <Button size="sm" variant="ghost" onClick={() => setView('home')}><ArrowLeft className="size-3.5" />{text('backToAssistant')}</Button>}
   </div> : undefined
 
-  return <SuperAgentFileContext workingDirectory={workDirectory}><div ref={pageRef} className="flex h-full min-h-0 flex-col bg-background">
+  const sidebar = <PageSidebar title={text('title')} visible={sidebarVisible} compact={sidebarCompact}
+    open={pageSidebar ? active && pageSidebar.mode === 'super-agent' && pageSidebar.open : localSidebarOpen}
+    onOpenChange={setSidebarOpen} onToggle={toggleSidebar}>
+    <nav aria-label={text('title')} className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+      <button type="button" aria-current={view === 'home' ? 'page' : undefined}
+        className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-xs font-medium', view === 'home' ? 'bg-primary/8 text-primary' : 'text-muted-foreground hover:bg-accent')}
+        onClick={() => { setView('home'); if (sidebarCompact) setSidebarOpen(false) }}><Bot className="size-3.5" />{text('backToAssistant')}</button>
+      {config && settingsSections.map(({ id, icon: Icon }) => <button key={id} type="button"
+        onClick={() => { setView('settings'); setSettingsSection(id); if (id === 'settings') setSelectedNodeId(undefined); if (sidebarCompact) setSidebarOpen(false) }}
+        aria-current={view === 'settings' && settingsSection === id ? 'page' : undefined}
+        className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-xs font-medium', view === 'settings' && settingsSection === id ? 'bg-primary/8 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>
+        <Icon className="size-3.5 shrink-0" />{text(id === 'settings' ? 'generalSettings' : id)}
+      </button>)}
+    </nav>
+  </PageSidebar>
+
+  return <SuperAgentFileContext workingDirectory={workDirectory}><div className="flex h-full min-h-0">
+    {sidebar}
+    <div ref={pageRef} className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-background">
     <PanelHeader title={view === 'settings' ? text('settingsTitle') : config?.name ?? text('title')}
       badge={snapshot?.config ? <SuperAgentStatus snapshot={snapshot} pendingPermissions={pendingPermissions} /> : undefined}
-      leadingAction={leadingAction} rightSidebarButton={rightSidebarButton} actions={headerActions} />
+      leadingAction={sidebarCompact || !sidebarVisible ? <button type="button" aria-label={t('menu.toggleSidebar')} title={t('menu.toggleSidebar')} className="flex size-9 items-center justify-center rounded-md hover:bg-accent" onClick={toggleSidebar}><PanelLeftOpen className="size-4" /></button> : leadingAction} rightSidebarButton={rightSidebarButton} actions={headerActions} />
     {!activeWorkspaceId ? <PageNotice icon={FolderOpen} title={text('workspaceRequired')} description={text('workspaceRequiredDescription')} />
       : loading ? <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{text('loading')}</div>
         : !snapshot ? <PageNotice icon={Bot} title={text('loadFailed')} description={error}><Button variant="outline" size="sm" onClick={() => { setError(''); setLoading(true); void refresh() }}>{text('retry')}</Button></PageNotice>
-          : !config ? <div className="min-h-0 flex-1"><SuperAgentSetup connections={llmConnections} defaultConnection={workspaceDefaultLlmConnection}
+          : !config ? <div className="min-h-0 flex-1"><SuperAgentSetup connections={llmConnections} sources={sources} skills={skills} defaultConnection={workspaceDefaultLlmConnection}
             onSave={async value => { await save(value) }} onOpenAiSettings={onOpenAiSettings} onLoginTokenNest={loginTokenNest} onRefreshConnections={refreshConnections} /></div>
             : <>
               {!snapshot.environment.available && <div role="status" className="flex shrink-0 items-start gap-2 border-b border-amber-500/15 bg-amber-500/8 px-5 py-3 text-xs leading-5 text-amber-700 dark:text-amber-400"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /><p>{snapshot.environment.detail}</p></div>}
@@ -219,19 +249,12 @@ export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpen
                 {view === 'home' && <div className={cn('flex h-full min-h-0', compact ? 'flex-col' : 'flex-row')}>
                   <SuperAgentConversation snapshot={snapshot as SuperAgentSnapshot & { config: SuperAgentConfig }} active={active} busy={busy || !!coordinatorWorking} requestPending={busy} onCommand={async value => { await command(value) }}
                     canStop={!busy && (!!teamWorking || config.continuousWork === true)} onStop={() => { void command({ type: 'cancel' }).catch(() => {}) }}
-                    onInspect={() => { void command({ type: 'inspect' }).catch(() => {}) }} />
+                    onInspect={async () => { await command({ type: 'inspect' }) }} />
                   <WorkProgress snapshot={snapshot as SuperAgentSnapshot & { config: SuperAgentConfig }} compact={compact} busy={busy}
                     onOpenPlans={() => { setSettingsSection('plans'); setView('settings') }}
                     onCreateTask={() => setTaskDialogNode('')} onCommand={async value => { await command(value) }} onOpenSession={onOpenSession} />
                 </div>}
                 {view === 'settings' && <div className={cn('flex h-full min-h-0', compact ? 'flex-col' : 'flex-row')}>
-                  <nav aria-label={text('settingsTitle')} className={cn('shrink-0', compact ? 'flex overflow-x-auto border-b border-border/70 px-3' : 'w-48 space-y-1 border-r border-border/70 p-3')}>
-                    {settingsSections.map(({ id, icon: Icon }) => <button key={id} type="button" onClick={() => { setSettingsSection(id); if (id === 'settings') setSelectedNodeId(undefined) }}
-                      aria-current={settingsSection === id ? 'page' : undefined}
-                      className={cn('flex shrink-0 items-center gap-2 rounded-lg px-3 py-3 text-left text-xs font-medium transition-colors', !compact && 'w-full', settingsSection === id ? 'bg-primary/8 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>
-                      <Icon className="size-3.5 shrink-0" />{text(id === 'settings' ? 'generalSettings' : id)}
-                    </button>)}
-                  </nav>
                   <div className="min-h-0 min-w-0 flex-1">
                     {settingsSection === 'team' && <NodeTeam snapshot={snapshot as SuperAgentSnapshot & { config: SuperAgentConfig }} pendingPermissions={pendingPermissions}
                       onEdit={openNodeSettings} onOpenSession={onOpenSession} onTask={nodeId => setTaskDialogNode(nodeId)} onCommand={async value => { await command(value) }} busy={busy} />}
@@ -244,7 +267,7 @@ export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpen
                     {settingsSection === 'resources' && <SuperAgentResources config={config} sources={sources} skills={skills} onSave={async value => { await save(value) }} />}
                     {(settingsSection === 'archiveLibrary' || settingsSection === 'memoryLibrary') && <SuperAgentLibrary key={activeWorkspaceId + ':' + settingsSection} library={settingsSection === 'archiveLibrary' ? 'archive' : 'memory'} snapshot={snapshot} onCommand={async value => { await command(value) }} />}
                     {settingsSection === 'scripts' && <SuperAgentScripts snapshot={snapshot as SuperAgentSnapshot & { config: SuperAgentConfig }} onSave={async value => { await save(value) }} onCommand={async value => { await command(value) }} />}
-                    {settingsSection === 'settings' && <SuperAgentConfiguration key={activeWorkspaceId + ':' + (selectedNodeId ?? 'settings')} config={config} connections={llmConnections} sources={sources} environmentStatus={snapshot.environment}
+                    {settingsSection === 'settings' && <SuperAgentConfiguration key={activeWorkspaceId + ':' + (selectedNodeId ?? 'settings')} config={config} connections={llmConnections} sources={sources} skills={skills} environmentStatus={snapshot.environment}
                       onContinuousWork={async enabled => { await command({ type: 'continuous-work', enabled }) }}
                       onReset={async () => {
                         const workspaceId = activeWorkspaceId
@@ -257,7 +280,7 @@ export default function SuperAgentPage({ active = true, onOpenAiSettings, onOpen
               </div>
               <TaskDialog config={config} nodeId={taskDialogNode} onClose={() => setTaskDialogNode(null)} onCommand={async value => { await command(value) }} />
             </>}
-  </div></SuperAgentFileContext>
+  </div></div></SuperAgentFileContext>
 }
 
 function PageNotice({ icon: Icon, title, description, children }: { icon: typeof Bot; title: string; description: string; children?: ReactNode }) {
@@ -288,7 +311,7 @@ function WorkProgress({ snapshot, compact, busy, onCreateTask, onOpenPlans, onCo
     {snapshot.state.nodes.filter(runtime => ['error', 'recovering'].includes(runtime.status)).map(runtime => <article key={runtime.nodeId} className="space-y-2 rounded-xl border border-amber-500/20 p-3">
       <h3 className="text-xs font-medium">{snapshot.config.nodes.find(node => node.id === runtime.nodeId)?.name ?? runtime.nodeId} · {text(runtime.status)}</h3>
       {runtime.error && <p className="break-words text-xs leading-5 text-destructive">{runtime.error}</p>}
-      <SuperAgentNodeRecovery runtime={runtime} busy={busy} onCommand={onCommand} />
+      <SuperAgentNodeRecovery runtime={runtime} nodeName={snapshot.config.nodes.find(node => node.id === runtime.nodeId)?.name} busy={busy} onCommand={onCommand} />
       {runtime.sessionId && onOpenSession && <Button size="sm" variant="ghost" onClick={() => onOpenSession(runtime.sessionId!)}>{text('openSession')}</Button>}
     </article>)}
     <button type="button" onClick={onOpenPlans} className="flex w-full items-center justify-between rounded-lg border border-border/60 p-3 text-xs hover:bg-accent"><span className="flex items-center gap-2"><ClipboardList className="size-3.5" />{text('plans')}</span><span className="text-muted-foreground">{snapshot.state.plans.filter(plan => !['completed', 'cancelled'].includes(plan.status)).length}</span></button>
@@ -331,6 +354,7 @@ function NodeTeam({ snapshot, pendingPermissions, onEdit, onOpenSession, onTask,
 }) {
   const text = useSuperAgentText()
   const { t } = useTranslation()
+  const { llmConnections } = useAppShellContext()
   const { config, state } = snapshot
   return <div className="h-full min-h-0 overflow-y-auto"><div className="mx-auto max-w-4xl space-y-5 p-6">
     <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{text('team')}</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{text('coordinatorRule')}</p></div></div>
@@ -338,14 +362,22 @@ function NodeTeam({ snapshot, pendingPermissions, onEdit, onOpenSession, onTask,
       const runtime = state.nodes.find(item => item.nodeId === node.id)
       const approvalCount = runtime?.sessionId ? pendingPermissions.get(runtime.sessionId)?.length ?? 0 : 0
       const activeTask = state.tasks.find(task => task.id === runtime?.activeTaskId)
+      const connection = llmConnections.find(item => item.slug === node.llmConnection)
+      const backend = node.agentRuntime ?? (connection ? resolveAgentRuntime(connection) : undefined)
       return <article key={node.id} className="min-w-0 space-y-4 rounded-xl border border-border/70 p-5">
         <div className="flex items-start gap-3"><AgentAvatar avatar={node.avatar} name={node.name} className="size-12 rounded-2xl text-2xl" /><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-semibold">{node.name}</h3><p className="mt-1 truncate text-xs text-muted-foreground">{node.model}</p></div>
           <span className={cn('rounded-full px-2 py-1 text-[10px]', runtime && ['working', 'preparing', 'recovering'].includes(runtime.status) ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : runtime?.status === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}>{text(runtime?.status ?? 'idle')}</span></div>
         <p className="text-xs leading-5 text-muted-foreground">{node.description}</p>
+        <p className="text-xs text-muted-foreground">{text('nodeBackend')}: {backend ? agentRuntimeLabel(backend, t) : text('inheritBackend')}</p>
         <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground"><span className="rounded bg-foreground/5 px-2 py-1">{text(node.role)}</span><span className="text-amber-500">{'★'.repeat(node.intelligenceRating)}</span><span>{node.maxCallsPerMinute}/min</span><span>{t(`thinking.${node.thinkingLevel}`)}</span></div>
         {activeTask && <p className="rounded-lg bg-foreground/5 p-3 text-xs leading-5"><span className="font-medium">{text('tasks')}: </span>{activeTask.title}</p>}
+        {!!node.skillSlugs?.length && <p className="text-xs text-muted-foreground">Skills: {node.skillSlugs.join(', ')}</p>}
+        {!!node.sourceSlugs.length && <p className="text-xs text-muted-foreground">MCP: {node.sourceSlugs.join(', ')}</p>}
+        {!!runtime?.workflow?.events.length && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{text('workflowEvents')}</summary>
+          <ol className="mt-2 space-y-1 break-words">{runtime.workflow.events.map((event, index) => <li key={index}>{formatTimestamp(event.at, true)} · {event.type}{event.executorId ? ` · ${event.executorId}` : ''}{event.state ? ` · ${event.state}` : ''}</li>)}</ol>
+        </details>}
         {runtime?.error && <p className="text-xs leading-5 text-destructive">{runtime.error}</p>}
-        {runtime && <SuperAgentNodeRecovery runtime={runtime} busy={busy} onCommand={onCommand} />}
+        {runtime && <SuperAgentNodeRecovery runtime={runtime} nodeName={node.name} busy={busy} onCommand={onCommand} />}
         <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
           <Button size="sm" variant="outline" onClick={() => onEdit(node.id)}><Settings2 className="size-3.5" />{text('editNode')}</Button>
           {runtime?.sessionId && onOpenSession && <Button size="sm" variant="outline" className={approvalCount ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' : ''} onClick={() => onOpenSession(runtime.sessionId!)}><ExternalLink className="size-3.5" />{text('openSession')}{approvalCount > 0 && <span className="rounded-full bg-amber-500/10 px-1.5 text-[10px]">{approvalCount}</span>}</Button>}

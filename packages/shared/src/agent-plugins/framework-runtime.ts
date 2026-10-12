@@ -41,6 +41,11 @@ export function configureFrameworkAgent(agent: AgentBackend, configuration: Back
     };
   }
   const destroy = agent.destroy.bind(agent);
-  agent.destroy = () => { releasePolicy(); utility?.destroy(); utility = undefined; destroy(); };
+  const release = () => { releasePolicy(); utility?.destroy(); utility = undefined; };
+  agent.destroy = () => { release(); destroy(); };
+  if (agent.disposeForRestart) {
+    const dispose = agent.disposeForRestart.bind(agent);
+    agent.disposeForRestart = async () => { release(); await dispose(); };
+  }
   return agent;
 }

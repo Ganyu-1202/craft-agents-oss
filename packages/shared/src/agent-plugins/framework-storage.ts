@@ -19,7 +19,8 @@ const schema = z.object({ id: z.string().regex(/^(pi|codex|claude-code|plugin:[a
   downloadSource: z.enum(['official', 'mirror']).optional(),
   nativeOptions: z.object({ projectInstructions: z.boolean(), skills: z.boolean(), memory: z.boolean(),
     toolsets: z.array(z.string().regex(/^[a-zA-Z0-9_-]+$/).max(100)).max(100),
-    profile: z.string().regex(/^[a-zA-Z0-9_-]+$/).max(100) }).strict().optional() }).strict();
+    profile: z.string().regex(/^[a-zA-Z0-9_-]+$/).max(100),
+    claudePlugins: z.array(pathText.min(1)).max(50).optional() }).strict().optional() }).strict();
 
 const detected = new Map<AgentPluginRuntime, { executablePath?: string; entrypointPath?: string }>();
 export function setDetectedFrameworkLocation(id: AgentPluginRuntime, location: { executablePath?: string; entrypointPath?: string }): void {
@@ -55,6 +56,16 @@ export function validateBackendFrameworkConfiguration(value: unknown): BackendFr
   if ((configuration.executablePath.includes('/') || configuration.executablePath.includes('\\')) && !isAbsolute(configuration.executablePath)) throw new Error('Use an absolute executable path or a program name from PATH');
   if (configuration.entrypointPath && !isAbsolute(configuration.entrypointPath)) throw new Error('Use an absolute Pi service entrypoint path');
   if (configuration.projectPath && !isAbsolute(configuration.projectPath)) throw new Error('Use an absolute Hermes project directory');
+  const plugins = configuration.nativeOptions?.claudePlugins ?? [];
+  if (plugins.length && configuration.id !== 'claude-code') throw new Error('Native Claude plugins require the Claude Code framework');
+  if (new Set(plugins).size !== plugins.length) throw new Error('Duplicate Claude plugin directory');
+  for (const path of plugins) {
+    if (!isAbsolute(path)) throw new Error('Use an absolute Claude plugin directory on the backend host');
+    const manifestPath = join(path, '.claude-plugin', 'plugin.json');
+    if (!existsSync(manifestPath)) throw new Error('Claude plugin directory must contain .claude-plugin/plugin.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (typeof manifest?.name !== 'string' || !manifest.name.trim()) throw new Error('Claude plugin manifest must include a name');
+  }
   return configuration;
 }
 

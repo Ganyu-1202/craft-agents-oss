@@ -166,9 +166,9 @@ export default function SettingsNavigator({
   )
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="pt-2">
+    <div className="flex flex-1 min-h-0 flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="py-2">
           {settingsItems.map((item, index) => (
             <SettingsItemRow
               key={item.id}

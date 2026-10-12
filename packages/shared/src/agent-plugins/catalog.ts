@@ -8,7 +8,7 @@ export const BUILTIN_AGENT_PLUGINS: readonly AgentPluginDescriptor[] = [
   { id: 'claude-code', name: 'Claude Code', description: 'Claude Agent SDK', version: '1', builtin: true, enabled: true,
     capabilities: ['resume', 'utilityCompletion', 'hostTools', 'toolApproval'], compatibility: { providerTypes: ['anthropic'] } },
   { id: 'codex', name: 'Codex', description: 'Native app-server when eligible; explicit Pi compatibility fallback', version: '1', builtin: true, enabled: true,
-    capabilities: ['resume', 'utilityCompletion', 'hostTools', 'toolApproval'], compatibility: { providerTypes: ['pi', 'pi_compat'] } },
+    capabilities: ['resume', 'steering', 'utilityCompletion', 'hostTools', 'toolApproval'], compatibility: { providerTypes: ['pi', 'pi_compat'] } },
 ];
 
 let externalPlugins: AgentPluginDescriptor[] = [];

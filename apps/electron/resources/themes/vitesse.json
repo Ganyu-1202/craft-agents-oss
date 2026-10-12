@@ -4,7 +4,10 @@
   "author": "Anthony Fu",
   "license": "MIT",
   "source": "https://github.com/antfu/vscode-theme-vitesse",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "vitesse-light",
     "dark": "vitesse-dark"
@@ -21,6 +24,16 @@
     "accent": "#4d9375",
     "info": "#caa75d",
     "success": "#4d9375",
-    "destructive": "#cb7676"
-  }
+    "destructive": "#cb7676",
+    "paper": "#1c1c1c",
+    "navigator": "#0c0c0c",
+    "input": "#202020",
+    "popover": "#1c1c1c",
+    "popoverSolid": "#1c1c1c"
+  },
+  "paper": "#f7f7f7",
+  "navigator": "#f0f0f0",
+  "input": "#ffffff",
+  "popover": "#f7f7f7",
+  "popoverSolid": "#f7f7f7"
 }

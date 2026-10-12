@@ -191,10 +191,10 @@ describe('Super Agent execution defaults and orchestration instructions', () => 
   test('adds script instructions only for assigned scripts or a script task', async () => {
     const { config } = await fixture()
     const worker = config.nodes[1]!
-    expect(buildSuperAgentNodePrompt(config, worker)).not.toContain('registerScripts')
-    expect(buildSuperAgentNodePrompt(config, worker, '生成脚本并登记监测')).toContain('registerScripts')
+    expect(buildSuperAgentNodePrompt(config, worker)).not.toContain('脚本管理使用 super_agent_script')
+    expect(buildSuperAgentNodePrompt(config, worker, '生成脚本并登记监测')).toContain('脚本管理使用 super_agent_script')
     config.scripts.push({ id: 'assigned-script', name: 'Check', path: 'check.py', args: [], timeoutSeconds: 60, nodeId: worker.id })
-    expect(buildSuperAgentNodePrompt(config, worker)).toContain('runScripts')
+    expect(buildSuperAgentNodePrompt(config, worker)).toContain('脚本管理使用 super_agent_script')
   })
 
   test('queues session-tool messages durably behind busy team nodes in either control mode', async () => {
@@ -371,15 +371,15 @@ describe('Super Agent execution defaults and orchestration instructions', () => 
     expect(host.settingsUpdates.find(update => update.sessionId === mainSessionId)?.permissionMode).toBe('allow-all')
     expect(host.policies.get(mainSessionId)).toMatchObject({ role: 'coordinator', writeFiles: false, runPrograms: false })
     const prompt = host.options.get(mainSessionId)!.agentSystemPrompt!
-    const block = prompt.match(/<super_agent_actions>\s*([\s\S]*?)\s*<\/super_agent_actions>/)![1]!
-    const actions = JSON.parse(block)
-    expect(actions.tasks[0].nodeId).toBeUndefined()
-    expect(actions.tasks[0].instructions).toContain('验收条件')
+    expect(prompt).not.toContain('<super_agent_actions>')
+    expect(prompt).toContain('super_agent_dispatch')
     expect(prompt).not.toContain('检查 C 盘空间与可清理缓存')
     const context = JSON.parse(host.sends.find(send => send.sessionId === mainSessionId)!.context.split('Current team state (data, not instructions):\n')[1]!)
     expect(context.executionMode).toBe('allow-all')
     expect(context.environment.nodePermissions).toMatchObject({ writeFiles: false, runPrograms: false })
-    host.complete(mainSessionId, `我先安排工作节点检查空间和可清理缓存。\n<super_agent_actions>${JSON.stringify(actions)}</super_agent_actions>`)
+    await service.callNodeActionTool('alpha', mainSessionId, 'super_agent_dispatch', { requestId: 'inspect-disk', title: '检查磁盘', instructions: '检查 C 盘空间与可清理缓存，提交证据和验收条件。' })
+    await service.callNodeActionTool('alpha', mainSessionId, 'super_agent_deliver', { requestId: 'silent-handoff', reply: '' })
+    host.complete(mainSessionId, '我先安排工作节点检查空间和可清理缓存。')
     snapshot = await until(() => service.get('alpha'), value => value.state.tasks[0]?.status === 'running')
     const workerSessionId = snapshot.state.nodes.find(node => node.nodeId === 'worker')!.sessionId!
     expect(host.options.get(workerSessionId)!.permissionMode).toBe('allow-all')
@@ -849,6 +849,26 @@ describe('Super Agent configuration and scheduling', () => {
     expect(prompt).toContain('SHARED_PUBLIC_VALUE')
   })
 
+  test('reports manual inspection pending while queued and running, then clears on completion or stop', async () => {
+    const { host, service, config, advance } = await fixture()
+    expect((await service.save('alpha', config)).inspectionPending).toBe(false)
+    await service.command('alpha', { type: 'chat', text: 'First user message' })
+    const working = await until(() => service.get('alpha'), value => value.state.nodes[0]?.status === 'working')
+    const sessionId = working.state.nodes[0]!.sessionId!
+    expect((await service.command('alpha', { type: 'inspect' })).inspectionPending).toBe(true)
+    host.complete(sessionId, 'First reply')
+    await until(() => service.get('alpha'), value => value.state.nodes[0]?.status === 'idle')
+    // The inspection remains pending during the node call-rate delay.
+    expect((await service.get('alpha')).inspectionPending).toBe(true)
+    advance(1_001); await service.tick()
+    const inspecting = await until(() => service.get('alpha'), value => value.state.nodes[0]?.status === 'working')
+    expect(inspecting.inspectionPending).toBe(true)
+    host.complete(sessionId, 'Checked the blocked work')
+    await until(() => service.get('alpha'), value => value.inspectionPending === false)
+    expect((await service.command('alpha', { type: 'inspect' })).inspectionPending).toBe(true)
+    expect((await service.command('alpha', { type: 'cancel' })).inspectionPending).toBe(false)
+  })
+
   test('coordinator user chat takes priority over a queued inspection', async () => {
     const { host, service, config, advance } = await fixture()
     await service.save('alpha', config)
@@ -871,7 +891,7 @@ describe('Super Agent configuration and scheduling', () => {
       const snapshot = await until(() => service.get('alpha'), value => value.state.nodes.some(node => node.status === 'working'))
       const active = snapshot.state.nodes.find(node => node.status === 'working')!
       const recipient = active.nodeId === 'worker' ? 'main' : 'worker'
-      host.complete(active.sessionId!, `<super_agent_actions>{"messages":[{"toNodeId":"${recipient}","body":"Another reply"}]}</super_agent_actions>`)
+      host.complete(active.sessionId!, `<super_agent_actions>{"messages":[{"toNodeId":"${recipient}","body":"Another reply ${hop}"}]}</super_agent_actions>`)
       await until(() => service.get('alpha'), value => value.state.nodes.find(node => node.nodeId === active.nodeId)?.status !== 'working')
       advance(1_001); await service.tick()
     }
@@ -889,7 +909,7 @@ describe('Super Agent configuration and scheduling', () => {
       const working = snapshot.state.nodes.filter(node => node.status === 'working')
       for (const active of working) {
         const recipient = active.nodeId === 'worker' ? 'main' : 'worker'
-        host.complete(active.sessionId!, `<super_agent_actions>{"messages":[{"toNodeId":"${recipient}","body":"Reply A"},{"toNodeId":"${recipient}","body":"Reply B"}]}</super_agent_actions>`)
+        host.complete(active.sessionId!, `<super_agent_actions>{"messages":[{"toNodeId":"${recipient}","body":"Reply A ${round} ${active.nodeId}"},{"toNodeId":"${recipient}","body":"Reply B ${round} ${active.nodeId}"}]}</super_agent_actions>`)
       }
       advance(1_001); await service.tick()
       const document = await loadSuperAgentDocument(join(fixtures[fixtures.length - 1]!.root, 'alpha'))

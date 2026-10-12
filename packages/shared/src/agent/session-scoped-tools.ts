@@ -21,7 +21,7 @@ import { DOC_REFS } from '../docs/index.ts';
 import { createClaudeContext } from './claude-context.ts';
 import { basename } from 'node:path';
 import { getSessionExecutionPolicy } from './core/session-execution-policy.ts';
-import { filterInteractionTools } from './core/browser-tool-policy.ts';
+import { assertSuperAgentTools, filterInteractionTools } from './core/browser-tool-policy.ts';
 
 // Import from session-tools-core: registry + schemas + base descriptions
 import {
@@ -313,9 +313,12 @@ export function getSessionScopedTools(
 
   // Always create a fresh MCP server wrapper to avoid "Already connected to a transport"
   // race condition when queries are sent back-to-back (see comment on sessionToolsCache).
+  const role = getSessionExecutionPolicy(sessionId)?.role;
+  const visibleTools = filterInteractionTools(tools, false, role);
+  assertSuperAgentTools(visibleTools, role);
   return createSdkMcpServer({
     name: 'session',
     version: '1.0.0',
-    tools: filterInteractionTools(tools, ['coordinator', 'orchestrator'].includes(getSessionExecutionPolicy(sessionId)?.role ?? '')),
+    tools: visibleTools,
   });
 }

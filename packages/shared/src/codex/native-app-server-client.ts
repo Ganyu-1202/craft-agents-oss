@@ -17,6 +17,7 @@ export interface NativeCodexClientOptions {
   codexPath: string;
   workDir: string;
   env?: Record<string, string>;
+  configArgs?: string[];
   requestTimeoutMs?: number;
   onDebug?: (message: string) => void;
 }
@@ -60,7 +61,7 @@ export class NativeCodexAppServerClient extends EventEmitter {
     this.state = 'connecting';
 
     try {
-      this.child = spawn(this.options.codexPath, ['app-server', '--listen', 'stdio://'], {
+      this.child = spawn(this.options.codexPath, ['app-server', '--listen', 'stdio://', ...(this.options.configArgs ?? [])], {
         cwd: this.options.workDir,
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,

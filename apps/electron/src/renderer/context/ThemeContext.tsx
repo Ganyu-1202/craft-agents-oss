@@ -11,9 +11,8 @@ import {
   type ThemeFile,
   type ShikiThemeConfig,
 } from '@config/theme'
-import {
-  DEFAULT_THEME_PACK_STYLE,
-} from '@config/theme-pack-style'
+import { mergeThemePackColors, resolveThemeAppearance, resolveThemePackStyle } from '@config/theme-pack-compat'
+import { completeBundledPreset, normalizeThemePresentation, type ThemePresentation } from '@config/theme-presentation'
 import type {
   ThemePack,
   ThemePackAsset,
@@ -65,7 +64,7 @@ interface ThemeContextType {
   presetTheme: ThemeFile | null
   /** Fully resolved theme (preset merged with any overrides) */
   resolvedTheme: ThemeOverrides
-  /** Whether dark mode is active (scenic themes force dark) */
+  /** Whether dark mode is active after theme mode constraints */
   isDark: boolean
   /** Whether theme is scenic mode (background image with glass panels) */
   isScenic: boolean
@@ -94,6 +93,9 @@ interface ThemeContextType {
   /** Explicit opt-in for compatibility scripts from imported theme packs. */
   themePackScriptsEnabled: boolean
   setThemePackScriptsEnabled: (enabled: boolean) => void
+  presentation: ThemePresentation
+  setPresentation: (value: Partial<ThemePresentation>) => void
+  resetPresentation: () => void
 }
 
 interface StoredTheme {
@@ -118,6 +120,13 @@ const BUNDLED_THEMES = new Map<string, ThemeFile>(
     return [id, theme]
   })
 )
+
+// Include scenic preset assets in both desktop and WebUI production builds.
+const bundledBackgrounds = import.meta.glob('../../../resources/themes/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+for (const [id, theme] of BUNDLED_THEMES) {
+  const image = Object.entries(bundledBackgrounds).find(([path]) => path.endsWith(`/${theme.backgroundImage}`))?.[1]
+  if (image) BUNDLED_THEMES.set(id, { ...theme, backgroundImage: image })
+}
 
 function decodeAssetDataUrl(dataUrl: string): string | null {
   const comma = dataUrl.indexOf(',')
@@ -293,6 +302,10 @@ export function ThemeProvider({
   const [themePacks, setThemePacks] = useState<ThemePack[]>([])
   const [themePackId, setThemePackId] = useState<string | null>(null)
   const [activeThemePack, setActiveThemePack] = useState<ThemePack | null>(null)
+  const packRequestId = useRef(0)
+  const [presentationOverrides, setPresentationOverrides] = useState<Record<string, Partial<ThemePresentation>>>(() =>
+    storage.get(storage.KEYS.themePresentation, {})
+  )
   const [themePackScriptsEnabled, setThemePackScriptsEnabledState] = useState(() =>
     storage.get(storage.KEYS.themePackScripts, false)
   )
@@ -310,6 +323,25 @@ export function ThemeProvider({
   const effectiveColorThemeSource: 'preview' | 'workspace' | 'app' =
     previewColorTheme !== null ? 'preview' : workspaceColorTheme !== null ? 'workspace' : 'app'
   const isDarkFromMode = resolvedMode === 'dark'
+  const presentationKey = themePackId ? `pack:${themePackId}` : `preset:${effectiveColorTheme}`
+  const presentation = normalizeThemePresentation(presentationOverrides[presentationKey], {
+    glassBlur: activeThemePack?.manifest.style?.backgroundBlur ?? 8,
+  })
+  const setPresentation = useCallback((value: Partial<ThemePresentation>) => {
+    setPresentationOverrides(previous => {
+      const next = { ...previous, [presentationKey]: { ...previous[presentationKey], ...value } }
+      storage.set(storage.KEYS.themePresentation, next)
+      return next
+    })
+  }, [presentationKey])
+  const resetPresentation = useCallback(() => {
+    setPresentationOverrides(previous => {
+      const next = { ...previous }
+      delete next[presentationKey]
+      storage.set(storage.KEYS.themePresentation, next)
+      return next
+    })
+  }, [presentationKey])
 
   // Load workspace theme override when workspace changes
   useEffect(() => {
@@ -350,7 +382,7 @@ export function ThemeProvider({
     }
 
     if (!effectiveColorTheme || effectiveColorTheme === 'default') {
-      setPresetTheme(null)
+      setPresetTheme(BUNDLED_THEMES.get('default') ?? null)
       setThemeResolvedFrom('none')
       setThemeLoadError(null)
       return () => {
@@ -372,7 +404,7 @@ export function ThemeProvider({
       if (cancelled) return
 
       if (preset?.theme) {
-        setPresetTheme(preset.theme)
+        setPresetTheme(completeBundledPreset(preset.theme, BUNDLED_THEMES.get(effectiveColorTheme)))
         setThemeResolvedFrom('ipc')
         setThemeLoadError(null)
         return
@@ -390,38 +422,21 @@ export function ThemeProvider({
 
   // Resolve theme (preset → pack colors win → final)
   const resolvedTheme = useMemo(() => {
-    const packColors = activeThemePack?.manifest.colors
-    const base = packColors ? { ...presetTheme, ...packColors } : presetTheme
-    return resolveTheme(base ?? undefined)
+    return resolveTheme(mergeThemePackColors(presetTheme, activeThemePack?.manifest ?? null))
   }, [presetTheme, activeThemePack])
 
   // Determine scenic mode (background image with glass panels).
   // A pack is scenic when it declares a background (light/dark pair or single image).
-  const isScenic = useMemo(() => {
-    if (activeThemePack) {
-      return Boolean(
-        activeThemePack.manifest.background?.light ||
-        activeThemePack.manifest.background?.dark ||
-        activeThemePack.manifest.backgroundImage
-      )
-    }
-    return resolvedTheme.mode === 'scenic' && !!resolvedTheme.backgroundImage
-  }, [resolvedTheme, activeThemePack])
-
-  // Dark-only themes (e.g. Dracula) force dark mode regardless of system mode
-  const isDarkOnlyTheme = presetTheme?.supportedModes?.length === 1 && presetTheme.supportedModes[0] === 'dark'
-
-  // isDark reflects actual visual appearance: scenic, dark-only themes, or system dark mode
-  const isDark = isScenic || isDarkOnlyTheme ? true : isDarkFromMode
+  const { isScenic, isDark } = resolveThemeAppearance(presetTheme, activeThemePack?.manifest ?? null, resolvedMode)
 
   // Shiki theme configuration
   const shikiConfig = useMemo(() => {
-    return presetTheme?.shikiTheme || DEFAULT_SHIKI_THEME
-  }, [presetTheme])
+    return activeThemePack?.manifest.colors?.shikiTheme || presetTheme?.shikiTheme || DEFAULT_SHIKI_THEME
+  }, [presetTheme, activeThemePack])
 
   // Get current Shiki theme name based on mode
   const shikiTheme = useMemo(() => {
-    const supportedModes = presetTheme?.supportedModes
+    const supportedModes = activeThemePack ? activeThemePack.manifest.colors?.supportedModes : presetTheme?.supportedModes
     const currentMode = isDark ? 'dark' : 'light'
 
     // If theme has limited mode support and doesn't include current mode,
@@ -432,7 +447,7 @@ export function ThemeProvider({
     }
 
     return getShikiTheme(shikiConfig, isDark)
-  }, [shikiConfig, isDark, presetTheme])
+  }, [shikiConfig, isDark, presetTheme, activeThemePack])
 
   // === DOM Effects (SINGLETON - all theme DOM manipulation happens here) ===
 
@@ -460,6 +475,15 @@ export function ThemeProvider({
     root.style.setProperty('--craft-chat-bubble-opacity', `${chatOpacity * 100}%`)
     root.style.setProperty('--craft-chat-opacity-number', String(chatOpacity))
   }, [effectiveColorTheme, font, chatOpacity])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--theme-background-dim', String(presentation.backgroundDim))
+    root.style.setProperty('--theme-glass-blur', `${presentation.glassBlur}px`)
+    root.style.setProperty('--theme-character-scale', String(presentation.characterScale))
+    root.style.setProperty('--theme-character-opacity', String(presentation.characterOpacity))
+    root.dataset.themeCharacters = presentation.showCharacters ? 'visible' : 'hidden'
+  }, [presentation.backgroundDim, presentation.glassBlur, presentation.characterScale, presentation.characterOpacity, presentation.showCharacters])
 
   // Apply declarative CSS shipped by Harness-compatible packs. The bundle is
   // parsed on the server as text; executable compatibility scripts are handled
@@ -523,19 +547,15 @@ export function ThemeProvider({
   useEffect(() => {
     const root = document.documentElement
 
-    // Check if this is a dark-only theme (forces dark mode)
-    const isDarkOnlyTheme = presetTheme?.supportedModes?.length === 1 && presetTheme.supportedModes[0] === 'dark'
-
     // Apply mode class
-    // Scenic and dark-only themes force dark mode
-    const effectiveMode = (isScenic || isDarkOnlyTheme) ? 'dark' : resolvedMode
+    const effectiveMode = isDark ? 'dark' : 'light'
     root.classList.remove('light', 'dark')
     root.classList.add(effectiveMode)
 
     // Handle themeMismatch - set solid background when:
     // 1. Theme doesn't support current mode (e.g., dark-only Dracula in light mode), OR
     // 2. Resolved mode differs from system preference (vibrancy mismatch)
-    const supportedModes = presetTheme?.supportedModes
+    const supportedModes = activeThemePack ? activeThemePack.manifest.colors?.supportedModes : presetTheme?.supportedModes
     const currentMode = isDarkFromMode ? 'dark' : 'light'
     const themeModeUnsupported = supportedModes && supportedModes.length > 0 && !supportedModes.includes(currentMode)
     const vibrancyMismatch = resolvedMode !== systemPreference
@@ -549,9 +569,11 @@ export function ThemeProvider({
     // Set scenic mode data attribute for CSS targeting
     if (isScenic) {
       root.dataset.scenic = 'true'
-      const bgImage = packAssets.background?.dataUrl ?? resolvedTheme.backgroundImage
+      const bgImage = activeThemePack ? packAssets.background?.dataUrl : resolvedTheme.backgroundImage
       if (bgImage) {
         root.style.setProperty('--background-image', `url("${bgImage}")`)
+      } else {
+        root.style.removeProperty('--background-image')
       }
     } else {
       delete root.dataset.scenic
@@ -559,7 +581,7 @@ export function ThemeProvider({
     }
 
     // Theme pack texture + style variables
-    const style = { ...DEFAULT_THEME_PACK_STYLE, ...(activeThemePack?.manifest.style ?? {}) }
+    const style = resolveThemePackStyle(activeThemePack?.manifest.style)
     const setPackVar = (name: string, value: string | undefined) => {
       if (value !== undefined && value !== '') root.style.setProperty(name, value)
       else root.style.removeProperty(name)
@@ -605,7 +627,7 @@ export function ThemeProvider({
       }
     }
 
-  }, [presetTheme, resolvedMode, systemPreference, isScenic, resolvedTheme, isDarkFromMode, activeThemePack, packAssets])
+  }, [presetTheme, resolvedMode, systemPreference, isScenic, isDark, resolvedTheme, isDarkFromMode, activeThemePack, packAssets])
 
   // Inject CSS variables
   useEffect(() => {
@@ -619,13 +641,13 @@ export function ThemeProvider({
     }
 
     // When using default theme, clear custom CSS
-    if (!effectiveColorTheme || effectiveColorTheme === 'default') {
+    if (!presetTheme && !activeThemePack) {
       styleEl.textContent = ''
       return
     }
 
     // Only inject CSS when preset is loaded (prevents flash with empty/wrong values)
-    if (!presetTheme) {
+    if (!presetTheme && !activeThemePack) {
       // Keep existing CSS while loading
       return
     }
@@ -634,11 +656,11 @@ export function ThemeProvider({
     const cssVars = themeToCSS(resolvedTheme, isDark)
 
     if (cssVars) {
-      styleEl.textContent = `:root {\n  ${cssVars}\n}`
+      styleEl.textContent = `:root, :root[data-theme-override], :root[data-theme-pack][data-theme-override] {\n  ${cssVars}\n}`
     } else {
       styleEl.textContent = ''
     }
-  }, [effectiveColorTheme, presetTheme, resolvedTheme, isDark])
+  }, [effectiveColorTheme, presetTheme, resolvedTheme, isDark, activeThemePack])
 
   // === System preference listener ===
   useEffect(() => {
@@ -755,18 +777,24 @@ export function ThemeProvider({
 
   useEffect(() => {
     refreshThemePacks()
+    let cancelled = false
+    const requestId = ++packRequestId.current
     window.electronAPI?.getSelectedThemePack?.().then((pack) => {
+      if (cancelled || requestId !== packRequestId.current) return
       setThemePackId(pack?.id ?? null)
       setActiveThemePack(pack)
     }).catch(() => {
+      if (cancelled || requestId !== packRequestId.current) return
       setThemePackId(null)
       setActiveThemePack(null)
     })
 
     const cleanup = window.electronAPI?.onThemePackChange?.((payload) => {
       refreshThemePacks()
+      const requestId = ++packRequestId.current
       if (payload.packId) {
         window.electronAPI?.getThemePack?.(payload.packId).then((pack) => {
+          if (cancelled || requestId !== packRequestId.current) return
           setThemePackId(pack?.id ?? null)
           setActiveThemePack(pack)
         }).catch(() => {})
@@ -775,14 +803,14 @@ export function ThemeProvider({
         setActiveThemePack(null)
       }
     })
-    return cleanup
+    return () => { cancelled = true; cleanup?.() }
   }, [refreshThemePacks])
 
   // Load pack artwork as data URLs (re-loads when the active pack or dark mode changes)
   useEffect(() => {
     const pack = activeThemePack
+    setPackAssets({ background: null, chat: null, sidebar: null, characters: { left: null, right: null } })
     if (!pack) {
-      setPackAssets({ background: null, chat: null, sidebar: null, characters: { left: null, right: null } })
       return
     }
     let cancelled = false
@@ -797,12 +825,13 @@ export function ThemeProvider({
       charRight: pack.manifest.characters?.right,
     }
     void (async () => {
+      const loadAsset = async (reference: string | undefined) => {
+        try { return reference ? await window.electronAPI?.getThemePackAsset?.(pack.id, reference) ?? null : null }
+        catch { return null }
+      }
       const [bg, chat, sidebar, charLeft, charRight] = await Promise.all([
-        refs.background ? window.electronAPI?.getThemePackAsset?.(pack.id, refs.background) ?? null : null,
-        refs.chat ? window.electronAPI?.getThemePackAsset?.(pack.id, refs.chat) ?? null : null,
-        refs.sidebar ? window.electronAPI?.getThemePackAsset?.(pack.id, refs.sidebar) ?? null : null,
-        refs.charLeft ? window.electronAPI?.getThemePackAsset?.(pack.id, refs.charLeft) ?? null : null,
-        refs.charRight ? window.electronAPI?.getThemePackAsset?.(pack.id, refs.charRight) ?? null : null,
+        loadAsset(refs.background), loadAsset(refs.chat), loadAsset(refs.sidebar),
+        loadAsset(refs.charLeft), loadAsset(refs.charRight),
       ])
       if (!cancelled) {
         setPackAssets({ background: bg, chat, sidebar, characters: { left: charLeft, right: charRight } })
@@ -814,10 +843,14 @@ export function ThemeProvider({
   // === Theme pack setters ===
 
   const setThemePack = useCallback((packId: string | null) => {
+    const requestId = ++packRequestId.current
     setThemePackId(packId)
+    setActiveThemePack(null)
     window.electronAPI?.setSelectedThemePack?.(packId)
     if (packId) {
       window.electronAPI?.getThemePack?.(packId).then((pack) => {
+        if (requestId !== packRequestId.current) return
+        setThemePackId(pack?.id ?? null)
         setActiveThemePack(pack)
       }).catch(() => {})
     } else {
@@ -839,6 +872,7 @@ export function ThemeProvider({
     if (ok) {
       refreshThemePacks()
       if (themePackId === packId) {
+        ++packRequestId.current
         setThemePackId(null)
         setActiveThemePack(null)
       }
@@ -924,6 +958,9 @@ export function ThemeProvider({
         deleteThemePack,
         themePackScriptsEnabled,
         setThemePackScriptsEnabled,
+        presentation,
+        setPresentation,
+        resetPresentation,
       }}
     >
       {children}

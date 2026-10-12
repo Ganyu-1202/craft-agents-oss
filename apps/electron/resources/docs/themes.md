@@ -171,7 +171,8 @@ Scenic mode benefits from semi-transparent surface colors:
 | `popover` | Dropdowns, modals, context menus |
 | `popoverSolid` | Guaranteed 100% opaque popover background |
 
-**Note:** Scenic themes automatically force dark mode for better contrast with background images.
+**Note:** Legacy scenic presets use dark mode. Theme packs with light artwork or
+`colors.supportedModes: ["light", "dark"]` follow the selected appearance mode.
 
 ## Theme Packs
 
@@ -197,6 +198,23 @@ The writable location can be overridden by the host application with
 development, the repository-level `themes/<pack-id>/` directory is used as the
 same built-in source. The Electron asset copy step packages that directory
 verbatim.
+
+### Built-in singer series
+
+Settings → Appearance → Theme Packs includes four native packs:
+
+| Pack | Style |
+|------|-------|
+| 初音未来 · 薄荷声场 | Mint/cyan stage with twin-tail Miku artwork |
+| 樱花初音 · 花间序曲 | Pink blossoms and Sakura Miku artwork |
+| 重音 Teto · 绯红回响 | Cream/crimson stage with twin-drill Teto artwork |
+| 初音 × 重音 · 双色共鸣 | Cyan/crimson duet with both characters |
+
+All four ship self-contained SVG backgrounds, standees and previews for light
+and dark mode. They require no compatibility scripts or downloaded assets.
+Corner artwork scales down in compact windows. These are original stylized fan
+illustrations, not official character artwork. Rebuild the assets with
+`bun run scripts/generate-singer-themes.ts`.
 
 ### Harness / DSH package compatibility
 
@@ -228,9 +246,17 @@ imports are unavailable to the script. Keep this disabled for untrusted packs.
 Harness references such as `skins/my-skin/preview/light.png` are normalized to
 the actual package path.
 
+Harness shell colors (`--bg-base`, `--text-primary`, `--color-primary`, surface
+and status variables) are mapped into TokenBird's semantic palette, including
+dark overrides. Component-specific rules are excluded from palette extraction.
+Source-only packages may supply `src/client/*.css` when no bundled CSS literal
+is available. Packs with day and night artwork follow the selected appearance.
+
 Native packs may set `customCss` to inline CSS or a relative `.css` file, and
 may list additional files with `stylesheets` and `scripts` arrays. All local
-stylesheet URLs are resolved relative to the pack and safely inlined.
+stylesheet URLs are resolved relative to the stylesheet first, then the pack,
+and inlined. Optional `id` keeps imports stable when the display name changes;
+without it, native imports use the folder name.
 `bodyAttr` is applied while the pack is active and `data-ds-dark-theme` follows
 the current light/dark mode, allowing the packaged Harness CSS to work in the
 Craft renderer. Executable files remain inert unless the user opts into theme
@@ -240,13 +266,13 @@ scripts in Settings.
 
 ```json
 {
+  "id": "star-roaming",
   "name": "星空漫游",
   "author": "me",
   "tagline": "深空背景 + 蕾丝侧栏",
   "description": "…",
   "version": 1,
   "tags": ["space"],
-  "mode": "scenic",
   "background": { "light": "background.png", "dark": "background-night.png" },
   "backgroundImage": "background.png",
   "chatTexture": "chat.png",
@@ -274,6 +300,8 @@ scripts in Settings.
     "borderRadius": "12px"
   },
   "colors": {
+    "mode": "scenic",
+    "supportedModes": ["light", "dark"],
     "accent": "oklch(0.58 0.22 293)",
     "background": "oklch(0.15 0.02 270 / 0.8)",
     "dark": { "accent": "oklch(0.65 0.22 293)" }
@@ -285,7 +313,8 @@ scripts in Settings.
 |-------|---------|
 | `name` / `nameEn` | Display name |
 | `author`, `tagline`, `description`, `tags` | Metadata |
-| `mode` | `"scenic"` (full-window artwork) or `"solid"` |
+| `id` | Optional stable import identifier (defaults to the native folder name) |
+| `colors.supportedModes` | `["light", "dark"]`, or one supported mode |
 | `background.light` / `background.dark` | Background images per color mode (win over `backgroundImage`) |
 | `backgroundImage` | Single background image (used when `background` is absent) |
 | `chatTexture` | Chat texture — pasted onto the input box (composer frame) |

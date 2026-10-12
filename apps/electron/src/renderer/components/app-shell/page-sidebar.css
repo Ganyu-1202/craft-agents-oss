@@ -1,0 +1,16 @@
+[data-page-sidebar-drawer][data-slot="dialog-content"] {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(320px, 90vw);
+  max-width: 90vw;
+  transform: none !important;
+  translate: none !important;
+  animation: none !important;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-page-sidebar-drawer] button { min-height: 44px; }
+[data-page-sidebar-drawer] input { min-height: 44px; font-size: 16px; }
+[data-page-sidebar-drawer] [data-studio-session-sidebar] .group > button { display: block; min-width: 44px; }
+[data-page-sidebar-drawer] [data-studio-session-sidebar] .group > button:first-child { min-width: 0; }

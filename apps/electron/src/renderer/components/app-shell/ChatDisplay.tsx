@@ -76,6 +76,7 @@ import { CHAT_LAYOUT } from "@/config/layout"
 import { collectFileChangesFromActivities, getFirstFileChangeIdForActivity } from "@/lib/file-changes"
 import { resolveBranchNewPanelOption } from "./branching"
 import { handleErrorMessageAction } from "./error-message-actions"
+import { isSessionTooSmallToCompact } from "./message-notice"
 import { useAtomValue } from 'jotai'
 import { sessionMetaMapAtom, sessionBranchesAtom } from '@/atoms/sessions'
 import { getRechargeConnection, openConnectionRecharge } from '@/lib/tokennest-recharge'
@@ -1874,8 +1875,6 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
                         )}
                       >
                       <MessageHistoryActions content={turn.response?.text ?? ''}
-                        onEdit={turn.response?.messageId && !turn.response.isPlan && !turn.isStreaming ? value => editHistoryMessage(turn.response!.messageId!, value) : undefined}
-                        editDisabled={disabled || session.isProcessing || !turn.isComplete}
                         branchCount={turn.response?.messageId ? branchesByMessage.get(turn.response.messageId)?.length : 0}
                         branches={turn.response?.messageId ? historyBranches(turn.response.messageId) : undefined}
                         currentSessionId={session.id}
@@ -2328,14 +2327,19 @@ interface MessageBubbleProps {
 /**
  * ErrorMessage - Separate component for error messages to allow useState hook
  */
-function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Message; onOpenUrl?: (url: string) => void; sessionId?: string; onRetry?: () => void }) {
+function ErrorMessage({ message, onOpenUrl, sessionId, onRetry, onDismiss }: { message: Message; onOpenUrl?: (url: string) => void; sessionId?: string; onRetry?: () => void; onDismiss: () => void }) {
   const { t } = useTranslation()
   const context = useAppShellContext()
   const metadata = useAtomValue(sessionMetaMapAtom)
   const rechargeConnection = getRechargeConnection(context.llmConnections,
     sessionId ? metadata.get(sessionId)?.llmConnection : undefined, context.workspaceDefaultLlmConnection)
   const canRecharge = !!rechargeConnection && isInsufficientBalanceError({ message: message.content, originalError: message.errorOriginal })
+  const tooSmallToCompact = isSessionTooSmallToCompact(message)
+  const isWarning = tooSmallToCompact || message.role === 'warning' || message.infoLevel === 'warning'
   const friendlyCopy = (() => {
+    if (tooSmallToCompact) return { title: t('chat.compactionNotNeededTitle'), description: t('chat.compactionNotNeededMessage') }
+    if (isWarning) return { title: t('chat.warningTitle'), description: message.content }
+    if (message.role === 'info') return { title: t('common.error'), description: message.content }
     switch (message.errorCode) {
       case 'content_policy_blocked':
         return { title: t('chat.contentPolicyBlockedTitle'), description: t('chat.contentPolicyBlockedMessage') }
@@ -2367,7 +2371,7 @@ function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Mes
         return { title: message.errorTitle || t('common.error'), description: message.content }
     }
   })()
-  const rawContentDetail = !message.errorOriginal && !message.errorDetails?.length &&
+  const rawContentDetail = message.role === 'error' && !message.errorOriginal && !message.errorDetails?.length &&
     (!message.errorCode || message.errorCode === 'invalid_request')
       ? message.content
       : undefined
@@ -2381,7 +2385,7 @@ function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Mes
   return (
     <div className="flex justify-start mt-4">
       <div
-        className="max-w-[80%] shadow-tinted rounded-[10px] border border-destructive/35 pl-5 pr-4 pt-3 pb-3 break-words"
+        className={cn('max-w-[80%] shadow-tinted rounded-[10px] border border-destructive/35 pl-5 pr-4 pt-3 pb-3 break-words', isWarning && '[--destructive:var(--info)] [--destructive-rgb:var(--info-rgb)]')}
         style={{
           backgroundColor: 'oklch(from var(--destructive) l c h / 0.09)',
           '--shadow-color': 'var(--destructive-rgb)',
@@ -2391,7 +2395,11 @@ function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Mes
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-destructive/10">
             <AlertTriangle className="size-3.5" aria-hidden="true" />
           </span>
-          <span>{friendlyCopy.title}</span>
+          <span className="flex-1">{friendlyCopy.title}</span>
+          <button type="button" onClick={onDismiss} aria-label={t('common.close')} title={t('common.close')}
+            className="ml-3 flex size-6 shrink-0 items-center justify-center rounded hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive">
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
         </div>
         <p className="pl-8 text-sm leading-5 text-destructive/90">{friendlyCopy.description}</p>
         {canRecharge && <button type="button" className="mt-2 ml-8 text-xs underline text-destructive" onClick={() => void openConnectionRecharge(rechargeConnection!)}>
@@ -2462,6 +2470,8 @@ function MessageBubble({
   onRestoreInterrupted,
 }: MessageBubbleProps) {
   const { t } = useTranslation()
+  const [dismissedId, setDismissedId] = useState<string | null>(null)
+  if (dismissedId === message.id) return null
 
   // === USER MESSAGE: Right-aligned bubble with attachments above ===
   if (message.role === 'user') {
@@ -2524,8 +2534,9 @@ function MessageBubble({
   }
 
   // === ERROR MESSAGE: Red bordered bubble with warning icon and collapsible details ===
-  if (message.role === 'error') {
-    return <ErrorMessage message={message} onOpenUrl={onOpenUrl} sessionId={sessionId} onRetry={onRetry} />
+  if (message.role === 'error' || message.role === 'warning' ||
+    (message.role === 'info' && (message.infoLevel === 'warning' || message.infoLevel === 'error'))) {
+    return <ErrorMessage message={message} onOpenUrl={onOpenUrl} sessionId={sessionId} onRetry={onRetry} onDismiss={() => setDismissedId(message.id)} />
   }
 
   // === STATUS MESSAGE: Matches ProcessingIndicator layout for visual consistency ===
@@ -2589,20 +2600,6 @@ function MessageBubble({
       : <div className={className}>{children}</div>
   }
 
-  // === WARNING MESSAGE: Info themed bubble ===
-  if (message.role === 'warning') {
-    return (
-      <div className="flex justify-start">
-        <div className="max-w-[80%] bg-info/10 rounded-[8px] pl-5 pr-4 pt-2 pb-2.5 break-words select-none">
-          <div className="text-xs text-info/50 mb-0.5 font-semibold">
-            Warning
-          </div>
-          <p className="text-sm text-info">{message.content}</p>
-        </div>
-      </div>
-    )
-  }
-
   return null
 }
 
@@ -2623,6 +2620,12 @@ const MemoizedMessageBubble = React.memo(MessageBubble, (prev, next) => {
     prev.message.id === next.message.id &&
     prev.message.content === next.message.content &&
     prev.message.role === next.message.role &&
+    prev.message.infoLevel === next.message.infoLevel &&
+    prev.message.errorCode === next.message.errorCode &&
+    prev.message.errorTitle === next.message.errorTitle &&
+    prev.message.errorOriginal === next.message.errorOriginal &&
+    prev.message.errorDetails === next.message.errorDetails &&
+    prev.message.errorActions === next.message.errorActions &&
     prev.sessionId === next.sessionId &&
     prev.compactMode === next.compactMode &&
     prev.onRestoreInterrupted === next.onRestoreInterrupted

@@ -32,6 +32,9 @@ try {
   const bundle = await Bun.build({ entrypoints: [entry], target: 'browser', format: 'esm', outdir: directory, naming: 'client.js' })
   if (!bundle.success) throw new Error(bundle.logs.join('\n'))
   writeFileSync(join(directory, 'index.html'), '<!doctype html><meta charset="utf-8"><script type="module" src="/client.js"></script>')
+  // Android's WebView serves its assets from a separate loopback HTTP origin.
+  const webui = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: request => new Response(Bun.file(join(directory, new URL(request.url).pathname === '/client.js' ? 'client.js' : 'index.html'))) })
+  cleanup.push(() => webui.stop(true))
   const cloud = startCloudServer({ publicUrl: 'http://127.0.0.1:0', port: 0, databasePath: ':memory:', webuiDir: directory, iceServers: [],
     authenticate: async token => { if (token !== 'smoke-owner') throw new Error('Authentication required'); return { subject: token, expiresAt: Date.now() + 3600_000 } }, recordDevice: async () => {} })
   cleanup.push(() => cloud.stop())
@@ -82,7 +85,7 @@ try {
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? 'Browser evaluation failed')
     return result.result?.value
   }
-  await command('Page.navigate', { url: `${origin}/connect/${host.status.deviceId}` })
+  await command('Page.navigate', { url: `http://127.0.0.1:${webui.port}/index.html` })
   const end = Date.now() + 15_000
   while (!await evaluate('typeof window.WsRpcClient === "function"')) { if (Date.now() > end) throw new Error('Browser bundle did not load'); await Bun.sleep(50) }
   const result = await evaluate(`(async () => {
@@ -97,13 +100,24 @@ try {
   })()`)
   assert.equal(result.path, 'direct'); assert.equal(result.echoMatches, true)
   assert.deepEqual(result.capability, { input: 'browser capability' }); assert.equal(calls, 1)
+  const slowGrant = await host.request<{ url: string; token: string }>(`/v1/devices/${host.status.deviceId}/connect`, 'POST')
+  const slow = await evaluate(`(async () => {
+    const grant = ${JSON.stringify(slowGrant)};
+    const slowClient = new window.WsRpcClient(grant.url, { token: grant.token, autoReconnect: false,
+      cloudPeerFactory: async () => { await new Promise(resolve => setTimeout(resolve, 5500)); throw new Error('Mobile NAT unavailable'); } });
+    try {
+      const echo = await slowClient.invoke('echo', 'slow mobile fallback');
+      return { echo, path: slowClient.getConnectionState().dataPath };
+    } finally { slowClient.destroy(); }
+  })()`)
+  assert.deepEqual(slow, { echo: 'slow mobile fallback', path: 'relay' }); assert.equal(calls, 2)
   await host.request(`/v1/devices/${host.status.deviceId}`, 'DELETE')
   const revoked = await evaluate(`new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Revocation did not close browser connection')), 5000);
     const check = () => { if (client.getConnectionState().status === 'disconnected') { clearTimeout(timer); resolve(true); } else setTimeout(check, 20); }; check();
   })`)
   assert.equal(revoked, true)
-  console.log(JSON.stringify({ browser: 'Chromium', direct: true, largeUnicodeEcho: true, bidirectionalCapability: true, revocation: true }))
+  console.log(JSON.stringify({ browser: 'Chromium', androidLoopbackOrigin: true, direct: true, slowMobileRelayFallback: true, largeUnicodeEcho: true, bidirectionalCapability: true, revocation: true }))
 } finally {
   for (const action of cleanup.reverse()) { try { await action() } catch {} }
   if (previous === undefined) delete process.env.TOKENBIRD_CONFIG_DIR; else process.env.TOKENBIRD_CONFIG_DIR = previous

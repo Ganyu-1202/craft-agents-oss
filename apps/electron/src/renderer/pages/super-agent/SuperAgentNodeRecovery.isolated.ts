@@ -19,6 +19,14 @@ function findButton(node: React.ReactNode): React.ReactElement<Record<string, un
   return undefined
 }
 
+function findButtons(node: React.ReactNode): Array<React.ReactElement<Record<string, unknown>>> {
+  if (!React.isValidElement<Record<string, unknown>>(node)) return []
+  return [
+    ...(typeof node.props.onClick === 'function' ? [node] : []),
+    ...React.Children.toArray(node.props.children as React.ReactNode).flatMap(findButtons),
+  ]
+}
+
 function render(runtime: SuperAgentNodeRuntime, busy = false) {
   const onCommand = mock(async () => {})
   let tree: React.ReactNode
@@ -58,5 +66,26 @@ describe('Super Agent node recovery controls', () => {
     for (const status of ['idle', 'preparing', 'working'] as const) {
       expect(render({ nodeId: 'worker', status }).html).toBe('')
     }
+  })
+
+  it('offers a separate reset confirmation and sends the confirmed command for this node', () => {
+    const result = render({ nodeId: 'worker', status: 'error' })
+    expect(result.html).toContain('完全重置节点')
+    const buttons = findButtons(result.tree)
+    const open = buttons.find(button => button.props.className?.toString().includes('text-destructive'))!
+    ;(open.props.onClick as () => void)()
+    expect(result.onCommand).not.toHaveBeenCalled()
+    const confirm = buttons.find(button => button.props.variant === 'destructive')!
+    ;(confirm.props.onClick as () => void)()
+    expect(result.onCommand).toHaveBeenCalledWith({ type: 'node-reset', nodeId: 'worker', confirmed: true })
+  })
+
+  it('disables the reset entry and confirmation while another command is pending', () => {
+    const result = render({ nodeId: 'main', status: 'error' }, true)
+    const buttons = findButtons(result.tree)
+    const confirm = buttons.find(button => button.props.variant === 'destructive')!
+    expect(confirm.props.disabled).toBe(true)
+    ;(confirm.props.onClick as () => void)()
+    expect(result.onCommand).not.toHaveBeenCalled()
   })
 })

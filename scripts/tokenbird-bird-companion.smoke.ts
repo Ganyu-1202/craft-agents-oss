@@ -28,15 +28,19 @@ const hostPreload = join(root, 'host-preload.cjs')
 writeFileSync(hostHtml, '<!doctype html><html><body>Companion smoke host</body></html>')
 writeFileSync(hostPreload, `
 const {contextBridge, ipcRenderer} = require('electron');
+let latestPreferences;
+ipcRenderer.on('bird-companion:preferences-changed', (_event, preferences) => { latestPreferences = preferences; });
 contextBridge.exposeInMainWorld('fixture', {
+  latestPreferences: () => latestPreferences,
   get: () => ipcRenderer.invoke('bird-companion:get-preferences'),
   set: value => ipcRenderer.invoke('bird-companion:set-preferences', value),
   observe: value => ipcRenderer.invoke('bird-companion:observe', value),
   dismiss: () => ipcRenderer.invoke('bird-companion:dismiss-bubble'),
+  contextMenu: () => ipcRenderer.invoke('bird-companion:context-menu'),
 });
 `)
 writeFileSync(entry, `
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, Menu, screen } from 'electron';
 import { writeFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
@@ -64,6 +68,25 @@ async function until(predicate, label, duration = 10000) {
 const companion = role => BrowserWindow.getAllWindows().find(window => window.webContents.getURL().includes('bird-companion.html') && window.webContents.getURL().includes('role=' + role));
 const bird = () => companion('bird');
 const bubble = () => companion('bubble');
+// Inspect the actual native menu without displaying it over the user's desktop.
+let pendingMenu;
+Menu.prototype.popup = function(options) { pendingMenu = { menu: this, options }; };
+async function openMenu() {
+  await bird().webContents.executeJavaScript('document.querySelector(".bird-character").dispatchEvent(new MouseEvent("contextmenu", {bubbles: true, button: 2})); true');
+  await until(() => pendingMenu, 'native context menu');
+  assert.equal(pendingMenu.options.window, bird(), 'Menu belongs to the bird window');
+}
+function chooseMenu(label) {
+  const current = pendingMenu;
+  pendingMenu = null;
+  const item = current.menu.items.find(item => item.label === label);
+  assert.ok(item, 'Native menu item: ' + label);
+  item.click();
+  current.options.callback();
+}
+async function performance(motion, expression) {
+  await until(async () => await bird().webContents.executeJavaScript('document.querySelector(".bird-avatar")?.dataset.motion === ' + JSON.stringify(motion) + ' && document.querySelector(".bird-avatar")?.dataset.expression === ' + JSON.stringify(expression)), 'pose: ' + motion);
+}
 async function screenshot(window, path) {
   await window.webContents.capturePage();
   await sleep(150);
@@ -109,6 +132,8 @@ try {
   assert.ok(Math.abs(initialBounds.x - (primaryArea.x + primaryArea.width - 236 - 16)) <= 4, 'Default right edge');
   assert.ok(Math.abs(initialBounds.y - (primaryArea.y + primaryArea.height - 200 - 16)) <= 4, 'Default bottom edge');
   const waiting = await bubble().webContents.executeJavaScript('document.body.innerText');
+  await performance('wait', 'curious');
+  await screenshot(bird(), ${JSON.stringify(join(root, 'bird-waiting.png'))});
   assert.ok(waiting.includes('词元鸟正在等你确认操作'), waiting);
   assert.equal(bird().isFocusable(), false, 'No focus stealing');
   assert.equal(topmost.has(bird().webContents.id), true, 'Desktop overlay requests always-on-top');
@@ -119,6 +144,7 @@ try {
   // Native event delivery also covers local sessions when app windows are hidden.
   manager.observeSessionEvent({ type: 'tool_start', sessionId: 's', toolUseId: 'click', toolName: 'computer_use', toolInput: { action: 'click' } }, 'fixture-workspace');
   await until(async () => (await bubble().webContents.executeJavaScript('document.body.innerText')).includes('词元鸟正在点击'), 'working bubble');
+  await performance('tap', 'focused');
   await until(async () => await bird().webContents.executeJavaScript('[...document.querySelectorAll("image")].every(image => image.href.baseVal.includes("tokenbird"))'), 'icon layers');
   await sleep(400);
   await screenshot(bird(), ${JSON.stringify(join(root, 'bird-working.png'))});
@@ -153,10 +179,12 @@ try {
   assert.deepEqual((await bubble().webContents.capturePage()).getSize(), bubblePixels, 'Bubble rendered pixel size remains unchanged');
   const security = await invoke('window.fixture.dismiss().then(() => false, () => true)');
   assert.equal(security, true, 'App host cannot use companion-only controls');
+  assert.equal(await invoke('window.fixture.contextMenu().then(() => false, () => true)'), true, 'App host cannot open the companion menu');
   await observe({ type: 'result', sessionId: 's', toolUseId: 'click', isError: false });
   manager.observeSessionEvent({ type: 'tool_result', sessionId: 's', toolUseId: 'click', toolName: 'computer_use', result: 'private-content' }, 'fixture-workspace');
   await observe({ type: 'finish', sessionId: 's', outcome: 'complete' });
   await until(async () => (await bubble().webContents.executeJavaScript('document.body.innerText')).includes('这一轮执行结束啦'), 'completion bubble');
+  await performance('celebrate', 'happy');
   const completed = await bubble().webContents.executeJavaScript('document.body.innerText');
   assert.ok(completed.includes('已完成 2 步'), completed);
   assert.ok(!completed.includes('private-content'));
@@ -168,6 +196,14 @@ try {
   assert.equal(bubble(), undefined, 'No idle bubble');
   await bird().webContents.executeJavaScript('document.querySelector(".bird-character").click()');
   await until(async () => bubble() && (await bubble().webContents.executeJavaScript('document.body.innerText')).includes('嗨！'), 'greeting');
+  await performance('wave', 'happy');
+  for (const [label, motion] of [['点头', 'nod'], ['伸懒腰', 'stretch'], ['挥翅打招呼', 'wave']]) {
+    await openMenu();
+    chooseMenu(label);
+    await performance(motion, 'happy');
+    if (motion === 'nod') await performance('wave', 'happy');
+  }
+  await until(async () => await bird().webContents.executeJavaScript('document.querySelector(".bird-avatar")?.dataset.motion === "wave"'), 'return to greeting');
   await set({ alwaysVisible: false, autoShowComputerUse: false });
   assert.equal(bird(), undefined);
   await observe({ type: 'tool', sessionId: 'disabled', toolUseId: 'off', activity: 'computer', computer: true });
@@ -179,6 +215,8 @@ try {
   await set({ autoShowComputerUse: true });
   await observe({ type: 'tool', sessionId: 'next', toolUseId: 'n1', activity: 'screenshot', computer: true });
   await until(() => bird() && bubble() && shown.has(bird().webContents.id) && shown.has(bubble().webContents.id), 'new task');
+  await performance('scan', 'focused');
+  await screenshot(bird(), ${JSON.stringify(join(root, 'bird-searching.png'))});
   const birdBeforeClose = bird();
   const birdBoundsBeforeClose = bird().getBounds();
   await bubble().webContents.executeJavaScript('document.querySelector(".bird-dismiss").click()');
@@ -202,13 +240,42 @@ try {
   await observe({ type: 'start', sessionId: 'next', startId: 'next-message' });
   await observe({ type: 'tool', sessionId: 'next', toolUseId: 'n3', activity: 'type', computer: true });
   await until(() => bird() && bubble() && shown.has(bird().webContents.id) && shown.has(bubble().webContents.id), 'next computer use wakes both');
+  await performance('type', 'focused');
+  await screenshot(bird(), ${JSON.stringify(join(root, 'bird-typing.png'))});
   await observe({ type: 'finish', sessionId: 'next', outcome: 'error' });
   await observe({ type: 'finish', sessionId: 'next', outcome: 'complete' });
   await until(async () => (await bubble().webContents.executeJavaScript('document.body.innerText')).includes('执行遇到错误'), 'error bubble');
+  await performance('shake', 'worried');
+  await screenshot(bird(), ${JSON.stringify(join(root, 'bird-error.png'))});
+  bird().webContents.debugger.attach('1.3');
+  await bird().webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await until(async () => await bird().webContents.executeJavaScript('document.getAnimations().length === 0'), 'reduced motion stops animations');
+  await performance('shake', 'worried');
+  bird().webContents.debugger.detach();
+  await openMenu();
+  chooseMenu('本次运行中隐藏');
+  await until(() => !bird() && !bubble(), 'hide both windows for this run');
+  assert.deepEqual(await invoke('window.fixture.get()'), { alwaysVisible: false, autoShowComputerUse: true });
+  await observe({ type: 'tool', sessionId: 'hidden', toolUseId: 'h1', activity: 'click', computer: true });
+  assert.equal(bird(), undefined, 'New task cannot revive a manually hidden bird');
+  await set({ alwaysVisible: true });
+  await until(() => bird() && shown.has(bird().webContents.id), 'settings restore hidden bird');
+  await openMenu();
+  chooseMenu('关闭小黄鸟');
+  await until(() => !bird() && !bubble(), 'persistent close');
+  assert.deepEqual(await invoke('window.fixture.get()'), { alwaysVisible: false, autoShowComputerUse: false });
+  await observe({ type: 'tool', sessionId: 'closed', toolUseId: 'c1', activity: 'click', computer: true });
+  assert.deepEqual(await invoke('window.fixture.latestPreferences()'), { alwaysVisible: false, autoShowComputerUse: false }, 'Open settings receive menu changes');
+  assert.equal(bird(), undefined, 'Closed bird stays hidden during subsequent tasks');
+  manager.dispose();
+  manager = new BirdCompanionManager(authority);
+  assert.equal(bird(), undefined, 'Closed bird stays hidden after restart');
+  assert.deepEqual(await invoke('window.fixture.get()'), { alwaysVisible: false, autoShowComputerUse: false });
   assert.equal(await invoke('window.fixture.set({alwaysVisible: "invalid"}).then(() => false, () => true)'), true);
   assert.equal(errors.length, 0, errors.join(' | '));
   save({ success: true, waiting, completed, primaryArea, displays: screen.getAllDisplays().map(display => ({ bounds: display.bounds, scaleFactor: display.scaleFactor })), initialBounds, beforeMove, afterMove, beforeBubbleMove, afterBubbleMove, birdSize, bubbleSize, birdPixels, bubblePixels, repeatedMoves: 150, displayUpdates: 20, separateWindows: true, birdSurvivesBubbleClose: birdSurvivedBubbleClose, nativeSecurity: security, errors,
-    screenshots: [${JSON.stringify(join(root, 'bird-working.png'))}, ${JSON.stringify(join(root, 'bubble-working.png'))}, ${JSON.stringify(join(root, 'bird-completed.png'))}, ${JSON.stringify(join(root, 'bubble-completed.png'))}, ${JSON.stringify(join(root, 'bird-with-bubble-closed.png'))}] });
+    contextualExpressions: true, manualGestures: 3, reducedMotion: true, contextMenuHide: true, persistentClose: true,
+    screenshots: [${JSON.stringify(join(root, 'bird-working.png'))}, ${JSON.stringify(join(root, 'bubble-working.png'))}, ${JSON.stringify(join(root, 'bird-completed.png'))}, ${JSON.stringify(join(root, 'bubble-completed.png'))}, ${JSON.stringify(join(root, 'bird-with-bubble-closed.png'))}, ${JSON.stringify(join(root, 'bird-waiting.png'))}, ${JSON.stringify(join(root, 'bird-searching.png'))}, ${JSON.stringify(join(root, 'bird-typing.png'))}, ${JSON.stringify(join(root, 'bird-error.png'))}] });
   manager.dispose();
   host.destroy();
   app.exit(0);

@@ -7,7 +7,7 @@ import type { LocalCloudTarget } from './client'
 /** One admitted connection owns one RPC socket and one optional peer.
  * Signaling loss/revocation destroys both together. */
 export class CloudHostStream {
-  private socket: WebSocket
+  private socket?: WebSocket
   private queue: string[] = []
   private bytes = 0
   private first = true
@@ -21,10 +21,20 @@ export class CloudHostStream {
     private signal: (signal: CloudSignal) => void, private ended: () => void,
     iceServers?: CloudIceServer[], factory: CloudPeerFactory = createNodeCloudPeer) {
     this.mode = iceServers ? 'negotiating' : 'relay'
-    this.socket = new WebSocket(target.url, { maxPayload: CLOUD_MAX_MESSAGE_BYTES, handshakeTimeout: 10_000,
-      ...(target.tlsCert ? { ca: target.tlsCert, checkServerIdentity: (() => undefined) as unknown as NonNullable<WebSocket.ClientOptions['checkServerIdentity']> } : {}) })
-    this.socket.on('open', () => { for (const data of this.queue) this.socket.send(data); this.queue = []; this.bytes = 0 })
-    this.socket.on('message', raw => {
+    if (iceServers) {
+      this.timer = setTimeout(() => this.select('relay'), CLOUD_DIRECT_TIMEOUT_MS)
+      void this.startPeer(iceServers, factory).catch(() => this.select('relay'))
+    }
+  }
+  private openLocalSocket(): WebSocket {
+    if (this.socket) return this.socket
+    // The local server starts its handshake deadline at socket admission.
+    // Wait until the remote handshake arrives, after transport selection.
+    const socket = new WebSocket(this.target.url, { maxPayload: CLOUD_MAX_MESSAGE_BYTES, handshakeTimeout: 10_000,
+      ...(this.target.tlsCert ? { ca: this.target.tlsCert, checkServerIdentity: (() => undefined) as unknown as NonNullable<WebSocket.ClientOptions['checkServerIdentity']> } : {}) })
+    this.socket = socket
+    socket.on('open', () => { for (const data of this.queue) socket.send(data); this.queue = []; this.bytes = 0 })
+    socket.on('message', raw => {
       if (this.closed) return
       const data = raw.toString()
       try {
@@ -33,12 +43,9 @@ export class CloudHostStream {
         else throw new Error('RPC before transport selection')
       } catch { this.close() }
     })
-    this.socket.on('close', () => this.close())
-    this.socket.on('error', () => this.close())
-    if (iceServers) {
-      this.timer = setTimeout(() => this.select('relay'), CLOUD_DIRECT_TIMEOUT_MS)
-      void this.startPeer(iceServers, factory).catch(() => this.select('relay'))
-    }
+    socket.on('close', () => this.close())
+    socket.on('error', () => this.close())
+    return socket
   }
   acceptData(data: string): void {
     if (this.mode !== 'relay') { this.close(); return }
@@ -58,7 +65,7 @@ export class CloudHostStream {
     clearTimeout(this.timer)
     this.peer?.close(); this.peer = undefined
     this.queue = []; this.bytes = 0
-    this.socket.terminate()
+    this.socket?.terminate()
     this.ended()
   }
   private select(mode: 'direct' | 'relay'): void {
@@ -98,9 +105,10 @@ export class CloudHostStream {
         data = JSON.stringify(handshake)
         this.first = false
       }
-      if (this.socket.bufferedAmount + this.bytes + Buffer.byteLength(data) > CLOUD_MAX_MESSAGE_BYTES) throw new Error('Local socket capacity exceeded')
-      if (this.socket.readyState === WebSocket.OPEN) this.socket.send(data)
-      else if (this.socket.readyState === WebSocket.CONNECTING) { this.queue.push(data); this.bytes += Buffer.byteLength(data) }
+      const socket = this.openLocalSocket()
+      if (socket.bufferedAmount + this.bytes + Buffer.byteLength(data) > CLOUD_MAX_MESSAGE_BYTES) throw new Error('Local socket capacity exceeded')
+      if (socket.readyState === WebSocket.OPEN) socket.send(data)
+      else if (socket.readyState === WebSocket.CONNECTING) { this.queue.push(data); this.bytes += Buffer.byteLength(data) }
       else this.close()
     } catch { this.close() }
   }

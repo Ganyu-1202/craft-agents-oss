@@ -21,13 +21,15 @@ describe('history editing', () => {
       { type: 'user', content: 'first question' }, { type: 'assistant', content: 'first answer' },
     ])
   })
-  it('supports the first message and assistant edits without replaying assistant text as a user', () => {
+  it('supports editing the first user message', () => {
     expect(editedBranchMessages(transcript, 0, 'first edit', 'new')[0]?.isQueued).toBe(true)
     expect(branchSeedMessages([{ role: 'user', content: 'first edit' }])).toEqual([])
-    const edited = editedBranchMessages(transcript, 1, 'corrected answer', 'new-assistant')
-    expect(edited.at(-1)).toMatchObject({ type: 'assistant', content: 'corrected answer', isQueued: false })
-    expect(branchSeedMessages([...edited.map(m => ({ role: m.type, content: m.content })), { role: 'user', content: 'continue' }]).at(-1))
-      .toEqual({ type: 'assistant', content: 'corrected answer' })
+  })
+  it('rejects edits to completed assistant messages without changing history', () => {
+    const original = JSON.stringify(transcript)
+    expect(() => editedBranchMessages(transcript, 1, 'corrected answer', 'new-assistant'))
+      .toThrow('Only completed user messages can be edited.')
+    expect(JSON.stringify(transcript)).toBe(original)
   })
   it('rejects empty text, nonexistent, intermediate and queued messages', () => {
     expect(() => editedBranchMessages(transcript, 2, '  ', 'new')).toThrow('empty')

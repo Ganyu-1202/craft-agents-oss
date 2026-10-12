@@ -4,7 +4,9 @@
   "author": "Zeno Rocha",
   "license": "MIT",
   "source": "https://github.com/dracula/dracula-theme",
-  "supportedModes": ["dark"],
+  "supportedModes": [
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "dracula"
@@ -21,6 +23,16 @@
     "accent": "#bd93f9",
     "info": "#ffb86c",
     "success": "#50fa7b",
-    "destructive": "#ff5555"
-  }
+    "destructive": "#ff5555",
+    "paper": "#343746",
+    "navigator": "#21222c",
+    "input": "#2f3141",
+    "popover": "#343746",
+    "popoverSolid": "#343746"
+  },
+  "paper": "#343746",
+  "navigator": "#21222c",
+  "input": "#2f3141",
+  "popover": "#343746",
+  "popoverSolid": "#343746"
 }

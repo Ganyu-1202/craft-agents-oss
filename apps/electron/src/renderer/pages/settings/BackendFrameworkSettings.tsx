@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { SettingsCard, SettingsSection } from '@/components/settings';
 import { getAgentPluginDescriptor, setAgentPluginCatalog } from '@craft-agent/shared/agent-plugins/catalog';
 import type { AgentPluginRuntime } from '@craft-agent/shared/agent-plugins/types';
-import { defaultFrameworkConfiguration, defaultNativeOptions, FRAMEWORK_FEATURES, frameworkFeatureOptions,
+import { defaultFrameworkConfiguration, defaultNativeOptions, FRAMEWORK_FEATURES, frameworkFeatureOptions, getAgentFrameworkProfile, nativeCodexTransportCompatible,
   type BackendFrameworkCatalog, type BackendFrameworkConfiguration, type BackendFrameworkEntry,
   type BackendFrameworkTestResult, type FrameworkInstallProgress } from '@craft-agent/shared/agent-plugins/frameworks';
+import type { LlmConnection } from '@config/llm-connections';
+import { AgentPluginInstaller } from './AgentPluginInstaller';
 
 const prefix = 'settings.ai.frameworks.';
 const frameworkKeys: Record<string, string> = { pi: 'pi', codex: 'codex', 'claude-code': 'claude', 'plugin:hermes': 'hermes', 'plugin:dsh': 'dsh' };
@@ -19,6 +21,20 @@ export function agentRuntimeLabel(runtime: AgentPluginRuntime, t: (key: string) 
 export function agentRuntimeDescription(runtime: AgentPluginRuntime, t: (key: string) => string): string {
   const key = frameworkKeys[runtime];
   return key ? t(`${prefix}descriptions.${key}`) : getAgentPluginDescriptor(runtime)?.description ?? t(`${prefix}unavailable`);
+}
+
+export function AgentFrameworkDetails({ runtime, connection }: { runtime: AgentPluginRuntime; connection?: LlmConnection }) {
+  const { t } = useTranslation();
+  const profile = getAgentFrameworkProfile(runtime);
+  if (!profile) return <p className="text-xs text-muted-foreground">{agentRuntimeDescription(runtime, t)}</p>;
+  return <div className="space-y-2 text-xs leading-5" data-framework-details={runtime}>
+    {(['strengths', 'bestFor', 'limits'] as const).map(field => <p key={field}>
+      <span className="font-medium text-foreground">{t(`${prefix}guide.${field}`)}: </span>
+      <span className="text-muted-foreground">{t(`${prefix}profiles.${profile.key}.${field}`)}</span>
+    </p>)}
+    {runtime === 'codex' && connection && !nativeCodexTransportCompatible(connection) &&
+      <p className="rounded-md bg-muted p-2 text-muted-foreground">{t(`${prefix}codexCompatibility`)}</p>}
+  </div>;
 }
 
 function FrameworkRow({ framework, onSaved }: { framework: BackendFrameworkEntry; onSaved: () => Promise<void> }) {
@@ -95,6 +111,7 @@ function FrameworkRow({ framework, onSaved }: { framework: BackendFrameworkEntry
       <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
     {open && <div id={`framework-${framework.id.replace(':', '-')}`} className="space-y-5 border-t border-border/50 px-4 py-4">
+      <AgentFrameworkDetails runtime={framework.id} />
       {framework.installation?.installable && <div className="space-y-2">
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">{t(`${prefix}downloadSource`)}
@@ -160,6 +177,17 @@ function FrameworkRow({ framework, onSaved }: { framework: BackendFrameworkEntry
             onChange={event => update({ nativeOptions: { ...native, profile: event.target.value } })}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </label>}
+        {framework.id === 'claude-code' && <div className="space-y-2">
+          <h4 className="text-sm font-medium">{t('settings.backends.claudeTitle')}</h4>
+          <p className="text-xs text-muted-foreground">{t('settings.backends.claudeHelp')}</p>
+          {(native.claudePlugins ?? []).map((path, index) => <div key={index} className="flex items-center gap-2">
+            <input value={path} disabled={!!busy} aria-label={`${t('settings.backends.pluginPath')} ${index + 1}`}
+              onChange={event => update({ nativeOptions: { ...native, claudePlugins: (native.claudePlugins ?? []).map((value, i) => i === index ? event.target.value : value) } })}
+              className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm" />
+            <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => update({ nativeOptions: { ...native, claudePlugins: native.claudePlugins!.filter((_, i) => i !== index) } })}>{t('settings.backends.removePlugin')}</Button>
+          </div>)}
+          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => update({ nativeOptions: { ...native, claudePlugins: [...(native.claudePlugins ?? []), ''] } })}>{t('settings.backends.addPlugin')}</Button>
+        </div>}
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -258,6 +286,7 @@ export function BackendFrameworkSettings({ workspaceId, onChanged }: { workspace
         {catalog.errors.length > 0 && <p role="alert" className="p-4 text-xs text-destructive">{t(`${prefix}configurationError`)}</p>}
       </SettingsCard>
     </SettingsSection>
+    <AgentPluginInstaller onInstalled={load} />
     <SettingsSection title={t(`${prefix}profile.title`)} description={t(`${prefix}profile.description`)}>
       <SettingsCard><div className="flex flex-wrap items-center gap-3 p-4">
         <Button size="sm" variant="outline" disabled={profileBusy} onClick={() => void exportProfile()}>{t(`${prefix}profile.export`)}</Button>

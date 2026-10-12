@@ -1,6 +1,6 @@
 {
   "name": "@tokenbird/cloud-server",
-  "version": "26.10.9",
+  "version": "26.10.11",
   "type": "module",
   "private": true,
   "scripts": { "start": "bun run src/index.ts", "typecheck": "tsc --noEmit" },

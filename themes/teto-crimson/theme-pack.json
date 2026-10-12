@@ -1,0 +1,81 @@
+{
+  "id": "teto-crimson",
+  "name": "重音 Teto · 绯红回响",
+  "nameEn": "Kasane Teto · Crimson Echo",
+  "author": "TokenBird",
+  "version": 2,
+  "artwork": [
+    {
+      "artist": "坂内 若",
+      "credit": "重音テトSV · 坂内 若 / © TWINDRILL",
+      "sourceUrl": "https://kasaneteto.jp/illust-logo/"
+    }
+  ],
+  "tagline": "绯红双钻头、奶油白昼与赤色舞台",
+  "description": "官方标准立绘搭配原创声场背景，支持明暗模式与小窗口布局。",
+  "tags": [
+    "歌姬",
+    "初音 / 重音",
+    "昼夜",
+    "SVG"
+  ],
+  "background": {
+    "light": "assets/background-light.svg",
+    "dark": "assets/background-dark.svg"
+  },
+  "preview": {
+    "light": "preview/light.svg",
+    "dark": "preview/dark.svg"
+  },
+  "characters": {
+    "right": "assets/character.webp"
+  },
+  "bodyAttr": "data-tokenbird-singer",
+  "stylesheets": [
+    "singer.css"
+  ],
+  "colors": {
+    "supportedModes": [
+      "light",
+      "dark"
+    ],
+    "mode": "scenic",
+    "background": "rgba(255, 241, 233, 0.62)",
+    "foreground": "#243544",
+    "accent": "#b33257",
+    "paper": "rgba(255, 255, 255, 0.83)",
+    "navigator": "rgba(255, 241, 233, 0.84)",
+    "input": "rgba(255, 255, 255, 0.88)",
+    "popover": "#fffcfa",
+    "popoverSolid": "#fffcfa",
+    "info": "#99651b",
+    "success": "#24744f",
+    "destructive": "#bc3654",
+    "dark": {
+      "background": "rgba(43, 23, 37, 0.64)",
+      "foreground": "#e8eff6",
+      "accent": "#ff91b0",
+      "paper": "rgba(43, 23, 37, 0.84)",
+      "navigator": "rgba(43, 23, 37, 0.8)",
+      "input": "rgba(43, 23, 37, 0.9)",
+      "popover": "#2b1725",
+      "popoverSolid": "#2b1725",
+      "info": "#edc16a",
+      "success": "#73d5a4",
+      "destructive": "#ff91a5"
+    },
+    "shikiTheme": {
+      "light": "github-light",
+      "dark": "github-dark"
+    }
+  },
+  "style": {
+    "backgroundPosition": "center",
+    "backgroundSize": "cover",
+    "backgroundBlur": 6,
+    "borderRadius": "16px",
+    "characterHeight": "clamp(340px, 76vh, 860px)",
+    "characterBottom": "-8px",
+    "characterOpacity": 0.96
+  }
+}

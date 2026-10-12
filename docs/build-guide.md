@@ -1,11 +1,11 @@
 # TokenBird 编译指南（Build Guide）
 
-本文档介绍如何编译 TokenBird 的各端产物：**Windows / macOS / Linux 客户端**、**服务器端**与**云服务器端**。
+本文档介绍如何编译 TokenBird 的各端产物：**Windows / macOS / Linux 客户端**、**Android / iPhone / iPad 客户端**、**服务器端**与**云服务器端**。
 除特别注明外，命令均从仓库根目录执行。
 
 ## 全量编译与统一产物目录
 
-使用根目录的编排脚本可以一次构建 Windows、Linux、Android，以及 Linux/Windows/macOS
+使用根目录的编排脚本可以一次构建 Windows、Linux、Android、iOS（含 iPad），以及 Linux/Windows/macOS
 无头服务，并将结果统一放入 `dist/` 的对应子目录：
 
 ```bash
@@ -21,7 +21,11 @@ bun run build:all win --force-download
 跨平台原生包缓存在 `.build/native-packages/`，构建产物目录清理时不会删除该缓存。
 WSL 构建会在 WSL 的 `~/.cache/tokenbird-wsl-build/` 保留 Bun、uv 和原生包缓存，供下次临时工作区复用。
 
-目标名称为 `win`、`linux`、`android`、`linux-headless`、`win-headless`、`mac-headless`、`cloud-server`。
+目标名称为 `win`、`linux`、`android`、`ios`、`linux-headless`、`win-headless`、`mac-headless`、`cloud-server`。
+`ios` 为通用 iPhone/iPad App，需要 macOS 和完整 Xcode；Windows/Linux 可执行 `bun run ios:prepare` 准备前端资源。
+`bun run ios:build:simulator` 构建模拟器包，`bun run build:all ios` 构建未签名真机包；
+`bun run build:all ios --release` 需要 `IOS_DEVELOPMENT_TEAM` 和签名配置，生成归档。
+签名、IPA 导出、模拟器安装与平台范围参见 [iPhone / iPad 构建说明](../apps/ios/README.md)。
 云服务器端单独使用 `bun run cloud-server:build`，输出到 `dist/cloud-server/`；部署步骤和 TokenNest 接口参见 [云服务器端](cloud-server.md)。
 桌面包必须在对应的构建环境中执行（Linux 桌面包在 Linux/WSL，Windows 包在 Windows）；
 无头服务支持交叉下载目标运行时。当前主机无法构建的目标会自动跳过；已开始的构建若发生实际错误则立即停止。
@@ -69,8 +73,7 @@ bun install
 > 编译过程会联网下载：Bun 运行时（约 30 MB，带 SHA256 校验）、Electron 二进制、
 > Claude Agent SDK 原生二进制（约 250 MB）。请保持网络畅通。
 >
-> ⚠️ Windows 的编译脚本会**强制结束本机的 node / npm / electron 进程**（避免文件占用），
-> 编译前请先退出正在运行的开发实例。
+> Windows 编译脚本只会结束当前仓库的打包进程和旧打包目录中的应用，以释放构建文件。
 
 ---
 
@@ -92,7 +95,7 @@ Windows 单独打包可执行 `powershell -ExecutionPolicy Bypass -File apps/ele
 
 `dist:win` 实际执行 `scripts/build-win.ps1`，完整流程：
 
-1. 结束残留的 node/npm/electron 进程，清理旧产物；
+1. 结束当前仓库残留的打包进程，清理旧产物；
 2. 复用本地 Bun（`bun-v1.3.9`）；缓存缺失、版本不符或强制下载时，校验 SHA256 后更新到 `apps/electron/vendor/bun/`；
 3. 将 Claude Agent SDK 核心 + **win32-x64** 原生二进制（约 253 MB）暂存为
    `claude-agent-sdk-binary` 别名，并复制 `@vscode/ripgrep`；
@@ -420,11 +423,13 @@ GitHub Actions 构建并自动发布 Windows、macOS、Linux 安装包到 GitCod
 | Windows 客户端   | `cd apps/electron && bun run dist:win`                                           | `apps/electron/release/TokenBird-x64.exe`                          |
 | macOS 客户端     | `cd apps/electron && bash scripts/build-dmg.sh <arm64\|x64>`                      | `apps/electron/release/TokenBird-<arch>.dmg/.zip`                  |
 | Linux 客户端     | `bash apps/electron/scripts/build-linux.sh x64`                                  | `apps/electron/release/TokenBird-x64.AppImage`                     |
+| iPhone / iPad    | `bun run ios:build` / `bun run ios:build:simulator`                               | `dist/ios/TokenBird-<ver>-ios-<device\|simulator>.app.zip`           |
+| iOS 签名归档     | `bun run ios:archive`（需要 Apple 团队签名）                                      | `dist/ios/TokenBird-<ver>-ios-archive.xcarchive.zip`                 |
 | 最小 CLI/Agent   | `bun run cli:build:<platform>-<arch>`                                             | `dist/cli/` + `tokenbird-cli-<ver>-<platform>-<arch>.tar.gz`       |
 | 服务器（原生）   | `bun run scripts/build-server.ts --platform=<platform> --arch=<arch> --compress` | `dist/server/` + `tokenbird-server-<ver>-<platform>-<arch>.tar.gz` |
 | 服务器（Docker） | `docker buildx build -f Dockerfile.server -t craft-agent-server .`               | 容器镜像                                                           |
 
-版本号取自 `apps/electron/package.json`（当前 `26.10.9`），产物命名统一为
+版本号取自 `apps/electron/package.json`（当前 `26.10.11`），产物命名统一为
 `TokenBird-<arch>.<ext>` / `tokenbird-server-<version>-<platform>-<arch>.tar.gz`。
 
 ---

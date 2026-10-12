@@ -232,6 +232,11 @@ export const RPC_CHANNELS = {
     SHOW_DELETE_SESSION_CONFIRMATION: 'auth:showDeleteSessionConfirmation',
   },
   credentials: {
+    ACCESS: 'credentials:access',
+    REQUEST_ACCESS: 'credentials:requestAccess',
+    STATUS: 'credentials:status',
+    LIST: 'credentials:list',
+    APPLY: 'credentials:apply',
     HEALTH_CHECK: 'credentials:healthCheck',
   },
   onboarding: {
@@ -251,6 +256,7 @@ export const RPC_CHANNELS = {
     GET_API_KEY: 'LLM_Connection:getApiKey',
     SAVE: 'LLM_Connection:save',
     DELETE: 'LLM_Connection:delete',
+    LOGOUT: 'LLM_Connection:logout',
     TEST: 'LLM_Connection:test',
     SET_DEFAULT: 'LLM_Connection:setDefault',
     SET_WORKSPACE_DEFAULT: 'LLM_Connection:setWorkspaceDefault',

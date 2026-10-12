@@ -1,12 +1,36 @@
 import { useTranslation } from 'react-i18next'
-import { getModelsForProviderType, isImageGenerationModelId } from '@config/llm-connections'
+import { getCompatibleAgentRuntimes, getModelsForProviderType, isImageGenerationModelId } from '@config/llm-connections'
 import type { LlmConnectionWithStatus } from '../../../shared/types'
 import type { SuperAgentConfig, SuperAgentEnvironment, SuperAgentNode } from '@craft-agent/shared/super-agent'
+import { hasCustomNodeSkills, presetSkillBinding } from '@craft-agent/shared/super-agent'
 import { PRESET_RECIPES, presetModels, presetStrings, nodePresetProfile, presetRequirements, type SuperAgentPreset } from './super-agent-presets'
 export type { SuperAgentPreset } from './super-agent-presets'
 import { improvementStrings } from './super-agent-improvement-strings'
 
 const strings = {
+  resourceActivation: ['Skill / MCP 自主启用与分发', 'Autonomous Skill / MCP activation'],
+  resourceActivationHint: ['编排智能体按任务给空闲工作节点分发技能和数据源，工作节点也可自行启用并自动继续任务。技能来自已安装目录，MCP 来自下方团队授权池。绑定会保存，操作仍遵守当前权限和审批。', 'The orchestrator assigns skills and sources to idle workers. Workers can activate resources themselves and resume their task automatically. Skills come from installed catalogs; MCP sources come from the team pool below. Assignments are saved and operations follow current permissions and approvals.'],
+  deliveryStage: ['阶段交互', 'Stage interaction'],
+  deliveryFinal: ['最终交付', 'Final delivery'],
+  deliveryArtifacts: ['交付产物', 'Deliverables'],
+  deliveryRespond: ['回复本阶段', 'Reply to this stage'],
+  deliveryFeedback: ['反馈或补充要求', 'Feedback or further requirements'],
+  deliveryReplyPrompt: ['关于「{{title}}」：', 'Regarding “{{title}}”: '],
+  deliveryReveal: ['打开文件位置', 'Show file location'],
+  deliveryUnavailable: ['文件当前不可用', 'File is currently unavailable'],
+  deliveryChanged: ['文件已更新，打开的是当前版本', 'File has changed; opening it shows the current version'],
+  nodeBackend: ['节点后端', 'Node backend'],
+  inheritBackend: ['跟随 AI 连接', 'Follow AI connection'],
+  nodeBackendHint: ['仅用于此节点；同一 AI 连接的其他节点可使用不同后端。', 'Applies to this node. Other nodes on the same AI connection can use different backends.'],
+  nodeBackendInvalid: ['所选节点后端与 AI 连接不兼容或未启用，请重新选择。', 'The node backend is incompatible with the AI connection or disabled. Choose another backend.'],
+  nodeSkills: ['节点 Skills', 'Node skills'],
+  nodeSkillsHint: ['绑定的技能会按当前内容加载为节点指令，技能不能扩大节点权限。', 'Assigned skills load their current instructions for this node. Skills cannot expand node permissions.'],
+  nodeMcp: ['节点 MCP / 数据源', 'Node MCP / sources'],
+  nodeMcpHint: ['在资源设置中授权团队数据源，再为此节点勾选。技能依赖的 MCP 也需要单独绑定。', 'Authorize team sources in Resources, then select them for this node. MCP sources required by skills also need assignment.'],
+  noNodeSkills: ['当前没有可绑定的技能。', 'No skills are available to assign.'],
+  noNodeMcp: ['团队尚未授权数据源，请先在资源设置中添加。', 'No team sources are authorized. Add them in Resources.'],
+  workflowEvents: ['工作流执行记录', 'Workflow execution history'],
+  controlNodeResources: ['主节点和编排节点加载技能指令，但不执行 MCP 或文件工具；外部操作请派给工作节点。', 'Coordinator and orchestrator nodes load skill instructions. Assign MCP and file operations to workers.'],
   conversationErrorGeneral: ['超级智能体操作失败', 'Super Agent action failed'],
   conversationErrorConflict: ['共享状态已更新，本次操作未完成', 'Shared state changed; this action could not complete'],
   conversationErrorFormat: ['动作格式有误，未能执行', 'Invalid action format; the action could not run'],
@@ -160,6 +184,11 @@ const strings = {
   setupSummary: ['{{workers}} 个工作节点 · 1 个主节点 · 每 {{minutes}} 分钟检查', '{{workers}} workers · 1 coordinator · inspect every {{minutes}} minutes'],
   settings: ['设置', 'Settings'],
   reset: ['完全重置', 'Reset everything'],
+  resetNode: ['完全重置节点', 'Reset node completely'],
+  resetNodeConfirm: ['确认完全重置「{{name}}」', 'Confirm complete reset of {{name}}'],
+  resetNodeDescription: ['永久删除此节点的当前及历史会话和附件，清空待执行队列、恢复检查点、审批记录及错误状态，停止关联的托管脚本。未完成任务会停止，不自动重跑；下次任务使用新会话。此操作无法撤销。', 'Permanently delete this node’s current and retired sessions and attachments, clear its queued turns, recovery checkpoints, approval records and error state, and stop linked managed scripts. Unfinished tasks stop without automatic replay. The next task uses a new session. This cannot be undone.'],
+  resetNodePreserved: ['保留节点配置、团队任务与结果记录、共享板、记忆库、档案库和项目文件。其他节点继续工作。', 'Keep node settings, team task and result history, shared board, memory library, archive library and project files. Other nodes continue working.'],
+  resettingNode: ['正在重置节点…', 'Resetting node…'],
   resetHint: ['清除超级智能体的全部配置与内容，返回首次配置页面。', 'Clear all Super Agent settings and content and return to initial setup.'],
   resetConfirm: ['确认完全重置超级智能体', 'Confirm complete Super Agent reset'],
   resetDescription: ['将停止节点与托管脚本，永久删除当前工作区超级智能体的配置、节点会话及附件、对话、任务、计划、共享板、记忆库、归档库、授权、脚本注册与运行记录（包括历史归档），无法恢复。', 'Stop nodes and managed scripts and permanently delete this workspace’s Super Agent settings, node conversations and attachments, messages, tasks, plans, shared board, memory library, archive library, permissions, script registrations and runtime history (including archives). This cannot be undone.'],
@@ -239,8 +268,31 @@ const strings = {
   queued: ['排队中', 'Queued'],
   queueBlocked: ['受阻，暂时无法继续', 'Blocked'],
   queueBlockedCount: ['{{count}} 项受阻', '{{count}} blocked'],
-  queueNextStep: ['请查看下方原因；补充所需信息或说明如何处理后，发送给智能体。也可以点击“检查并继续”重新评估。', 'Review the reasons below, then send the needed information or instructions. You can also select “Check and continue” to reassess.'],
   queueInspect: ['检查并继续', 'Check and continue'],
+  queueInspectSubmitting: ['正在提交检查…', 'Submitting check…'],
+  queueInspectProcessing: ['已收到，正在检查并处理受阻事项…', 'Received. Checking and addressing blocked work…'],
+  queueProcessing: ['正在处理，受阻事项将在处理结束后更新。', 'Processing. Blocked work will be updated when processing finishes.'],
+  queueBlockerDetails: ['查看受阻原因', 'View blocking reasons'],
+  blockerCurrent: ['当前遇到什么', 'What is blocking progress'],
+  blockerProgress: ['已保留的进展', 'Saved progress'],
+  blockerUserAction: ['需要你做什么', 'What you need to do'],
+  blockerSystemNext: ['系统接下来会做什么', 'What the assistant will do next'],
+  blockerSystemIssue: ['AI 自动核验与恢复', 'Automatic AI verification and recovery'],
+  blockerNeedsInput: ['需要你补充信息', 'Your input is needed'],
+  blockerOperationSummary: ['有 {{count}} 项工具操作的执行结果尚未确认，最终验收暂时无法通过。', 'The outcomes of {{count}} tool operations are unconfirmed, preventing final acceptance.'],
+  blockerUnspecifiedSummary: ['计划暂时无法继续，具体原因和解除条件还需要确认。', 'The plan cannot continue yet. Its cause and recovery conditions need clarification.'],
+  blockerProgressSummary: ['已提交 {{tasks}} 份任务结果，已登记 {{artifacts}} 项文件产物；最终交付仍待验收。', '{{tasks}} task results submitted and {{artifacts}} file artifacts registered; final delivery still needs acceptance.'],
+  blockerVerifyUserAction: ['无需操作。AI 会自动核验执行结果并继续；确实需要你参与时会提出具体请求。', 'No action needed. AI will verify the outcomes and continue automatically, asking a specific question only when your participation is required.'],
+  blockerInspectUserAction: ['无需操作。AI 会自行检查并处理；确实需要你提供信息、授权或决定时会明确说明。', 'No action needed. AI will investigate and recover automatically, specifying any information, authorization or decision required from you.'],
+  blockerVerifyNext: ['读取原始工具回执，安排独立核验；确认执行结果后更新操作状态，再继续验收。无法确认时会保留阻碍并说明缺少的证据。', 'Read original tool receipts and arrange independent verification. Once outcomes are confirmed, update operation state and retry acceptance. If evidence is insufficient, keep the blocker and identify the missing evidence.'],
+  blockerDependencyNext: ['检查前置任务的结果与验收状态，处理未完成的验证后继续后续任务。', 'Review prerequisite results and acceptance, complete the required verification, then continue downstream work.'],
+  blockerReplanNext: ['核对最新目标和前置任务，修正计划或依赖，并保留仍有效的工作结果。', 'Check the current goal and prerequisite tasks, revise the plan or dependencies, and retain valid results.'],
+  blockerInspectNext: ['核对现有结果和受阻说明，明确解除条件；需要用户决定时给出具体问题。', 'Review existing results and the blocker, identify recovery conditions, and ask a specific question if a user decision is needed.'],
+  blockerProvideInput: ['补充信息', 'Provide information'],
+  blockerInputNext: ['收到补充信息后，核对要求并继续当前计划。', 'Once your information is received, confirm the requirements and continue the current plan.'],
+  blockerVerifyContinue: ['核验并继续', 'Verify and continue'],
+  blockerTechnicalDetails: ['查看原始报告与技术详情', 'Original report and technical details'],
+  blockerReplyPrompt: ['关于“{{title}}”，需要补充：{{action}}\n\n我的回复：', 'For “{{title}}”, the requested information is: {{action}}\n\nMy reply:'],
   goalChanged: ['目标已更新（{{detail}}），旧任务需要重新规划', 'Goal changed ({{detail}}); this task needs replanning'],
   goalCancelled: ['目标已取消：{{detail}}', 'Goal cancelled: {{detail}}'],
   dependencyCancelled: ['前置任务已取消：{{detail}}，需要重新规划依赖', 'Dependency cancelled: {{detail}}; replan dependencies'],
@@ -429,6 +481,7 @@ export function createNode(
     model: connection?.defaultModel && models.includes(connection.defaultModel) ? connection.defaultModel : models[0] ?? '',
     thinkingLevel: role === 'coordinator' ? 'high' : 'medium',
     maxCallsPerMinute: 6, intelligenceRating: 3, workPreferences: '',
+    ...presetSkillBinding(undefined, role),
     sourceSlugs: [], abilityProfileIds: [],
   }
 }
@@ -473,7 +526,10 @@ export function applyPreset(config: SuperAgentConfig, preset: SuperAgentPreset, 
     if (old) used.add(old.id)
     return {
       ...createNode(item.role, [connection], text, connection.slug),
-      ...(old ? { id: old.id, sourceSlugs: [...old.sourceSlugs], abilityProfileIds: [...old.abilityProfileIds] } : {}),
+      ...(old ? { id: old.id, sourceSlugs: [...old.sourceSlugs],
+        agentRuntime: old.agentRuntime && getCompatibleAgentRuntimes(connection).includes(old.agentRuntime) ? old.agentRuntime : undefined,
+        abilityProfileIds: [...old.abilityProfileIds] } : {}),
+      ...presetSkillBinding(item.profile, item.role, old),
       presetProfile: item.profile, thinkingMode: old?.thinkingMode ?? 'task' as const,
       capabilities: [...new Set([...(old?.capabilities ?? []).filter(capability => capability !== old?.presetProfile), item.profile])],
       name: text(`${item.profile}Name`), description: text(`${item.profile}Description`), workPreferences: text(`${item.profile}Preferences`),
@@ -483,7 +539,7 @@ export function applyPreset(config: SuperAgentConfig, preset: SuperAgentPreset, 
   })
   // Keep extra resource-bound nodes so choosing a smaller team never orphans scripts or bindings.
   nodes.push(...config.nodes.filter(node => !nodes.some(item => item.id === node.id)
-    && (node.sourceSlugs.length || node.abilityProfileIds.length || node.capabilities?.some(capability => capability !== node.presetProfile) || config.scripts.some(script => script.nodeId === node.id))))
+    && (node.sourceSlugs.length || hasCustomNodeSkills(node) || node.agentRuntime || node.abilityProfileIds.length || node.capabilities?.some(capability => capability !== node.presetProfile) || config.scripts.some(script => script.nodeId === node.id))))
   return { ...executionConfig, nodes, requirements: presetRequirements(preset), workflow: { ...recipe.workflow }, continuousWork: recipe.continuousWork, idleInspectionMinutes: recipe.idleInspectionMinutes }
 }
 
@@ -496,6 +552,7 @@ export function configError(config: SuperAgentConfig, connections: LlmConnection
     const connection = connections.find(item => item.slug === node.llmConnection)
     const models = nodeModels(connection)
     if (!node.name.trim() || !node.model.trim() || !connection?.isAuthenticated || (models.length > 0 && !models.includes(node.model))) return text('nodeRequired')
+    if (node.agentRuntime && !getCompatibleAgentRuntimes(connection).includes(node.agentRuntime)) return text('nodeBackendInvalid')
     if (!Number.isFinite(node.maxCallsPerMinute) || node.maxCallsPerMinute < 0.1 || node.maxCallsPerMinute > 60) return text('invalidSpeed')
   }
   if (!config.environment.workingDirectory.trim()) return text('pathRequired')

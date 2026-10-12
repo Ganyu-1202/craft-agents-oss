@@ -33,6 +33,7 @@ export const OperationSchema = z.object({ id, key: z.string().regex(/^[a-f0-9]{6
   nodeId: id, sessionId: z.string().min(1).max(200), invocationId: z.string().min(1).max(300), toolName: z.string().max(300),
   status: z.enum(['prepared', 'running', 'completed', 'unknown', 'reconciled']),
   createdAt: z.number(), updatedAt: z.number(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  resultIsError: z.boolean().optional(),
   reconciliation: z.object({ evidenceTaskId: id, note: z.string().min(1).max(4000), outcome: z.enum(['completed', 'not-executed']) }).strict().optional(),
 }).strict()
 export const MetricsSchema = z.object({ modelTurns: z.number().int().min(0), toolCalls: z.number().int().min(0), retries: z.number().int().min(0),
@@ -42,11 +43,12 @@ export const emptyContinuityMetrics = () => ({ modelTurns: 0, toolCalls: 0, retr
 
 /** Host validates ownership and current execution identity on every update. */
 export const SuperAgentTaskUpdateSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('get'), taskId: id.optional() }).strict(),
+  z.object({ action: z.literal('get'), taskId: id.optional(), operationId: id.optional() }).strict(),
   z.object({ action: z.literal('checkpoint'), taskId: id, expectedRevision: z.number().int().min(0),
     completedSteps: z.array(z.string().min(1).max(500)).max(100), nextStep: z.string().min(1).max(4000), note: z.string().max(4000).default('') }).strict(),
   z.object({ action: z.literal('wait'), taskId: id, reason: z.string().min(1).max(4000), condition: WaitConditionSchema }).strict(),
   z.object({ action: z.literal('artifact'), taskId: id, id, path: z.string().min(1).max(4096), description: z.string().max(4000).default('') }).strict(),
+  z.object({ action: z.literal('install-skill'), taskId: id, skillSlug: id, path: z.string().min(1).max(4096) }).strict(),
   z.object({ action: z.literal('reconcile'), operationId: id, evidenceTaskId: id,
     outcome: z.enum(['completed', 'not-executed']), note: z.string().min(1).max(4000) }).strict(),
 ])

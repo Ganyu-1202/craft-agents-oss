@@ -32,6 +32,9 @@ import { isDetailNavState } from '@/lib/nav-helpers'
 import { PanelSlot } from './PanelSlot'
 import { PanelResizeSash } from './PanelResizeSash'
 import { CompactPanelTransition } from './CompactPanelTransition'
+import { PageSidebarSheet } from './PageSidebar'
+import { usePageSidebar } from '@/context/PageSidebarContext'
+import { useTranslation } from 'react-i18next'
 import {
   PANEL_GAP,
   PANEL_EDGE_INSET,
@@ -68,9 +71,13 @@ export function PanelStackContainer({
   isCompact = false,
   isResizing,
 }: PanelStackContainerProps) {
+  const pageSidebar = usePageSidebar()
+  const { t } = useTranslation()
   const panelStack = useAtomValue(panelStackAtom)
   const focusedPanelId = useAtomValue(focusedPanelIdAtom)
   const focusedRoute = useAtomValue(focusedPanelRouteAtom)
+  const setSidebarOpen = pageSidebar?.setOpen
+  useEffect(() => { if (pageSidebar?.mode === 'agent') setSidebarOpen?.(false) }, [focusedRoute, setSidebarOpen, pageSidebar?.mode])
 
   const contentPanels = panelStack
 
@@ -115,7 +122,7 @@ export function PanelStackContainer({
   // === COMPACT BRANCH ===
   // Single-panel layout with iOS-style slide between navigator and detail.
   // Both stay in the DOM; CompactPanelTransition transforms whichever should be
-  // off-screen. Sidebar is hidden by AppShell in compact mode (sidebarWidth = 0).
+  // off-screen. The sidebar opens as a drawer in compact mode.
   if (isCompact) {
     const focusedEntry = visiblePanels[0]
     return (
@@ -131,6 +138,9 @@ export function PanelStackContainer({
           '--compact-panel-stack-top': `${PANEL_STACK_VERTICAL_OVERFLOW + COMPACT_PANEL_TOP_GAP}px`,
         } as React.CSSProperties}
       >
+        <PageSidebarSheet open={!!pageSidebar?.open && pageSidebar.mode === 'agent'} onOpenChange={open => setSidebarOpen?.(open)} title={t('shortcuts.category.navigation')}>
+          {sidebarSlot}
+        </PageSidebarSheet>
         {/* Navigator slot — full width, slides left to -30% when detail focused. */}
         {hasNavigator && (
           <CompactPanelTransition role="navigator" isDetailActive={hasSelectedContent}>

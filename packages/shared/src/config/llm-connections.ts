@@ -262,6 +262,8 @@ export interface LlmConnection {
   // fail-soft — absent identity simply means nothing is shown.
   oauthAccountUuid?: string;
   oauthAccountEmail?: string;
+  /** Username returned by the TokenNest OAuth profile endpoint. */
+  oauthAccountUsername?: string;
   oauthOrganizationUuid?: string;
   oauthOrganizationName?: string;
   oauthProfileVerifiedAt?: number; // epoch ms
@@ -325,6 +327,15 @@ export function resolveAgentRuntime(
   // Missing/disabled plugins must be reported, never silently replaced by Pi.
   if (requested.startsWith('plugin:')) return requested;
   return getCompatibleAgentRuntimes(connection).includes(requested) ? requested : fallback;
+}
+
+/** Explicit session/node choices fail clearly instead of silently switching engines. */
+export function resolveSessionAgentRuntime(connection: LlmConnection, override?: AgentRuntimeProtocol): AgentRuntimeProtocol {
+  if (override === undefined) return resolveAgentRuntime(connection);
+  if (!getCompatibleAgentRuntimes(connection).includes(override)) {
+    throw new Error(`Agent backend ${override} is not compatible or enabled for AI connection ${connection.name}`);
+  }
+  return override;
 }
 
 // ============================================================

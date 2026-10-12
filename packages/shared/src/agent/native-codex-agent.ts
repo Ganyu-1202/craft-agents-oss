@@ -1,9 +1,5 @@
 import { createHash } from 'node:crypto';
 import type { AgentEvent, AgentEventUsage } from '@craft-agent/core/types';
-import {
-  SESSION_TOOL_REGISTRY,
-  type ToolResult as SessionToolResult,
-} from '@craft-agent/session-tools-core';
 import type { FileAttachment } from '../utils/files.ts';
 import type { Workspace } from '../config/storage.ts';
 import { getBrowserToolEnabled, getLlmConnection } from '../config/storage.ts';
@@ -12,10 +8,9 @@ import { getCoAuthorPreference } from '../config/preferences.ts';
 import { getCredentialManager, CredentialChangedError } from '../credentials/index.ts';
 import { refreshChatGptTokens } from '../auth/chatgpt-oauth.ts';
 import { getModelById } from '../config/models.ts';
-import { getSessionDataPath, getSessionPath, getSessionPlansPath } from '../sessions/storage.ts';
-import { extractWorkspaceSlug } from '../utils/workspace.ts';
-import { saveBinaryResponse } from '../utils/binary-detection.ts';
-import { mkdir } from 'node:fs/promises';
+import { getSessionPlansPath } from '../sessions/storage.ts';
+import { mkdir, rm } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getConfigDir } from '../config/paths.ts';
 import { getSystemPrompt } from '../prompts/system.ts';
@@ -44,13 +39,14 @@ import type { BackendConfig, ChatOptions, PostInitResult, SdkMcpServerConfig } f
 import { AbortReason } from './backend/types.ts';
 import { BaseAgent } from './base-agent.ts';
 import { EventQueue } from './backend/event-queue.ts';
-import { getSessionToolProxyDefs, SESSION_TOOL_NAMES } from './backend/session-tool-defs.ts';
-import { createClaudeContext, type SessionToolContext } from './claude-context.ts';
-import { attachSessionSelfManagementBindings } from './session-self-management-bindings.ts';
-import { getSessionScopedToolCallbacks, setLastPlanFilePath } from './session-scoped-tools.ts';
-import { executeBrowserToolCommand } from './browser-tool-runtime.ts';
-import { runPreToolUseChecksWithPermissions } from './core/pre-tool-use.ts';
-import { checkSessionExecutionPolicy, hasSessionExecutionPolicy } from './core/session-execution-policy.ts';
+import { getSessionToolProxyDefs } from './backend/session-tool-defs.ts';
+import { getSessionExecutionPolicy, hasSessionExecutionPolicy } from './core/session-execution-policy.ts';
+import { AgentPluginHostTools, type HostToolResult } from '../agent-plugins/host-tools.ts';
+import { LOCAL_AGENT_HOST_TOOLS } from '../agent-plugins/local-tools.ts';
+import { loadBackendFrameworkConfiguration } from '../agent-plugins/framework-storage.ts';
+import { frameworkToolBlockReason } from '../agent-plugins/framework-tool-policy.ts';
+import { assertSuperAgentTools, filterSuperAgentTools } from './core/browser-tool-policy.ts';
+import { CODEX_HOST_EXECUTION_CONFIG, codexHostExecutionArgs, createCodexHostHome } from '../codex/host-execution.ts';
 import { LLM_QUERY_TIMEOUT_MS, withTimeout, type LLMQueryRequest, type LLMQueryResult } from './llm-tool.ts';
 import { parseError } from './errors.ts';
 import { SourceActivationDrainController } from './source-activation-drain.ts';
@@ -112,7 +108,9 @@ export class NativeCodexAgent extends BaseAgent {
   private queue = new EventQueue();
   private commandOutput = new Map<string, string>();
   private pendingPermissions = new Map<string, PendingPermission>();
-  private sessionToolContext: SessionToolContext | null = null;
+  private readonly hostTools: AgentPluginHostTools;
+  private clientHostExecution = false;
+  private hostHome: Promise<string> | null = null;
   private toolSignature = '';
   private toolsChanged = false;
   /** Dynamic tools belong to the app-server process that started the thread. */
@@ -126,6 +124,11 @@ export class NativeCodexAgent extends BaseAgent {
   constructor(config: BackendConfig, private readonly binary: NativeCodexBinary) {
     const model = config.model || DEFAULT_NATIVE_CODEX_MODEL;
     super(config, model, getModelById(model)?.contextWindow);
+    this.hostTools = new AgentPluginHostTools(this, config, this._sessionId, async (name, input) => {
+      if (name === 'call_llm') return { content: (await this.preExecuteCallLlm(input)).text, isError: false };
+      if (name === 'spawn_session') return { content: JSON.stringify(await this.preExecuteSpawnSession(input)), isError: false };
+      return undefined;
+    });
     this._supportsBranching = false;
     this.codexThreadId = config.session?.sdkSessionId ?? null;
     if (!config.isHeadless) this.startConfigWatcher();
@@ -164,17 +167,21 @@ export class NativeCodexAgent extends BaseAgent {
 
   private async ensureClient(): Promise<NativeCodexAppServerClient> {
     if (this.disposed) throw new Error('Native Codex agent has been disposed');
+    if (this.usesHostExecution() && !this.binary.testedProtocol) throw new Error('Policy-enforced native Codex requires the tested 0.154.x protocol; install the supported CLI.');
+    if (this.client?.isConnected && this.clientHostExecution !== this.usesHostExecution()) await this.disconnectClient();
     if (this.client?.isConnected) return this.client;
     if (this.connecting) return this.connecting;
     const generation = ++this.clientGeneration;
     this.connecting = (async () => {
       const env = await this.buildCodexEnvironment();
+      this.clientHostExecution = this.usesHostExecution();
       const client = new NativeCodexAppServerClient({
         codexPath: this.binary.path,
-        workDir: this.workingDirectory,
+        workDir: this.clientHostExecution ? env!.CODEX_HOME! : this.workingDirectory,
         requestTimeoutMs: 30_000,
         onDebug: message => this.debug(message),
         env,
+        configArgs: this.clientHostExecution ? codexHostExecutionArgs() : undefined,
       });
       this.pendingClient = client;
       client.on('notification', (method: string, params: unknown) => {
@@ -232,6 +239,12 @@ export class NativeCodexAgent extends BaseAgent {
   }
 
   private async buildCodexEnvironment(): Promise<Record<string, string> | undefined> {
+    if (this.usesHostExecution()) {
+      const managed = ['api_key', 'api_key_with_endpoint', 'oauth'].includes(this.config.authType ?? '');
+      this.hostHome ??= createCodexHostHome(join(getConfigDir(), 'codex', 'controlled'), this.workingDirectory,
+        managed ? undefined : process.env.CODEX_HOME || join(homedir(), '.codex'));
+      return { CODEX_HOME: await this.hostHome };
+    }
     // Keep connection-owned credentials out of the user's global Codex home.
     // authType=none deliberately keeps the global home so an existing `codex login`
     // can be used by an explicitly unmanaged connection.
@@ -295,11 +308,14 @@ export class NativeCodexAgent extends BaseAgent {
   }
 
   private buildDynamicTools(): DynamicToolSpec[] {
-    let defs = getSessionToolProxyDefs();
+    let defs = [...(this.usesHostExecution() ? LOCAL_AGENT_HOST_TOOLS : []), ...getSessionToolProxyDefs()];
     if (!getBrowserToolEnabled()) defs = defs.filter(def => def.name !== 'mcp__session__browser_tool');
     const sourceDefs = this.config.mcpPool?.getProxyToolDefs() ?? [];
     this.nativeToolAliases.clear();
-    return [...defs, ...sourceDefs].map(def => {
+    const role = getSessionExecutionPolicy(this._sessionId)?.role;
+    const visibleTools = filterSuperAgentTools([...defs, ...sourceDefs], role).filter(def => !frameworkToolBlockReason(this._sessionId, def.name));
+    assertSuperAgentTools(visibleTools, role);
+    return visibleTools.map(def => {
       // app-server reserves the mcp__ prefix for its own configured MCP servers.
       const nativeName = def.name.startsWith('mcp__') ? `craft__${def.name.slice('mcp__'.length)}` : `craft__${def.name}`;
       this.nativeToolAliases.set(nativeName, def.name);
@@ -312,7 +328,13 @@ export class NativeCodexAgent extends BaseAgent {
     });
   }
 
+  private usesHostExecution(): boolean {
+    const files = loadBackendFrameworkConfiguration('codex')?.features.files;
+    return hasSessionExecutionPolicy(this._sessionId) || files === 'host' || files === 'disabled';
+  }
+
   private threadPolicy(): { approvalPolicy: AskForApproval; sandbox: SandboxMode } {
+    if (this.usesHostExecution()) return { approvalPolicy: 'never', sandbox: 'read-only' };
     switch (this.getPermissionMode()) {
       case 'safe': return { approvalPolicy: 'never', sandbox: 'read-only' };
       case 'allow-all': return { approvalPolicy: 'never', sandbox: 'danger-full-access' };
@@ -334,7 +356,8 @@ export class NativeCodexAgent extends BaseAgent {
       this.config.modelPromptSettings,
       'codex',
     );
-    return [system, ...this.promptBuilder.buildStableContextParts()].filter(Boolean).join('\n\n');
+    return [system, ...this.promptBuilder.buildStableContextParts(), this.usesHostExecution()
+      ? 'Run the Codex reasoning loop using TokenBird dynamic tools. File reads, edits, shell commands, sources and browser operations must use the provided craft__ tools; the host applies node permissions and the configured execution environment.' : ''].filter(Boolean).join('\n\n');
   }
 
   private buildUserInput(message: string, attachments?: FileAttachment[]): UserInput[] {
@@ -367,7 +390,8 @@ export class NativeCodexAgent extends BaseAgent {
     const contextWindow = (typeof connectionModel === 'object' ? connectionModel.contextWindow : undefined)
       ?? getModelById(this._model)?.contextWindow;
     const compactLimit = resolveAutoCompactionTokenLimit(this.config.modelPromptSettings, contextWindow);
-    const signature = JSON.stringify({ tools, compactLimit });
+    const hostExecution = this.usesHostExecution();
+    const signature = JSON.stringify({ tools, compactLimit, hostExecution });
     if (this.codexThreadId && this.threadClient === client && !this.toolsChanged && signature === this.toolSignature) {
       return this.codexThreadId;
     }
@@ -384,7 +408,11 @@ export class NativeCodexAgent extends BaseAgent {
     this.debug(`Registering ${tools.length} Codex dynamic tools, including ${this.config.mcpPool?.getProxyToolDefs().length ?? 0} MCP source tools`);
     const response = await client.request<ThreadResponse>('thread/start', {
       model: bareModelId(this._model),
-      ...(compactLimit !== undefined ? { config: { model_auto_compact_token_limit: compactLimit } } : {}),
+      ...((hostExecution || compactLimit !== undefined) ? { config: {
+        ...(hostExecution ? CODEX_HOST_EXECUTION_CONFIG : {}),
+        ...(compactLimit !== undefined ? { model_auto_compact_token_limit: compactLimit } : {}),
+      } } : {}),
+      ...(hostExecution ? { environments: [] } : {}),
       cwd: this.workingDirectory,
       runtimeWorkspaceRoots: [this.config.workspace.rootPath],
       approvalPolicy: policy.approvalPolicy,
@@ -402,12 +430,6 @@ export class NativeCodexAgent extends BaseAgent {
   }
 
   protected async *chatImpl(message: string, attachments?: FileAttachment[], options?: ChatOptions): AsyncGenerator<AgentEvent> {
-    // app-server's built-in shell/file tools do not pass through Craft's path gate.
-    if (hasSessionExecutionPolicy(this._sessionId)) {
-      yield { type: 'error', message: 'Super Agent nodes require the Pi compatibility runtime for Codex connections; native Codex does not expose the required filesystem policy gate.' };
-      yield { type: 'complete' };
-      return;
-    }
     if (this.processing) {
       yield { type: 'error', message: 'Codex is already processing a turn' };
       yield { type: 'complete' };
@@ -443,6 +465,7 @@ export class NativeCodexAgent extends BaseAgent {
         approvalPolicy: policy.approvalPolicy,
         model: bareModelId(this._model),
         effort: this.reasoningEffort(options?.thinkingOverride),
+        ...(this.usesHostExecution() ? { environments: [] } : {}),
       });
       this.currentTurnId = response.turn.id;
       if (this.abortReason) {
@@ -481,6 +504,7 @@ export class NativeCodexAgent extends BaseAgent {
         yield { type: 'complete' };
       }
     } finally {
+      this.hostTools.cancel();
       this.processing = false;
       this.currentTurnId = null;
     }
@@ -731,6 +755,7 @@ export class NativeCodexAgent extends BaseAgent {
     denied: T,
     result: (allowed: boolean, alwaysAllow: boolean) => T,
   ): Promise<void> {
+    if (this.usesHostExecution()) return client.respond(request.id, denied);
     const mode = this.getPermissionMode();
     if (mode === 'allow-all') {
       await client.respond(request.id, result(true, true));
@@ -758,6 +783,7 @@ export class NativeCodexAgent extends BaseAgent {
   private async handlePermissionsApproval(client: NativeCodexAppServerClient, request: NativeCodexServerRequest, params: PermissionsApprovalParams): Promise<void> {
     const requestedPermissions = Object.fromEntries(Object.entries(params.permissions).filter(([, value]) => value != null));
     const grant = (allowed: boolean, always: boolean) => ({ permissions: allowed ? requestedPermissions : {}, scope: always ? 'session' : 'turn' });
+    if (this.usesHostExecution()) return client.respond(request.id, grant(false, false));
     if (this.getPermissionMode() === 'allow-all') return client.respond(request.id, grant(true, true));
     if (this.getPermissionMode() === 'safe' || !this.onPermissionRequest) return client.respond(request.id, grant(false, false));
     const id = String(request.id);
@@ -769,6 +795,7 @@ export class NativeCodexAgent extends BaseAgent {
   }
 
   respondToPermission(requestId: string, allowed: boolean, alwaysAllow = false): void {
+    this.hostTools.respondToPermission(requestId, allowed, alwaysAllow);
     const pending = this.pendingPermissions.get(requestId);
     if (!pending) return;
     this.pendingPermissions.delete(requestId);
@@ -779,130 +806,26 @@ export class NativeCodexAgent extends BaseAgent {
     const originalToolName = this.nativeToolAliases.get(params.tool) ?? params.tool;
     const args = asRecord(params.arguments);
     await this.emitAutomationEvent('PreToolUse', { hook_event_name: 'PreToolUse', tool_name: originalToolName, tool_input: args });
-    const checked = await this.authorizeDynamicTool(originalToolName, args);
-    if (checked.error) {
-      await client.respond(request.id, { contentItems: [{ type: 'inputText', text: checked.error }], success: false });
+    if (!this.nativeToolAliases.has(params.tool)) {
+      await client.respond(request.id, { contentItems: [{ type: 'inputText', text: 'Unknown or disabled TokenBird tool' }], success: false });
       return;
     }
-    const result = await this.routeToolCall(originalToolName, checked.input ?? args);
+    let result: HostToolResult;
+    try { result = await this.hostTools.execute(originalToolName, args, `codex-${params.callId}`); }
+    catch (error) { result = { content: error instanceof Error ? error.message : String(error), isError: true }; }
+    if (!this.isActiveTurnRequest(params) || !this.ownsClient(client)) return;
     await client.respond(request.id, {
-      contentItems: [{ type: 'inputText', text: result.content.slice(0, MAX_TOOL_OUTPUT_CHARS) }],
+      contentItems: [{ type: 'inputText', text: result.content.slice(0, MAX_TOOL_OUTPUT_CHARS) },
+        ...(result.images ?? []).map(image => ({ type: 'inputImage', imageUrl: `data:${image.mimeType};base64,${image.data}` }))],
       success: !result.isError,
     });
     const hookEvent = result.isError ? 'PostToolUseFailure' : 'PostToolUse';
     void this.emitAutomationEvent(hookEvent, {
       hook_event_name: hookEvent,
       tool_name: originalToolName,
-      tool_input: checked.input ?? args,
+      tool_input: args,
       ...(result.isError ? { error: result.content } : { tool_response: result.content }),
     });
-  }
-
-  private async authorizeDynamicTool(toolName: string, input: Record<string, unknown>): Promise<{ input?: Record<string, unknown>; error?: string }> {
-    const root = this.config.workspace.rootPath || this.workingDirectory;
-    const run = () => runPreToolUseChecksWithPermissions({
-      toolName,
-      input,
-      sessionId: this._sessionId,
-      permissionMode: this.getPermissionMode(),
-      workspaceRootPath: root,
-      workspaceId: extractWorkspaceSlug(root, this.config.workspace.id),
-      plansFolderPath: getSessionPlansPath(root, this._sessionId),
-      dataFolderPath: getSessionDataPath(root, this._sessionId),
-      workingDirectory: this.workingDirectory,
-      activeSourceSlugs: [...this.sourceManager.getActiveSlugs()],
-      allSourceSlugs: this.sourceManager.getAllSources().map(source => source.config.slug),
-      hasSourceActivation: !!this.onSourceActivationRequest,
-      permissionManager: this.permissionManager,
-      prerequisiteManager: this.prerequisiteManager,
-      onDebug: message => this.debug(message),
-    });
-    let checked = await run();
-    if (checked.type === 'source_activation_needed') {
-      const activated = await this.onSourceActivationRequest?.(checked.sourceSlug);
-      if (!activated) return { error: `Source "${checked.sourceSlug}" is not active.` };
-      checked = await run();
-    }
-    if (checked.type === 'block') return { error: checked.reason };
-    if (checked.type === 'prompt') {
-      if (!this.onPermissionRequest) return { input: checked.modifiedInput ?? input };
-      const id = `codex-tool-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const allowed = await new Promise<boolean>(resolve => {
-        this.pendingPermissions.set(id, { resolve: value => resolve(value), deny: () => resolve(false) });
-        this.onPermissionRequest!({
-          requestId: id,
-          toolName,
-          command: checked.type === 'prompt' ? checked.command : undefined,
-          description: checked.type === 'prompt' ? checked.description : `Use ${toolName}`,
-          type: checked.type === 'prompt' ? checked.promptType : undefined,
-        });
-      });
-      this.pendingPermissions.delete(id);
-      return allowed ? { input: checked.modifiedInput ?? input } : { error: 'Permission denied by user.' };
-    }
-    if (checked.type === 'modify') return { input: checked.input };
-    if (checked.type === 'call_llm_intercept' || checked.type === 'spawn_session_intercept') return { input: checked.input };
-    return { input };
-  }
-
-  private getSessionToolContext(): SessionToolContext {
-    if (this.sessionToolContext) return this.sessionToolContext;
-    this.sessionToolContext = createClaudeContext({
-      sessionId: this._sessionId,
-      workspacePath: this.config.workspace.rootPath,
-      workspaceId: this.config.workspace.id,
-      onPlanSubmitted: planPath => {
-        setLastPlanFilePath(this._sessionId, planPath);
-        this.onPlanSubmitted?.(planPath);
-      },
-      onAuthRequest: request => this.onAuthRequest?.(request as never),
-    });
-    attachSessionSelfManagementBindings(this.sessionToolContext, this._sessionId);
-    return this.sessionToolContext;
-  }
-
-  private async routeToolCall(toolName: string, args: Record<string, unknown>): Promise<{ content: string; isError: boolean }> {
-    const policy = checkSessionExecutionPolicy(this._sessionId, toolName, args, this.workingDirectory);
-    if (!policy.allowed) return { content: policy.reason, isError: true };
-    const stripped = toolName.startsWith('mcp__session__') ? toolName.slice('mcp__session__'.length) : toolName;
-    if (SESSION_TOOL_NAMES.has(stripped)) {
-      if (stripped === 'call_llm') {
-        try { return { content: (await this.preExecuteCallLlm(args)).text || '(Model returned empty response)', isError: false }; }
-        catch (error) { return { content: `call_llm failed: ${error instanceof Error ? error.message : String(error)}`, isError: true }; }
-      }
-      if (stripped === 'spawn_session') {
-        try { return { content: JSON.stringify(await this.preExecuteSpawnSession(args), null, 2), isError: false }; }
-        catch (error) { return { content: `spawn_session failed: ${error instanceof Error ? error.message : String(error)}`, isError: true }; }
-      }
-      if (stripped === 'browser_tool') return this.executeBrowserTool(args);
-      const def = SESSION_TOOL_REGISTRY.get(stripped);
-      if (!def?.handler) return { content: `Unsupported session tool: ${stripped}`, isError: true };
-      const result: SessionToolResult = await def.handler(this.getSessionToolContext(), args);
-      return { content: result.content.map(block => block.text).join('\n'), isError: !!result.isError };
-    }
-    if (this.config.mcpPool?.isProxyTool(toolName)) return this.config.mcpPool.callTool(toolName, args);
-    return { content: `Unknown dynamic tool: ${toolName}`, isError: true };
-  }
-
-  private async executeBrowserTool(args: Record<string, unknown>): Promise<{ content: string; isError: boolean }> {
-    const fns = getSessionScopedToolCallbacks(this._sessionId)?.browserPaneFns;
-    if (!fns) return { content: 'Browser controls require the desktop app.', isError: true };
-    try {
-      const result = await executeBrowserToolCommand({ command: (args.command as string | string[]) ?? '', fns, sessionId: this._sessionId });
-      let content = result.output;
-      if (result.image) {
-        const saved = saveBinaryResponse(
-          getSessionPath(this.config.workspace.rootPath, this._sessionId),
-          `browser-screenshot.${result.image.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`,
-          Buffer.from(result.image.data, 'base64'),
-          result.image.mimeType,
-        );
-        if (saved.type === 'file_download') content += `\n\nSaved screenshot: ${saved.path}`;
-      }
-      return { content, isError: false };
-    } catch (error) {
-      return { content: error instanceof Error ? error.message : String(error), isError: true };
-    }
   }
 
   private async handleTokenRefresh(client: NativeCodexAppServerClient, request: NativeCodexServerRequest): Promise<void> {
@@ -952,6 +875,7 @@ export class NativeCodexAgent extends BaseAgent {
 
   forceAbort(reason: AbortReason): void {
     this.abortReason = reason;
+    this.hostTools.cancel();
     for (const pending of this.pendingPermissions.values()) pending.deny();
     this.pendingPermissions.clear();
     if (this.currentTurnId && this.currentTurnId !== 'pending') this.rememberIgnoredTurn(this.currentTurnId);
@@ -1001,7 +925,7 @@ export class NativeCodexAgent extends BaseAgent {
     super.setWorkspace(workspace);
     this.codexThreadId = null;
     this.threadClient = null;
-    this.sessionToolContext = null;
+    this.hostTools.cancel();
     void this.disconnectClient();
   }
 
@@ -1027,9 +951,9 @@ export class NativeCodexAgent extends BaseAgent {
     for (const pending of this.pendingPermissions.values()) pending.deny();
     this.pendingPermissions.clear();
     this.consumePendingSourceActivationRestart();
-    this.sessionToolContext = null;
+    this.hostTools.cancel();
     this.queue.complete();
-    void this.disconnectClient();
+    void this.disconnectClient().then(() => this.removeHostHome());
     super.destroy();
   }
 
@@ -1039,10 +963,17 @@ export class NativeCodexAgent extends BaseAgent {
     for (const pending of this.pendingPermissions.values()) pending.deny();
     this.pendingPermissions.clear();
     this.consumePendingSourceActivationRestart();
-    this.sessionToolContext = null;
+    this.hostTools.cancel();
     this.queue.complete();
     await this.disconnectClient();
+    await this.removeHostHome();
     super.destroy();
+  }
+
+  private async removeHostHome(): Promise<void> {
+    const home = this.hostHome;
+    this.hostHome = null;
+    if (home) await home.then(path => rm(path, { recursive: true, force: true })).catch(error => this.debug(`Host home cleanup failed: ${error}`));
   }
 
   async runMiniCompletion(prompt: string): Promise<string | null> {
@@ -1052,7 +983,11 @@ export class NativeCodexAgent extends BaseAgent {
 
   async queryLlm(request: LLMQueryRequest): Promise<LLMQueryResult> {
     const workDir = this.workingDirectory;
-    const client = new NativeCodexAppServerClient({ codexPath: this.binary.path, workDir, env: await this.buildCodexEnvironment(), requestTimeoutMs: 30_000, onDebug: message => this.debug(`[utility] ${message}`) });
+    const env = await this.buildCodexEnvironment();
+    const hostExecution = this.usesHostExecution();
+    const client = new NativeCodexAppServerClient({ codexPath: this.binary.path, workDir: hostExecution ? env!.CODEX_HOME! : workDir,
+      env, configArgs: hostExecution ? codexHostExecutionArgs() : undefined,
+      requestTimeoutMs: 30_000, onDebug: message => this.debug(`[utility] ${message}`) });
     const completionControl: { cancel?: (error: Error) => void } = {};
     const onServerRequest = (serverRequest: NativeCodexServerRequest) => {
       const task = serverRequest.method === 'account/chatgptAuthTokens/refresh'
@@ -1110,6 +1045,7 @@ export class NativeCodexAgent extends BaseAgent {
           developerInstructions: request.systemPrompt ?? null,
           ephemeral: true,
           dynamicTools: [],
+          ...(hostExecution ? { environments: [], config: CODEX_HOST_EXECUTION_CONFIG } : {}),
         });
         utilityThreadId = thread.thread.id;
         await client.request<TurnStartResponse>('turn/start', {
@@ -1117,6 +1053,7 @@ export class NativeCodexAgent extends BaseAgent {
           input: [{ type: 'text', text: request.prompt, text_elements: [] }],
           model: bareModelId(request.model ?? this.config.miniModel ?? this._model),
           effort: 'low',
+          ...(hostExecution ? { environments: [] } : {}),
           outputSchema: request.outputSchema as JsonValue | undefined,
         });
         await completed;

@@ -26,7 +26,7 @@ export interface CloudShare {
   createdAt: number
 }
 export type TunnelFrame =
-  | { type: 'capabilities'; direct: boolean }
+  | { type: 'capabilities'; direct: boolean; deferredHandshake?: boolean }
   | { type: 'open'; streamId: string; iceServers?: CloudIceServer[] }
   | { type: 'data'; streamId: string; data: string }
   | { type: 'close'; streamId: string }

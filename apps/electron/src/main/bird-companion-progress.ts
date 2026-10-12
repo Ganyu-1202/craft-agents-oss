@@ -24,11 +24,19 @@ export class BirdCompanionProgress {
   private sequence = 0
   private bubbleDismissed = false
   private greeting = false
+  private dismissed = false
 
   setPreferences(preferences: BirdCompanionPreferences): void {
     this.preferences = preferences
     this.bubbleDismissed = false
     this.greeting = false
+    this.dismissed = false
+  }
+
+  /** Hide both windows until settings are changed or the application restarts. */
+  dismissCompanion(): void {
+    this.dismissed = true
+    this.dismissBubble()
   }
 
   dismissBubble(): void {
@@ -110,11 +118,14 @@ export class BirdCompanionProgress {
   }
 
   getState(): BirdCompanionState {
+    if (this.dismissed) return { ...IDLE_BIRD_STATE }
     const pinned = this.preferences.alwaysVisible
     const candidates = [...this.turns.values()]
       .filter(turn => !turn.expired && (pinned || this.preferences.autoShowComputerUse && turn.computer))
     const active = candidates.filter(turn => !turn.outcome)
-    const turn = (active.length ? active : candidates).sort((a, b) => b.sequence - a.sequence)[0]
+    // Waiting for confirmation must remain visible across concurrent sessions.
+    const waiting = active.filter(turn => turn.permissions.size > 0)
+    const turn = (waiting.length ? waiting : active.length ? active : candidates).sort((a, b) => b.sequence - a.sequence)[0]
     if (!turn) return { ...IDLE_BIRD_STATE, visible: pinned, bubbleVisible: pinned && this.greeting && !this.bubbleDismissed, activity: this.greeting ? 'greeting' : 'idle' }
     let mood: BirdCompanionState['mood'] = 'thinking'
     let activity = turn.activity
@@ -125,6 +136,7 @@ export class BirdCompanionProgress {
     else {
       const pending = [...turn.tools.values()].filter(tool => !tool.done)
       if (pending.length) { mood = 'working'; activity = pending[pending.length - 1]!.activity }
+      else if (activity === 'stepError' || activity === 'denied') mood = 'error'
     }
     return { visible: true, bubbleVisible: !this.bubbleDismissed, mood, activity, completedSteps: turn.completed, activeSessions: active.length }
   }

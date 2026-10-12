@@ -4,7 +4,10 @@
   "author": "Primer (GitHub)",
   "license": "MIT",
   "source": "https://github.com/primer/github-vscode-theme",
-  "supportedModes": ["light", "dark"],
+  "supportedModes": [
+    "light",
+    "dark"
+  ],
   "shikiTheme": {
     "light": "github-light",
     "dark": "github-dark"
@@ -21,6 +24,16 @@
     "accent": "#58a6ff",
     "info": "#d29922",
     "success": "#3fb950",
-    "destructive": "#f85149"
-  }
+    "destructive": "#f85149",
+    "paper": "#161b22",
+    "navigator": "#010409",
+    "input": "#161b22",
+    "popover": "#161b22",
+    "popoverSolid": "#161b22"
+  },
+  "paper": "#f6f8fa",
+  "navigator": "#f0f3f6",
+  "input": "#ffffff",
+  "popover": "#f6f8fa",
+  "popoverSolid": "#f6f8fa"
 }

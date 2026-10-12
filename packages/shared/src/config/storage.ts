@@ -1418,6 +1418,11 @@ export function ensurePresetThemes(): void {
   // - If file exists and is valid → skip (preserve user changes)
   try {
     const bundledFiles = readdirSync(bundledThemesDir).filter(f => f.endsWith('.json'));
+    // Copy local scenic artwork once; preserve any user's replacement asset.
+    for (const file of readdirSync(bundledThemesDir).filter(f => /\.(?:webp|png|jpe?g|svg)$/i.test(f))) {
+      const destination = join(themesDir, file);
+      if (!existsSync(destination)) writeFileSync(destination, readFileSync(join(bundledThemesDir, file)));
+    }
     for (const file of bundledFiles) {
       const srcPath = join(bundledThemesDir, file);
       const destPath = join(themesDir, file);
@@ -2897,6 +2902,7 @@ export function updateLlmConnection(slug: string, updates: Partial<Omit<LlmConne
     // Resolved Anthropic OAuth identity (issue #838) — preserved across unrelated saves
     oauthAccountUuid: updates.oauthAccountUuid !== undefined ? updates.oauthAccountUuid : existing.oauthAccountUuid,
     oauthAccountEmail: updates.oauthAccountEmail !== undefined ? updates.oauthAccountEmail : existing.oauthAccountEmail,
+    oauthAccountUsername: updates.oauthAccountUsername !== undefined ? updates.oauthAccountUsername : existing.oauthAccountUsername,
     oauthOrganizationUuid: updates.oauthOrganizationUuid !== undefined ? updates.oauthOrganizationUuid : existing.oauthOrganizationUuid,
     oauthOrganizationName: updates.oauthOrganizationName !== undefined ? updates.oauthOrganizationName : existing.oauthOrganizationName,
     oauthProfileVerifiedAt: updates.oauthProfileVerifiedAt !== undefined ? updates.oauthProfileVerifiedAt : existing.oauthProfileVerifiedAt,

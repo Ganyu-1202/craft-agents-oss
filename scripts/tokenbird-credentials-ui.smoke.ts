@@ -90,6 +90,8 @@ beforeEach(async () => {
   container = document.createElement('div'); document.body.append(container); root = createRoot(container)
   for (const value of Object.values(toast)) value.mockClear()
   api = {
+    getCredentialAccess: mock(async () => ({ state: 'local' })),
+    requestCredentialAccess: mock(async () => ({ state: 'pending' })),
     getNativeCredentialStatus: mock(async () => ok(response())),
     listNativeCredentials: mock(async () => ok(response())),
     applyNativeCredentialChanges: mock(async () => ok({ ...response(), upsertedCount: 1, deletedCount: 0 })),
@@ -101,6 +103,21 @@ afterEach(async () => { await act(async () => root.unmount()); document.body.inn
 afterAll(async () => { try { expect(consoleErrors.mock.calls.filter(args => String(args[0]).includes('Function components cannot be given refs'))).toEqual([]); await dom.happyDOM.close() } finally { consoleErrors.mockRestore() } })
 
 describe('native credential Settings lifecycle', () => {
+  test('remote vault waits for approval and uses the server workspace scope', async () => {
+    api.getCredentialAccess = mock(async () => ({ state: 'required' }))
+    await render()
+    expect(body()).toContain(`${prefix}access.required`)
+    expect(api.listNativeCredentials).not.toHaveBeenCalled()
+    await click(button(`${prefix}requestAccess`))
+    expect(api.requestCredentialAccess).toHaveBeenCalledTimes(1)
+    api.getCredentialAccess = mock(async () => ({ state: 'approved' }))
+    const remote = { ...response(), scope: { ...response().scope, workspaceId: 'remote-workspace' } }
+    api.getNativeCredentialStatus = mock(async () => ok(remote))
+    api.listNativeCredentials = mock(async () => ok(remote))
+    await click(button('common.refresh'))
+    expect(api.listNativeCredentials).toHaveBeenCalledTimes(1)
+    expect(button(`${prefix}add`).disabled).toBe(false)
+  })
   test('healthy legacy remains editable without OS support, upgrade, or reauthentication', async () => {
     await render()
     expect(body()).toContain(`${prefix}legacyUsable`)
@@ -110,7 +127,7 @@ describe('native credential Settings lifecycle', () => {
     expect(api.applyNativeCredentialChanges).not.toHaveBeenCalled()
   })
 
-  test('remote/browser contexts stay native-only without RPC or reauth fallback', async () => {
+  test('denied scopes and unavailable native APIs never list credentials', async () => {
     api.getNativeCredentialStatus = mock(async () => ({ ok: false, code: 'SCOPE_NOT_ALLOWED', message: secret }))
     await render()
     expect(body()).toContain(`${prefix}errors.SCOPE_NOT_ALLOWED`)

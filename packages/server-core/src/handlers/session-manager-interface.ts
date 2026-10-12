@@ -44,7 +44,7 @@ export interface ISessionManager {
   // ---------------------------------------------------------------------------
 
   getSessions(workspaceId?: string): Session[]
-  getSuperAgentSessionIds?(workspaceId: string): string[]
+  getSuperAgentSessionIds?(workspaceId: string, nodeId?: string): string[]
   getSession(sessionId: string): Promise<Session | null>
   /** Creates a session and (unless `internal.emitCreatedEvent === false`) announces it to the
    *  renderer so it hydrates full metadata instead of fabricating a "New Chat" placeholder. */
@@ -282,6 +282,7 @@ export interface ISessionManager {
   // ---------------------------------------------------------------------------
 
   reinitializeAuth(connectionSlug?: string): Promise<void>
+  notifyStoredCredentialChanges?(changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialAppliedChange[]): Promise<{ sessionIdsNeedingRestart: string[] }>
   resumeAfterAuthentication?(connectionSlug: string): void
   /**
    * Push runtime updates (e.g. capability toggles) to every active session

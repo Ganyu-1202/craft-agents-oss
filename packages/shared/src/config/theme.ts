@@ -279,6 +279,8 @@ export interface ShikiThemeConfig {
  * Used for preset themes stored as JSON files
  */
 export interface ThemeFile extends ThemeOverrides {
+  /** Previous bundled background URLs that may migrate to the local asset. */
+  backgroundImageAliases?: string[];
   name?: string;
   description?: string;
   author?: string;

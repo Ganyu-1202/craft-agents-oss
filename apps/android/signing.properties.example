@@ -1,0 +1,6 @@
+# Copy to signing.properties (ignored by Git), or use environment variables.
+# Paths are relative to this properties file. Use forward slashes on Windows.
+storeFile=C:/Users/YOUR_USER/AppData/Local/TokenBird/signing/release.p12
+storePassword=REPLACE_WITH_PRIVATE_PASSWORD
+keyAlias=tokenbird
+keyPassword=REPLACE_WITH_PRIVATE_PASSWORD

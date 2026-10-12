@@ -16,7 +16,7 @@ async function until(predicate: () => boolean, timeout = 5000) {
   const end = Date.now() + timeout
   while (!predicate()) { if (Date.now() > end) throw new Error('Timed out'); await Bun.sleep(10) }
 }
-async function fixture(options: { directEnabled?: boolean; factory?: CloudPeerFactory; expiresIn?: number } = {}) {
+async function fixture(options: { directEnabled?: boolean; factory?: CloudPeerFactory; expiresIn?: number; legacyHost?: boolean } = {}) {
   const previous = process.env.TOKENBIRD_CONFIG_DIR
   const directory = mkdtempSync(join(tmpdir(), 'tokenbird-direct-'))
   process.env.TOKENBIRD_CONFIG_DIR = directory
@@ -45,6 +45,11 @@ async function fixture(options: { directEnabled?: boolean; factory?: CloudPeerFa
   saveCloudConfig({ serverUrl: origin, connectionSlug: 'test', deviceName: 'Direct host', remoteEnabled: true })
   host.start()
   await until(() => host.status.connected)
+  if (options.legacyHost) {
+    // Simulate an installed host predating deferred local socket admission.
+    const tunnel = (host as unknown as { tunnel: { send(data: string): void } }).tunnel
+    tunnel.send(JSON.stringify({ type: 'capabilities', direct: true }))
+  }
   // Host capability announcement precedes subsequent cloud REST/WS admission.
   const grant = await host.request<{ url: string; token: string }>(`/v1/devices/${host.status.deviceId}/connect`, 'POST')
   const client = new WsRpcClient(grant.url, { token: grant.token, autoReconnect: false, cloudPeerFactory: options.factory ?? createNodeCloudPeer,
@@ -90,6 +95,15 @@ test('cloud direct switch off preserves existing relay clients', async () => {
   expect(await f.client.invoke('echo', 'relay')).toBe('relay')
   expect(f.client.getConnectionState().dataPath).toBe('relay')
   expect(f.calls).toBe(1)
+})
+
+test('legacy hosts use relay even when the client requests direct negotiation', async () => {
+  const f = await fixture({ legacyHost: true })
+  f.client.connect()
+  expect(await f.client.invoke('echo', 'legacy mobile fallback')).toBe('legacy mobile fallback')
+  expect(f.client.getConnectionState().dataPath).toBe('relay')
+  expect(f.calls).toBe(1)
+  expect((await f.state()).stats.signalingBytes).toBe(0)
 })
 
 test('administrator disconnect closes an established direct peer', async () => {

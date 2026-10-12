@@ -306,7 +306,7 @@ export interface Message {
   hidden?: boolean;
   // Turn ID: Correlation ID from the API's message.id, groups all messages in an assistant turn
   turnId?: string;
-  // Status type for special status messages (retrying is transient renderer state)
+  // Retry progress uses transient status rows; recovery info remains in history.
   statusType?: 'compacting' | 'compaction_complete' | 'retrying';
   // Info level for info messages (determines icon/color)
   infoLevel?: 'info' | 'warning' | 'error' | 'success';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -56,6 +56,37 @@ describe('sanitizePackId', () => {
     expect(sanitizePackId('My Pack!')).toBe('My-Pack');
     expect(sanitizePackId('  ')).toBe('theme-pack');
     expect(sanitizePackId('../evil')).toBe('..-evil');
+    expect(sanitizePackId('.')).toBe('theme-pack');
+    expect(sanitizePackId('..')).toBe('theme-pack');
+  });
+});
+
+describe('native pack import compatibility', () => {
+  it('keeps a stable id for Chinese names and importing an installed pack preserves its files', () => {
+    const originalConfigDir = process.env.TOKENBIRD_CONFIG_DIR;
+    const temp = mkdtempSync(join(tmpdir(), 'theme-native-'));
+    process.env.TOKENBIRD_CONFIG_DIR = join(temp, 'config');
+    const source = join(temp, 'singer');
+    mkdirSync(join(source, 'styles'), { recursive: true });
+    writeFileSync(join(source, 'theme-pack.json'), JSON.stringify({ id: 'miku-custom', name: '初音自定义', stylesheets: ['styles/theme.css'] }));
+    writeFileSync(join(source, 'texture.svg'), 'wrong-root-asset');
+    writeFileSync(join(source, 'styles', 'texture.svg'), 'correct-relative-asset');
+    writeFileSync(join(source, 'styles', 'theme.css'), '.ornament { background: url(texture.svg); }');
+    try {
+      const pack = importThemePackFromFolder(source)!;
+      expect(pack.id).toBe('miku-custom');
+      expect(pack.manifest.customCss).toContain(Buffer.from('correct-relative-asset').toString('base64'));
+      expect(pack.manifest.customCss).not.toContain(Buffer.from('wrong-root-asset').toString('base64'));
+      expect(importThemePackFromFolder(pack.dir)?.id).toBe(pack.id);
+      expect(readFileSync(join(pack.dir, 'styles', 'texture.svg'), 'utf8')).toBe('correct-relative-asset');
+      writeFileSync(join(source, 'theme-pack.json'), '{invalid');
+      expect(importThemePackFromFolder(source)).toBeNull();
+      expect(loadThemePack(pack.id)?.manifest.name).toBe('初音自定义');
+    } finally {
+      if (originalConfigDir === undefined) delete process.env.TOKENBIRD_CONFIG_DIR;
+      else process.env.TOKENBIRD_CONFIG_DIR = originalConfigDir;
+      rmSync(temp, { recursive: true, force: true });
+    }
   });
 });
 

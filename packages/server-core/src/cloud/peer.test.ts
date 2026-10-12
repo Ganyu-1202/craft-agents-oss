@@ -4,6 +4,7 @@ import { CLOUD_MAX_MESSAGE_BYTES, validateCloudIceServers } from '../../../share
 import { CloudHostStream } from './host-stream'
 import { WsRpcServer } from '../transport/server'
 import type { CloudPeerEvents } from './peer'
+import { PROTOCOL_VERSION } from '@craft-agent/shared/protocol'
 
 test('fragments preserve UTF-8 around boundaries and reject malformed/oversized messages', () => {
   const packets: string[] = [], messages: string[] = []
@@ -59,3 +60,23 @@ test('host waits for its DataChannel admission when client selection arrives bef
     expect(signals).toEqual([{ action: 'selected', mode: 'direct' }])
   } finally { stream.close(); await rpc.close() }
 })
+
+test('slow direct negotiation does not consume the local RPC handshake deadline before relay fallback', async () => {
+  const rpc = new WsRpcServer({ host: '127.0.0.1', port: 0 })
+  await rpc.listen()
+  let ended = false
+  const replies: string[] = []
+  const stream = new CloudHostStream({ url: `ws://127.0.0.1:${rpc.port}`, token: 'test' }, data => replies.push(data), () => {}, () => { ended = true }, [], async () => ({
+    open: false, bufferedAmount: 0, offer: async () => {}, answer: async () => {}, acceptAnswer: async () => {}, send: () => {}, close: () => {},
+  }))
+  try {
+    // Mobile NAT can need longer than the local server's five-second deadline.
+    await Bun.sleep(5500)
+    expect(ended).toBe(false)
+    await stream.acceptSignal({ action: 'select', mode: 'relay' })
+    stream.acceptData(JSON.stringify({ id: 'slow-handshake', type: 'handshake', protocolVersion: PROTOCOL_VERSION }))
+    const deadline = Date.now() + 1000
+    while (!replies.length && Date.now() < deadline) await Bun.sleep(10)
+    expect(JSON.parse(replies[0]!).type).toBe('handshake_ack')
+  } finally { stream.close(); await rpc.close() }
+}, 10_000)

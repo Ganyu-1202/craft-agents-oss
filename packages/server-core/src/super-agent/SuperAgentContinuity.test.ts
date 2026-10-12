@@ -83,7 +83,10 @@ test('durable operation identities suppress completed/unknown replays and do not
   const operation = { toolName: 'mcp__mail__send_email', input: { body: 'do-not-persist-secret', to: 'customer' }, invocationId: 'send-1' }
   await f.service.prepareNodeOperation('alpha', job.sessionId, operation)
   await f.service.prepareNodeOperation('alpha', job.sessionId, operation) // Provider precheck retry before dispatch.
-  await expect(f.service.prepareNodeOperation('alpha', job.sessionId, { ...operation, invocationId: 'send-2' })).rejects.toThrow('prepared')
+  f.host.emit({ type: 'tool_start', sessionId: job.sessionId, toolUseId: 'send-1', toolName: operation.toolName, toolInput: operation.input })
+  await until(() => f.service.get('alpha'), state => state.state.operations?.[0]?.status === 'running')
+  await f.service.prepareNodeOperation('alpha', job.sessionId, operation) // Same invocation after tool_start is still one dispatch.
+  await expect(f.service.prepareNodeOperation('alpha', job.sessionId, { ...operation, invocationId: 'send-2' })).rejects.toThrow('running')
   f.host.emit({ type: 'tool_result', sessionId: job.sessionId, toolUseId: 'send-1', toolName: operation.toolName, result: 'Message sent' })
   const snapshot = await until(() => f.service.get('alpha'), state => state.state.operations?.[0]?.status === 'completed')
   expect(snapshot.state.operations).toHaveLength(1)

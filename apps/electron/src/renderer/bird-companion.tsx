@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { initReactI18next, useTranslation } from 'react-i18next'
 import { setupI18n, i18n } from '@craft-agent/shared/i18n'
 import { getLocalizedProductName } from '@craft-agent/shared/branding'
-import type { BirdCompanionState, BirdWindowRole } from '../shared/bird-companion'
+import type { BirdCompanionState, BirdWindowRole, BirdGesture } from '../shared/bird-companion'
 import { BirdAvatar } from './components/bird/BirdAvatar'
 import './components/bird/bird-companion.css'
 
@@ -16,6 +16,7 @@ declare global {
       getState(): Promise<BirdCompanionState>
       dismissBubble(): Promise<void>
       showBubble(): Promise<void>
+      contextMenu(): Promise<BirdGesture | null>
       resizeBubble(height: number): Promise<void>
       interactive(value: boolean): Promise<void>
       move(x: number, y: number): Promise<void>
@@ -28,14 +29,20 @@ setupI18n([initReactI18next])
 function BirdCompanion({ initialState }: { initialState: BirdCompanionState }) {
   const { t } = useTranslation()
   const [state, setState] = useState(initialState)
+  const [gesture, setGesture] = useState<BirdGesture | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const gestureTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
   const suppressClick = useRef(false)
   const bubbleRef = useRef<HTMLElement>(null)
   const role = window.birdCompanion.role
+  useEffect(() => () => { if (gestureTimer.current) clearTimeout(gestureTimer.current) }, [])
   useEffect(() => {
     const off = window.birdCompanion.onState(next => {
       if (next.language && i18n.language !== next.language) void i18n.changeLanguage(next.language)
       setState(next)
+      setGesture(null)
+      if (gestureTimer.current) clearTimeout(gestureTimer.current)
       document.documentElement.lang = next.language || 'en'
     })
     void window.birdCompanion.ready()
@@ -69,6 +76,21 @@ function BirdCompanion({ initialState }: { initialState: BirdCompanionState }) {
         </footer>
       </section>}
       {role === 'bird' && <><button type="button" className="bird-character" aria-label={t('birdCompanion.characterLabel')}
+        title={t('birdCompanion.characterLabel')}
+        onContextMenu={event => {
+          event.preventDefault()
+          const target = event.currentTarget
+          drag.current = null
+          setDragging(false)
+          void window.birdCompanion.contextMenu().then(action => {
+            if (action) {
+              if (gestureTimer.current) clearTimeout(gestureTimer.current)
+              setGesture(action)
+              gestureTimer.current = setTimeout(() => setGesture(null), 3200)
+            }
+            void window.birdCompanion.interactive(target.matches(':hover'))
+          })
+        }}
         onClick={() => {
           if (suppressClick.current) { suppressClick.current = false; return }
           void window.birdCompanion.showBubble()
@@ -88,19 +110,22 @@ function BirdCompanion({ initialState }: { initialState: BirdCompanionState }) {
           const dy = event.screenY - current.y
           if (!current.moved && Math.abs(dx) + Math.abs(dy) < 4) return
           current.moved = true
+          setDragging(true)
           current.x = event.screenX
           current.y = event.screenY
           void window.birdCompanion.move(dx, dy)
         }}
         onPointerUp={event => {
+          if (event.button !== 0 || !drag.current) return
           const moved = drag.current?.moved
           suppressClick.current = !!moved
           drag.current = null
+          setDragging(false)
           event.currentTarget.releasePointerCapture(event.pointerId)
           void window.birdCompanion.interactive(event.currentTarget.matches(':hover'))
         }}
-        onPointerCancel={() => { drag.current = null; void window.birdCompanion.interactive(false) }}>
-        <BirdAvatar mood={state.mood === 'idle' && state.activity === 'greeting' ? 'success' : state.mood} />
+        onPointerCancel={() => { drag.current = null; setDragging(false); void window.birdCompanion.interactive(false) }}>
+        <BirdAvatar state={state} gesture={gesture} dragging={dragging} />
       </button>
       <div className="bird-ground-shadow" /></>}
     </main>

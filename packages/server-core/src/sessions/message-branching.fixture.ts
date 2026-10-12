@@ -26,6 +26,7 @@ stored.messages = [
     attachments: [{ id: 'file', type: 'text', name: 'original.txt', mimeType: 'text/plain', size: 16, storedPath: attachmentPath }] },
   { id: 'later', type: 'assistant', content: 'must not appear in branch', timestamp: 4,
     attachments: [{ id: 'missing', type: 'text', name: 'missing.txt', mimeType: 'text/plain', size: 1, storedPath: join(getSessionPath(workspaceRoot, source.id), 'attachments', 'missing.txt') }] },
+  { id: 'missing-user', type: 'user', content: 'question with missing attachment', timestamp: 5 },
 ]
 await saveSession(stored)
 
@@ -67,14 +68,13 @@ await assert.rejects(manager.createSession(workspace.id, { branchFromSessionId: 
 const restored = managerFromDisk()
 assert.equal(restored.internals.sessions.get(children[0]!.id).branchContextStrategy, 'seeded-fresh-session')
 await assert.rejects(restored.manager.createSession(workspace.id, { branchFromSessionId: source.id, branchFromMessageId: 'edit-node', editedMessageContent: 'after restart' }), /MESSAGE_BRANCH_LIMIT/)
-const assistantChild = await manager.createSession(workspace.id, { branchFromSessionId: source.id, branchFromMessageId: 'reply', editedMessageContent: 'edited reply', llmConnection: 'test' })
-assert.equal(assistantChild.messages.at(-1)?.role, 'assistant')
-assert.equal(assistantChild.messages.at(-1)?.content, 'edited reply')
-assert.equal(assistantChild.messages.length, 2)
+const countBeforeAssistantEdit = listSessions(workspaceRoot).length
+await assert.rejects(manager.createSession(workspace.id, { branchFromSessionId: source.id, branchFromMessageId: 'reply', editedMessageContent: 'edited reply', llmConnection: 'test' }), /Only completed user messages can be edited/)
+assert.equal(listSessions(workspaceRoot).length, countBeforeAssistantEdit)
 await new Promise(resolve => setTimeout(resolve, 100))
 assert.equal(replayed.length, 10)
 const countBeforeFailure = listSessions(workspaceRoot).length
-await assert.rejects(manager.createSession(workspace.id, { branchFromSessionId: source.id, branchFromMessageId: 'later', editedMessageContent: 'copy fails', llmConnection: 'test' }), /ENOENT/)
+await assert.rejects(manager.createSession(workspace.id, { branchFromSessionId: source.id, branchFromMessageId: 'missing-user', editedMessageContent: 'copy fails', llmConnection: 'test' }), /ENOENT/)
 assert.equal(listSessions(workspaceRoot).length, countBeforeFailure)
 
 // Stopping before text_complete must keep renderer IDs and persisted history
@@ -109,11 +109,10 @@ for (const turnId of ['stopped-turn', undefined]) {
   assert.equal(savedParent.messages.find(message => message.id === partialId)?.content, 'partial answer')
   assert.equal(savedParent.messages.at(-1)?.type, 'info')
   assert.equal(managed.streamingText, '')
-  const edited = await manager.createSession(workspace.id, {
+  await assert.rejects(manager.createSession(workspace.id, {
     branchFromSessionId: parent.id, branchFromMessageId: partialId,
     editedMessageContent: 'edited partial answer', llmConnection: 'test',
-  })
-  assert.equal(edited.messages.at(-1)?.content, 'edited partial answer')
+  }), /Only completed user messages can be edited/)
   // Exercise ordinary branch validation/storage without contacting a provider.
   const getOrCreateAgent = internals.getOrCreateAgent
   internals.getOrCreateAgent = async (child: any) => {

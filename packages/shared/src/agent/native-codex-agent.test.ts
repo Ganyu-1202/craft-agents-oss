@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { extractChatGptAccountId, NativeCodexAgent } from './native-codex-agent.ts';
 import { AbortReason, type BackendConfig } from './backend/types.ts';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setSessionExecutionPolicy, clearSessionExecutionPolicy } from './core/session-execution-policy.ts';
 
 function createAgent(overrides: Partial<BackendConfig> = {}): NativeCodexAgent {
   const now = Date.now();
@@ -41,6 +42,41 @@ describe('extractChatGptAccountId', () => {
 });
 
 describe('NativeCodexAgent protocol adaptation', () => {
+  it('returns desktop screenshot images to the native model with their tool result', async () => {
+    const agent = createAgent()
+    const replies: unknown[] = []
+    const client = { respond: async (_id: unknown, result: unknown) => { replies.push(result) }, disconnect: async () => {} } as never
+    agent['client'] = client
+    agent['processing'] = true
+    agent['codexThreadId'] = 'thread-image'
+    agent['currentTurnId'] = 'turn-image'
+    agent['nativeToolAliases'].set('craft__session__computer_use', 'mcp__session__computer_use')
+    agent['hostTools'].execute = async () => ({ content: '{"scale":0.5}', isError: false, images: [{ type: 'image', mimeType: 'image/png', data: 'c2NyZWVu' }] })
+    try {
+      await agent['handleDynamicToolCall'](client, { id: 'image-call', method: 'item/tool/call', params: {} }, {
+        threadId: 'thread-image', turnId: 'turn-image', callId: 'screenshot', namespace: null, tool: 'craft__session__computer_use', arguments: { action: 'screenshot' },
+      })
+      expect(replies).toEqual([{ success: true, contentItems: [{ type: 'inputText', text: '{"scale":0.5}' }, { type: 'inputImage', imageUrl: 'data:image/png;base64,c2NyZWVu' }] }])
+    } finally { agent.destroy() }
+  })
+  it('rejects native command, patch and permission escalation approvals in policy-enforced mode', async () => {
+    const agent = createAgent();
+    const replies: unknown[] = [];
+    setSessionExecutionPolicy('test-session', { nodeId: 'worker', role: 'worker', rootPath: process.cwd(),
+      readFiles: true, writeFiles: true, runPrograms: true, browser: false, allowSources: [], allowSubagents: false });
+    const client = { respond: async (_id: unknown, result: unknown) => { replies.push(result); } } as never;
+    try {
+      agent.setPermissionMode('allow-all');
+      await agent['handleApproval'](client, { id: 'command', method: '', params: {} }, 'Bash', {} as never,
+        { decision: 'decline' }, () => ({ decision: 'accept' }));
+      await agent['handleApproval'](client, { id: 'patch', method: '', params: {} }, 'Edit', {} as never,
+        { decision: 'decline' }, () => ({ decision: 'accept' }));
+      await agent['handlePermissionsApproval'](client, { id: 'permissions', method: '', params: {} },
+        { permissions: { network: { enabled: true } } } as never);
+      expect(replies).toEqual([{ decision: 'decline' }, { decision: 'decline' }, { permissions: {}, scope: 'turn' }]);
+    } finally { clearSessionExecutionPolicy('test-session'); agent.destroy(); }
+  });
+
   it('isolates managed Codex configuration by TokenBird connection', async () => {
     const configRoot = await mkdtemp(join(tmpdir(), 'tokenbird-codex-home-'));
     const previous = process.env.TOKENBIRD_CONFIG_DIR;
@@ -66,6 +102,18 @@ describe('NativeCodexAgent protocol adaptation', () => {
     expect(tools.some(tool => tool.name.startsWith('mcp__'))).toBe(false);
     expect(agent['nativeToolAliases'].get('craft__session__call_llm')).toBe('mcp__session__call_llm');
     agent.destroy();
+  });
+
+  it('uses a clean home for managed policy nodes without copying global login credentials', async () => {
+    const agent = createAgent({ authType: 'api_key', connectionSlug: 'openai-managed' });
+    setSessionExecutionPolicy('test-session', { nodeId: 'worker', role: 'worker', rootPath: process.cwd(),
+      readFiles: true, writeFiles: true, runPrograms: false, browser: false, allowSources: [], allowSubagents: false });
+    try {
+      const env = await agent['buildCodexEnvironment']();
+      expect(env!.CODEX_HOME).toContain(join('codex', 'controlled', 'host-'));
+      expect(await readFile(join(env!.CODEX_HOME!, 'config.toml'), 'utf8')).toContain('trust_level = "untrusted"');
+      expect(await readFile(join(env!.CODEX_HOME!, 'auth.json'), 'utf8').catch(error => error.code)).toBe('ENOENT');
+    } finally { await agent.disposeForRestart(); clearSessionExecutionPolicy('test-session'); }
   });
 
   it('registers MCP tools when restoring a persisted Codex session', async () => {

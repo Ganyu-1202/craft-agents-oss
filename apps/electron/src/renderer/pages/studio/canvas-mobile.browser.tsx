@@ -169,7 +169,7 @@ window.runMobileChecks = async (width, height, android = false) => {
     await click(en['studio.canvasSessions'])
     assert(document.querySelector('[data-studio-session-sidebar] button[title="' + en['studio.rename'] + '"]')?.getBoundingClientRect().width! >= 44, 'Session rename is hover-only')
     await click('Mobile fixture', document.querySelector('[data-studio-session-sidebar]')!)
-    assert(!document.querySelector('[data-studio-mobile-sheet]'), 'Selecting a session left drawer open')
+    assert(!document.querySelector('[data-page-sidebar-drawer]'), 'Selecting a session left drawer open')
     checks.push('files/export reachable; sessions have touch rename/delete and close after selection')
     return checks
   } finally {

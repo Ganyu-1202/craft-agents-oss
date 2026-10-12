@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Circle, LoaderCircle, Plus, Settings2, Sparkles } from 'lucide-react'
 import type { SuperAgentConfig } from '@craft-agent/shared/super-agent'
-import type { LlmConnectionWithStatus } from '../../../shared/types'
+import type { LlmConnectionWithStatus, LoadedSource } from '../../../shared/types'
+import type { LoadedSkill } from '@craft-agent/shared/skills'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -11,8 +12,10 @@ import { SuperAgentReadiness } from './SuperAgentReadiness'
 import { Switch } from '@/components/ui/switch'
 import { applyPreset, configError, createConfig, createNode, nodeModels, useSuperAgentText, type SuperAgentPreset } from './super-agent-ui'
 
-export function SuperAgentSetup({ connections, defaultConnection, onSave, onOpenAiSettings, onLoginTokenNest, onRefreshConnections }: {
+export function SuperAgentSetup({ connections, sources = [], skills = [], defaultConnection, onSave, onOpenAiSettings, onLoginTokenNest, onRefreshConnections }: {
   connections: LlmConnectionWithStatus[]
+  sources?: LoadedSource[]
+  skills?: LoadedSkill[]
   defaultConnection?: string
   onSave: (config: SuperAgentConfig) => Promise<void>
   onOpenAiSettings?: () => void
@@ -122,8 +125,8 @@ export function SuperAgentSetup({ connections, defaultConnection, onSave, onOpen
             <Button variant="outline" size="sm" type="button" onClick={addWorker}><Plus className="size-3.5" />{text('addWorker')}</Button>
           </div>
           <div className="rounded-xl border border-border/70 p-5">
-            <NodeEditor node={selectedNode} connections={connections}
-              onChange={node => setConfig(current => ({ ...current, nodes: current.nodes.map(item => item.id === node.id ? node : item) }))}
+            <NodeEditor node={selectedNode} connections={connections} sources={sources} skills={skills}
+              onChange={node => setConfig(current => ({ ...current, sourceSlugs: [...new Set([...current.sourceSlugs, ...node.sourceSlugs])], nodes: current.nodes.map(item => item.id === node.id ? node : item) }))}
               onRemove={selectedNode.role === 'worker' && config.nodes.filter(node => node.role === 'worker').length > 1
                 ? () => { setConfig(current => ({ ...current, nodes: current.nodes.filter(node => node.id !== selectedNode.id) })); setSelectedNodeId(config.nodes[0].id) } : undefined} />
           </div>

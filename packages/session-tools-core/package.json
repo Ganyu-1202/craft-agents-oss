@@ -1,6 +1,6 @@
 {
   "name": "@craft-agent/session-tools-core",
-  "version": "26.10.9",
+  "version": "26.10.11",
   "license": "Apache-2.0",
   "description": "Shared utilities for session-scoped tools (Claude and Codex)",
   "type": "module",
@@ -8,6 +8,7 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./super-agent-tools": "./src/super-agent-tools.ts",
     "./computer-use": "./src/computer-use.ts",
     "./runtime/resolve-script-runtime": "./src/runtime/resolve-script-runtime.ts",
     "./runtime/path-security": "./src/runtime/path-security.ts"

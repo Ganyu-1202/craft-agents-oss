@@ -10,7 +10,7 @@ const temporary: string[] = []
 afterEach(() => {
   for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true })
 })
-const version = '26.10.9'
+const version = '26.10.11'
 const commit = 'a'.repeat(40)
 
 function fixture() {
@@ -64,7 +64,7 @@ function mockApi(artifacts: Artifact[], configuration: {
     expect(url.searchParams.get('access_token')).toBe('test-token')
     if (url.pathname.endsWith('/tags')) return Response.json([{ name: version, commit: { sha: configuration.badTag ? 'b'.repeat(40) : commit } }])
     if (url.pathname.endsWith('/releases/latest')) {
-      return configuration.newer ? Response.json({ tag_name: '26.10.10' }) : new Response('', { status: 404 })
+      return configuration.newer ? Response.json({ tag_name: '26.10.12' }) : new Response('', { status: 404 })
     }
     if (url.pathname.endsWith('/upload_url')) return Response.json({
       url: `https://uploads.example.com/${url.searchParams.get('file_name')}`, headers: { 'x-obs-callback': 'callback' },
@@ -83,10 +83,10 @@ function mockApi(artifacts: Artifact[], configuration: {
 
 describe('GitCode binary publication', () => {
   test('checks tag versions across packages', () => {
-    expect(validateVersion('v26.10.9', [version, version])).toBe(version)
+    expect(validateVersion('v26.10.11', [version, version])).toBe(version)
     expect(() => validateVersion(version, [version, '26.10.7'])).toThrow('must match')
     expect(() => validateVersion('main', [version])).toThrow('must match')
-    expect(() => validateVersion('26.10.9-beta.1', ['26.10.9-beta.1'])).toThrow('must match')
+    expect(() => validateVersion('26.10.11-beta.1', ['26.10.11-beta.1'])).toThrow('must match')
   })
 
   test('merges macOS architectures, validates hashes and excludes deployment/build files', async () => {

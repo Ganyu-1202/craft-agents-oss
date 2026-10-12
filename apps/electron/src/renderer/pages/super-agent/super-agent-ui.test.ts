@@ -3,6 +3,12 @@ import type { LlmConnectionWithStatus } from '../../../shared/types'
 import { applyPreset, configError, createConfig, nodeModels, scriptAccessGranted, withExecuteMode, type SuperAgentText } from './super-agent-ui'
 import { SUPER_AGENT_PRESETS, PRESET_RECIPES, recommendedThinking } from './super-agent-presets'
 import { validateSuperAgentConfig } from '@craft-agent/shared/super-agent'
+import { DEFAULT_SUPER_AGENT_SKILLS } from '@craft-agent/shared/super-agent'
+import { loadAllSkills } from '@craft-agent/shared/skills'
+import { setBundledAssetsRoot } from '@craft-agent/shared/utils/paths'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 const text: SuperAgentText = key => key
 const tokenNest: LlmConnectionWithStatus = {
@@ -18,6 +24,93 @@ const tokenNest: LlmConnectionWithStatus = {
 }
 
 describe('Super Agent model authorization and setup', () => {
+  it('gives every preset one desktop specialist and preserves its identity and custom bindings', () => {
+    const config = createConfig([tokenNest], text)
+    const desktop = config.nodes.find(node => node.presetProfile === 'computerUse')!
+    desktop.name = 'My desktop operator'
+    desktop.sourceSlugs = ['desktop-data']; config.sourceSlugs = ['desktop-data']
+    desktop.skillSlugs!.push('custom-desktop')
+    for (const preset of SUPER_AGENT_PRESETS) {
+      const result = applyPreset(config, preset, tokenNest, text)
+      const specialists = result.nodes.filter(node => node.presetProfile === 'computerUse')
+      expect(specialists).toHaveLength(1)
+      expect(specialists[0]).toMatchObject({ id: desktop.id, role: 'worker', capabilities: ['computerUse'], sourceSlugs: ['desktop-data'] })
+      expect(specialists[0]!.skillSlugs).toContain('windows-desktop-control')
+      expect(specialists[0]!.skillSlugs).toContain('custom-desktop')
+      expect(specialists[0]!.workPreferences).toBe('computerUsePreferences')
+      expect(result.environment).toEqual(config.environment)
+    }
+  })
+  it('binds real bundled skills for every role and covers supported scenarios in all five presets', () => {
+    setBundledAssetsRoot(resolve(import.meta.dir, '../../../../..'))
+    const workspace = mkdtempSync(join(tmpdir(), 'super-agent-preset-skills-'))
+    try {
+      const available = loadAllSkills(workspace).filter(skill => skill.source === 'builtin')
+      const bySlug = new Map(available.map(skill => [skill.slug, skill]))
+      const scenarios = [
+        ['software-development', 'software-verification'], ['research-methods', 'web-research'],
+        ['document-workflows', 'structured-data'], ['incident-response', 'remote-operations'],
+        ['everyday-assistance', 'browser-automation'], ['canvas-editing', 'pages-authoring', 'theme-package-design'],
+        ['knowledge-organization', 'evidence-review'], ['messaging-and-collaboration', 'session-workflows'],
+        ['source-authoring', 'workspace-configuration', 'automation-authoring', 'skill-authoring', 'agent-authoring', 'resource-transfer'],
+        ['windows-desktop-control', 'previews-and-diagrams'],
+      ]
+      for (const preset of SUPER_AGENT_PRESETS) {
+        const config = applyPreset(createConfig([tokenNest], text), preset, tokenNest, text)
+        const workers = config.nodes.filter(node => node.role === 'worker')
+        for (const node of config.nodes) {
+          expect(node.skillSlugs!.length).toBeGreaterThan(0)
+          expect(new Set(node.skillSlugs).size).toBe(node.skillSlugs!.length)
+          expect(node.defaultSkillSlugs).toEqual(['super-agent-collaboration', ...DEFAULT_SUPER_AGENT_SKILLS[node.presetProfile as keyof typeof DEFAULT_SUPER_AGENT_SKILLS]])
+          for (const slug of node.skillSlugs!) expect(bySlug.get(slug)?.content.trim().length).toBeGreaterThan(0)
+          expect(node.skillSlugs!.reduce((size, slug) => size + bySlug.get(slug)!.content.length, 0)).toBeLessThan(128_000)
+          expect(node.skillSlugs).not.toContain('llm-delegation')
+          expect(node.skillSlugs).not.toContain('subagent-collaboration')
+        }
+        for (const scenario of scenarios) for (const skill of scenario) {
+          expect(workers.some(node => node.model && node.skillSlugs!.includes(skill))).toBe(true)
+        }
+        expect(config.nodes.find(node => node.role === 'coordinator')!.skillSlugs).toEqual(['super-agent-collaboration', 'intent-clarification'])
+        expect(config.nodes.find(node => node.role === 'orchestrator')!.skillSlugs).toEqual(['super-agent-collaboration', 'task-orchestration'])
+      }
+      expect(SUPER_AGENT_PRESETS).toHaveLength(5)
+    } finally { rmSync(workspace, { recursive: true, force: true }) }
+  })
+
+  it('preserves explicit default skill removals and custom additions across repeated preset application', () => {
+    const config = createConfig([tokenNest], text)
+    const worker = config.nodes.find(node => node.presetProfile === 'collaborationAssistant')!
+    worker.skillSlugs = [...worker.skillSlugs!.filter(slug => slug !== 'windows-desktop-control'), 'custom-report']
+    const original = structuredClone(config)
+    const reapplied = applyPreset(applyPreset(config, 'coding', tokenNest, text), 'daily', tokenNest, text)
+    const preserved = reapplied.nodes.find(node => node.id === worker.id)!
+    expect(preserved.skillSlugs).toContain('custom-report')
+    expect(preserved.skillSlugs).toContain('software-development')
+    expect(preserved.skillSlugs).not.toContain('windows-desktop-control')
+    expect(preserved.defaultSkillSlugs).toContain('windows-desktop-control')
+    expect(config).toEqual(original)
+  })
+
+  it('updates legacy empty preset bindings but preserves legacy custom skill owners', () => {
+    const config = createConfig([tokenNest], text)
+    for (const node of config.nodes) { delete node.defaultSkillSlugs; node.skillSlugs = [] }
+    const result = applyPreset(config, 'daily', tokenNest, text)
+    expect(result.nodes.every(node => !!node.skillSlugs?.length)).toBe(true)
+    const oldWorker = config.nodes.find(node => node.presetProfile === 'dailyWorker')!
+    oldWorker.skillSlugs = ['custom-report']
+    const switched = applyPreset(config, 'coding', tokenNest, text)
+    expect(switched.nodes.find(node => node.id === oldWorker.id)?.skillSlugs).toEqual(['custom-report'])
+  })
+  it('keeps node skill and backend bindings when switching presets and rejects incompatible backend choices', () => {
+    const connection = { ...tokenNest, agentRuntime: 'codex' as const }
+    const config = createConfig([connection], text)
+    const worker = config.nodes.find(node => node.role === 'worker')!
+    worker.skillSlugs = ['report']; worker.agentRuntime = 'pi'
+    const result = applyPreset(config, 'daily', connection, text)
+    expect(result.nodes.find(node => node.id === worker.id)).toMatchObject({ skillSlugs: ['report'], agentRuntime: 'pi' })
+    result.nodes.find(node => node.id === worker.id)!.agentRuntime = 'claude-code'
+    expect(configError(result, [connection], text)).toBe('nodeBackendInvalid')
+  })
   it('starts the whole team in Execute with full control enabled by default', () => {
     const config = createConfig([tokenNest], text)
     expect(config.environment.permissionMode).toBe('allow-all')
@@ -86,12 +179,12 @@ describe('Super Agent model authorization and setup', () => {
 
   it('defaults to daily assistance and gives autonomous scenarios distinct roles and continuation settings', () => {
     const config = createConfig([tokenNest], text)
-    expect(config.nodes.map(node => node.name)).toEqual(['intentLeadName', 'dailyLeadName', 'dailyWorkerName', 'organizerName', 'collaborationAssistantName'])
+    expect(config.nodes.map(node => node.name)).toEqual(['intentLeadName', 'dailyLeadName', 'dailyWorkerName', 'computerUseName', 'organizerName', 'collaborationAssistantName'])
     for (const preset of SUPER_AGENT_PRESETS) {
       const result = applyPreset(config, preset, tokenNest, text)
       result.environment.workingDirectory = 'C:\\work'
       expect(() => validateSuperAgentConfig(result)).not.toThrow()
-      expect(result.nodes).toHaveLength(preset === 'daily' ? 5 : 7)
+      expect(result.nodes).toHaveLength(preset === 'daily' ? 6 : 8)
       expect(result.continuousWork).toBe(preset !== 'operations')
       expect(result.nodes.filter(node => node.role === 'orchestrator')).toHaveLength(1)
       expect(result.workflow).toEqual(PRESET_RECIPES[preset].workflow)
@@ -107,12 +200,13 @@ describe('Super Agent model authorization and setup', () => {
     config.nodes[1].sourceSlugs = ['repo']
     config.abilityProfiles = [{ id: 'review', name: 'Review', description: '', instructions: 'Review artifacts' }]
     config.nodes[2].abilityProfileIds = ['review']
-    config.scripts = [{ id: 'checks', name: 'Checks', path: 'checks.ts', args: [], timeoutSeconds: 60, nodeId: config.nodes[6].id }]
+    const checkRunner = config.nodes.find(node => node.presetProfile === 'checkRunner')!
+    config.scripts = [{ id: 'checks', name: 'Checks', path: 'checks.ts', args: [], timeoutSeconds: 60, nodeId: checkRunner.id }]
     const original = structuredClone(config)
     const result = applyPreset(config, 'daily', tokenNest, text)
     expect(result.nodes.slice(0, 2).map(node => node.id)).toEqual(config.nodes.slice(0, 2).map(node => node.id))
     expect(result.nodes.find(node => node.id === config.nodes[2].id)?.presetProfile).toBe('developer')
-    expect(result.nodes.find(node => node.id === config.nodes[6].id)?.presetProfile).toBe('checkRunner')
+    expect(result.nodes.find(node => node.id === checkRunner.id)?.presetProfile).toBe('checkRunner')
     expect(result.nodes.find(node => node.presetProfile === 'dailyWorker')?.abilityProfileIds).toEqual([])
     expect(result.nodes[1].sourceSlugs).toEqual(['repo'])
     expect(result.nodes.find(node => node.id === config.nodes[2].id)?.abilityProfileIds).toEqual(['review'])
@@ -124,7 +218,7 @@ describe('Super Agent model authorization and setup', () => {
   it('uses standard and expert models by role, works without TokenNest, and falls back to a single model', () => {
     const provider = { ...tokenNest, oauthProvider: undefined, channelGroups: undefined, models: ['available-mini', 'gpt-5.6-luna', 'gpt-6-luna', 'gpt-6-astra', 'gpt-6.1-sol'], defaultModel: 'gpt-6-astra' }
     const coding = applyPreset(createConfig([provider], text), 'coding', provider, text)
-    expect(coding.nodes.map(node => node.model)).toEqual(['gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna', 'gpt-6-luna'])
+    expect(coding.nodes.map(node => node.model)).toEqual(['gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna', 'gpt-6-luna'])
     for (const preset of SUPER_AGENT_PRESETS) {
       const result = applyPreset(createConfig([provider], text), preset, provider, text)
       const collaborators = result.nodes.slice(-2)

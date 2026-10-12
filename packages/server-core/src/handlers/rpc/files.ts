@@ -1,4 +1,4 @@
-import { readFile, writeFile, unlink, mkdir, readdir, stat } from 'fs/promises'
+import { readFile, writeFile, unlink, mkdir, readdir, stat, rename, lstat } from 'fs/promises'
 import { isAbsolute, join, resolve, dirname, parse as parsePath } from 'path'
 import { homedir } from 'os'
 import { validatePathFormat } from '../../utils/path-validation'
@@ -31,6 +31,7 @@ export const HANDLED_CHANNELS = [
 ] as const
 
 export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): void {
+  const uploads = new Map<string, { clientId: string; sessionId: string; attachment: FileAttachment; path: string; expires: number }>()
   // Only explicit preview/download clicks opt out. Background reads and agent
   // operations keep the existing workspace and sensitive-file restrictions.
   const resolveReadPath = (path: string, workspaceId: string | null | undefined, options?: FileReadOptions) =>
@@ -221,17 +222,42 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
   // Store an attachment to disk and generate thumbnail/markdown conversion
   // This is the core of the persistent file attachment system
   server.handle(RPC_CHANNELS.file.STORE_ATTACHMENT, async (
-    _ctx,
+    ctx,
     sessionId: string,
     attachment: FileAttachment,
-    options?: { compressImagesBeforeUpload?: boolean },
+    options?: { compressImagesBeforeUpload?: boolean; sftpStage?: 'prepare' | 'finish' | 'cancel'; uploadId?: string },
   ): Promise<StoredAttachment> => {
     // Track files we've written for cleanup on error
     const filesToCleanup: string[] = []
 
     try {
+      for (const [id, upload] of uploads) {
+        if (upload.expires < Date.now()) {
+          uploads.delete(id)
+          await unlink(upload.path).catch(() => {})
+        }
+      }
+      let stagedPath: string | undefined
+      if (options?.sftpStage === 'finish' || options?.sftpStage === 'cancel') {
+        const upload = uploads.get(options.uploadId ?? '')
+        if (!upload || upload.clientId !== ctx.clientId || upload.sessionId !== sessionId) {
+          throw new Error('SFTP upload expired or belongs to another connection')
+        }
+        uploads.delete(options.uploadId!)
+        filesToCleanup.push(upload.path)
+        if (options.sftpStage === 'cancel') {
+          await unlink(upload.path).catch(() => {})
+          return {} as StoredAttachment
+        }
+        const info = await lstat(upload.path)
+        if (!info.isFile() || info.isSymbolicLink() || info.size !== upload.attachment.size) {
+          throw new Error('SFTP attachment size or file type mismatch')
+        }
+        attachment = upload.attachment
+        stagedPath = upload.path
+      }
       // Reject empty files early
-      if (attachment.size === 0) {
+      if (!Number.isSafeInteger(attachment.size) || attachment.size <= 0) {
         throw new Error('Cannot attach empty file')
       }
 
@@ -256,6 +282,15 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
       const attachmentsDir = getSessionAttachmentsPath(workspaceRootPath, sessionId)
       await mkdir(attachmentsDir, { recursive: true })
 
+      if (options?.sftpStage === 'prepare') {
+        if (uploads.size >= 128) throw new Error('Too many pending SFTP uploads')
+        const id = randomUUID()
+        const path = join(attachmentsDir, `${id}.upload`)
+        const { base64: _base64, text: _text, thumbnailBase64: _thumb, ...metadata } = attachment
+        uploads.set(id, { clientId: ctx.clientId, sessionId, attachment: metadata, path, expires: Date.now() + 60 * 60_000 })
+        return { id, storedPath: path, type: attachment.type, name: attachment.name, mimeType: attachment.mimeType, size: attachment.size }
+      }
+
       // Generate unique ID for this attachment
       const id = randomUUID()
       const safeName = sanitizeFilename(attachment.name)
@@ -269,9 +304,12 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
       let finalMimeType = attachment.mimeType
 
       // 1. Save the file (with image validation and resizing)
-      if (attachment.base64) {
+      if (stagedPath && attachment.type !== 'image') {
+        await rename(stagedPath, storedPath)
+        filesToCleanup.push(storedPath)
+      } else if (attachment.base64 || stagedPath) {
         // Images, PDFs, Office files - decode from base64
-        let decoded: Buffer = Buffer.from(attachment.base64, 'base64')
+        let decoded: Buffer = stagedPath ? await readFile(stagedPath) : Buffer.from(attachment.base64!, 'base64')
         // Validate decoded size matches expected (allow small variance for encoding overhead)
         if (Math.abs(decoded.length - attachment.size) > 100) {
           throw new Error(`Attachment corrupted: size mismatch (expected ${attachment.size}, got ${decoded.length})`)
@@ -383,6 +421,7 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
 
         await writeFile(storedPath, decoded)
         filesToCleanup.push(storedPath)
+        if (stagedPath) await unlink(stagedPath)
       } else if (attachment.text) {
         // Text files - save as UTF-8
         await writeFile(storedPath, attachment.text, 'utf-8')
@@ -397,6 +436,7 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
       const thumbFileName = `${id}_thumb.png`
       const thumbPath = join(attachmentsDir, thumbFileName)
       try {
+        if (attachment.type !== 'image') throw new Error('No image thumbnail for this attachment type')
         const pngBuffer = await deps.platform.imageProcessor.process(storedPath, {
           resize: { width: 200, height: 200 },
           format: 'png',

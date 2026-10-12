@@ -6,6 +6,7 @@ import {
   fetchTokenNestChannelGroups,
   fetchTokenNestUsageRecords,
   fetchTokenNestUsageSummary,
+  fetchTokenNestProfile,
   getValidTokenNestCredentials,
   prepareTokenNestOAuth,
   refreshTokenNestTokens,
@@ -15,6 +16,19 @@ const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
 
 describe('TokenNest OAuth', () => {
+  test('reads the authorized username and rejects unavailable or malformed profiles', async () => {
+    globalThis.fetch = mock(async (input, init) => {
+      expect(String(input)).toBe(TOKENNEST_OAUTH_CONFIG.profileUrl);
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer profile-token');
+      return Response.json({ success: true, data: { username: ' 星河用户 ', display_name: 'Display name' } });
+    }) as unknown as typeof fetch;
+    expect(await fetchTokenNestProfile('profile-token')).toEqual({ username: '星河用户' });
+    globalThis.fetch = mock(async () => Response.json({ success: true, data: {} })) as unknown as typeof fetch;
+    await expect(fetchTokenNestProfile('profile-token')).rejects.toThrow('invalid profile');
+    globalThis.fetch = mock(async () => new Response(null, { status: 404 })) as unknown as typeof fetch;
+    await expect(fetchTokenNestProfile('profile-token')).rejects.toThrow('HTTP 404');
+  });
+
   test('prepares an S256 authorization request for the loopback callback', () => {
     const prepared = prepareTokenNestOAuth('http://127.0.0.1:6477/callback');
     const url = new URL(prepared.authUrl);

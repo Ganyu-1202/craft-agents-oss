@@ -27,7 +27,6 @@ import { ClaudeAgent } from '../claude-agent.ts';
 import { PiAgent } from '../pi-agent.ts';
 import { CodexCompatibilityAgent } from '../codex-agent.ts';
 import { NativeCodexAgent } from '../native-codex-agent.ts';
-import { hasSessionExecutionPolicy } from '../core/session-execution-policy.ts';
 import { configureNativeCodexResourcesPath, resolveNativeCodexBinary } from '../../codex/binary-resolver.ts';
 import {
   getLlmConnection,
@@ -39,6 +38,7 @@ import type { LlmConnectionType, CustomEndpointConfig } from '../../config/llm-c
 // Import validation helpers for provider-auth combinations
 import {
   resolveAgentRuntime,
+  resolveSessionAgentRuntime,
   isValidProviderAuthCombination,
   getModelPromptSettings,
 } from '../../config/llm-connections.ts';
@@ -72,6 +72,7 @@ import { getAgentPluginManifest, refreshAgentPluginCatalog } from '../../agent-p
 import { getAgentPluginDescriptor } from '../../agent-plugins/catalog.ts';
 import { loadBackendFrameworkConfiguration, getBackendFrameworkFingerprint } from '../../agent-plugins/framework-storage.ts';
 import { configureFrameworkAgent } from '../../agent-plugins/framework-runtime.ts';
+import { nativeCodexTransportCompatible } from '../../agent-plugins/frameworks.ts';
 import { setPathToClaudeCodeExecutable } from '../options.ts';
 import type { BuiltinAgentRuntime } from '../../agent-plugins/types.ts';
 
@@ -338,21 +339,11 @@ export function createCodexBackend(
   if (loadBackendFrameworkConfiguration('codex')?.executablePath && !nativeBinary) {
     throw new Error('The configured Codex executable is unavailable or unsupported; test its location in backend framework settings.');
   }
-  if (config.session?.id && hasSessionExecutionPolicy(config.session.id)) {
-    if (config.authType === 'none') throw new Error('Super Agent nodes require configured Codex API or OAuth credentials for the policy-enforced compatibility runtime.');
-    return new CodexCompatibilityAgent(config);
-  }
   const runtime = getBackendRuntime(config);
   // Native app-server currently owns OpenAI transports only. Other connections
   // can still select the Codex agent protocol, but must use the Pi compatibility
   // runtime so DeepSeek/TokenBird credentials are never sent to OpenAI by mistake.
-  const nativeProviderCompatible = !runtime.piAuthProvider
-    || runtime.piAuthProvider === 'openai'
-    || runtime.piAuthProvider === 'openai-codex';
-  const nativeCompatible = nativeProviderCompatible
-    && !runtime.baseUrl
-    && !runtime.customEndpoint
-    && ['api_key', 'api_key_with_endpoint', 'oauth', 'none', undefined].includes(config.authType);
+  const nativeCompatible = nativeCodexTransportCompatible({ ...runtime, authType: config.authType });
   if (config.authType === 'none' && (!nativeBinary || !nativeCompatible)) {
     throw new Error('Native Codex is required when using an existing `codex login`; install a tested codex-cli, set CRAFT_CODEX_PATH, and do not configure a custom endpoint.');
   }
@@ -453,6 +444,7 @@ export interface ResolvedBackendContext extends BackendResolutionContext { agent
  */
 export function resolveBackendContext(args: {
   sessionConnectionSlug?: string;
+  sessionAgentRuntime?: AgentRuntimeProtocol;
   workspaceDefaultConnectionSlug?: string;
   managedModel?: string;
 }): ResolvedBackendContext {
@@ -462,7 +454,8 @@ export function resolveBackendContext(args: {
     args.workspaceDefaultConnectionSlug
   );
 
-  const agentRuntime = connection ? resolveAgentRuntime(connection) : 'claude-code';
+  if (args.sessionAgentRuntime && !connection) throw new Error('An explicit agent backend requires an AI connection');
+  const agentRuntime = connection ? resolveSessionAgentRuntime(connection, args.sessionAgentRuntime) : 'claude-code';
   const provider = agentRuntimeToAgentProvider(agentRuntime, connection?.providerType);
 
   const authType = connection

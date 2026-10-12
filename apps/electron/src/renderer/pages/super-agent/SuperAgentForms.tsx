@@ -5,6 +5,7 @@ import { Check, ChevronDown, FolderOpen, ImagePlus, Trash2 } from 'lucide-react'
 import { THINKING_LEVELS, type ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
 import type { SuperAgentAbilityProfile, SuperAgentEnvironment, SuperAgentEnvironmentStatus, SuperAgentNode } from '@craft-agent/shared/super-agent'
 import type { LlmConnectionWithStatus, LoadedSource } from '../../../shared/types'
+import type { LoadedSkill } from '@craft-agent/shared/skills'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -13,6 +14,8 @@ import { useDirectoryPicker } from '@/hooks/useDirectoryPicker'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { cn } from '@/lib/utils'
 import { nodeModels, useSuperAgentText } from './super-agent-ui'
+import { getCompatibleAgentRuntimes, resolveAgentRuntime, type AgentRuntimeProtocol } from '@config/llm-connections'
+import { AgentFrameworkDetails, agentRuntimeDescription, agentRuntimeLabel } from '../settings/BackendFrameworkSettings'
 import { recommendedThinking } from './super-agent-presets'
 
 export const textareaClass = 'min-h-24 w-full resize-y rounded-xl border border-input bg-background px-3 py-2.5 text-sm leading-6 shadow-xs transition-colors outline-none placeholder:text-muted-foreground hover:border-primary/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50'
@@ -80,23 +83,26 @@ export function AvatarEditor({ avatar, name, onChange }: { avatar: string; name:
   </div>
 }
 
-export function NodeEditor({ node, connections, onChange, onRemove, sources = [], abilities = [] }: {
+export function NodeEditor({ node, connections, onChange, onRemove, sources = [], skills = [], abilities = [] }: {
   node: SuperAgentNode
   connections: LlmConnectionWithStatus[]
   onChange: (node: SuperAgentNode) => void
   onRemove?: () => void
   sources?: LoadedSource[]
+  skills?: LoadedSkill[]
   abilities?: SuperAgentAbilityProfile[]
 }) {
   const text = useSuperAgentText()
   const { t } = useTranslation()
   const connection = connections.find(item => item.slug === node.llmConnection)
   const models = nodeModels(connection)
+  const runtime = node.agentRuntime ?? (connection ? resolveAgentRuntime(connection) : 'pi')
   const patch = (updates: Partial<SuperAgentNode>) => onChange({ ...node, ...updates })
   function chooseConnection(slug: string) {
     const next = connections.find(item => item.slug === slug)
     const available = nodeModels(next)
-    patch({ llmConnection: slug, model: next?.defaultModel && available.includes(next.defaultModel) ? next.defaultModel : available[0] ?? '' })
+    patch({ llmConnection: slug, model: next?.defaultModel && available.includes(next.defaultModel) ? next.defaultModel : available[0] ?? '',
+      agentRuntime: next && node.agentRuntime && getCompatibleAgentRuntimes(next).includes(node.agentRuntime) ? node.agentRuntime : undefined })
   }
   return <div className="space-y-5">
     <div className="flex items-center justify-between gap-3">
@@ -106,7 +112,12 @@ export function NodeEditor({ node, connections, onChange, onRemove, sources = []
     <AvatarEditor avatar={node.avatar} name={node.name} onChange={avatar => patch({ avatar })} />
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField label={text('name')}><Input value={node.name} maxLength={80} onChange={event => patch({ name: event.target.value })} /></FormField>
-      <FormField label={text('connections')}><WorkbenchSelect value={node.llmConnection} onValueChange={value => chooseConnection(value)} options={[{ value: "", label: text('selectConnection') }, ...connections.map(item => ({ value: item.slug, label: <>{item.name}{item.isAuthenticated ? '' : ' · ' + text('unauthenticated')}</>, disabled: !item.isAuthenticated }))]} /></FormField>
+      <FormField label={text('connections')}><WorkbenchSelect value={node.llmConnection} onValueChange={value => chooseConnection(value)} options={[{ value: "", label: text('selectConnection') }, ...connections.map(item => ({ value: item.slug, label: <>{item.name}{item.isAuthenticated ? '' : ' · ' + text('unauthenticated')}</>, description: `${agentRuntimeLabel(resolveAgentRuntime(item), t)} · ${agentRuntimeDescription(resolveAgentRuntime(item), t)}`, disabled: !item.isAuthenticated }))]} /></FormField>
+      <FormField label={text('nodeBackend')} hint={text('nodeBackendHint')}>
+        <WorkbenchSelect value={node.agentRuntime ?? ''} onValueChange={value => patch({ agentRuntime: value ? value as AgentRuntimeProtocol : undefined })}
+          options={[{ value: '', label: text('inheritBackend') }, ...(connection ? getCompatibleAgentRuntimes(connection) : []).map(id => ({ value: id, label: agentRuntimeLabel(id, t), description: agentRuntimeDescription(id, t) })),
+            ...(node.agentRuntime && (!connection || !getCompatibleAgentRuntimes(connection).includes(node.agentRuntime)) ? [{ value: node.agentRuntime, label: node.agentRuntime, disabled: true }] : [])]} />
+      </FormField>
       <FormField label={text('model')} hint={connection?.oauthProvider === 'tokennest' && connection.channelGroup
         ? text('inheritedGroup', { group: connection.channelGroups?.find(item => item.id === connection.channelGroup)?.name ?? connection.channelGroup }) : undefined}>
         {models.length > 0 ? <WorkbenchSelect value={node.model} onValueChange={value => patch({ model: value })} options={[...(!models.includes(node.model) ? [{ value: node.model, label: node.model || text('modelPlaceholder') }] : []), ...models.map(id => ({ value: id, label: id }))]} /> : <Input value={node.model} placeholder={text('modelPlaceholder')} onChange={event => patch({ model: event.target.value })} />}
@@ -118,6 +129,10 @@ export function NodeEditor({ node, connections, onChange, onRemove, sources = []
       <FormField label={text('speed')} hint={text('speedHint')}><Input type="number" min={0.1} max={60} step={0.1} value={node.maxCallsPerMinute} onChange={event => patch({ maxCallsPerMinute: Number(event.target.value) })} /></FormField>
       <FormField label={text('rating')} hint={text('ratingHint')}><WorkbenchSelect value={node.intelligenceRating} onValueChange={value => patch({ intelligenceRating: Number(value) })} options={[...[1, 2, 3, 4, 5].map(value => ({ value: value, label: '★'.repeat(value) + '☆'.repeat(5 - value) }))]} /></FormField>
     </div>
+    {connection && <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+      <p className="mb-2 text-sm font-medium">{agentRuntimeLabel(runtime, t)}</p>
+      <AgentFrameworkDetails runtime={runtime} connection={connection} />
+    </div>}
     <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 size-4 accent-primary" checked={node.thinkingMode !== 'fixed'}
       onChange={event => patch({ thinkingMode: event.target.checked ? 'task' : 'fixed' })} />
       <span>{text('taskThinkingEnabled')}<span className="mt-1 block text-xs leading-5 text-muted-foreground">{text('taskThinkingHint')}</span></span>
@@ -126,10 +141,20 @@ export function NodeEditor({ node, connections, onChange, onRemove, sources = []
     <FormField label={text('preferences')}><textarea className={textareaClass} rows={3} value={node.workPreferences} placeholder={text('preferencesPlaceholder')} onChange={event => patch({ workPreferences: event.target.value })} /></FormField>
     <FormField label={text('capabilities')} hint={text('capabilitiesHint')}><Input value={(node.capabilities ?? []).join(', ')}
       onChange={event => patch({ capabilities: [...new Set(event.target.value.split(',').map(value => value.trim()).filter(Boolean))] })} /></FormField>
-    {sources.length > 0 && <FormSection title={text('sources')}>
+    <FormSection title={text('nodeSkills')} description={text('nodeSkillsHint')}>
+      {skills.length ? <ChoiceList items={skills.map(skill => ({ id: skill.slug, name: skill.metadata.name,
+        description: [skill.metadata.description, skill.metadata.requiredSources?.length ? `MCP: ${skill.metadata.requiredSources.join(', ')}` : ''].filter(Boolean).join(' · ') }))}
+        selected={node.skillSlugs ?? []} onChange={skillSlugs => patch({ skillSlugs })} /> : <p className="text-xs text-muted-foreground">{text('noNodeSkills')}</p>}
+      {(node.skillSlugs ?? []).filter(slug => !skills.some(skill => skill.slug === slug)).map(slug => <label key={slug} className="flex items-center gap-2 text-xs text-destructive">
+        <input type="checkbox" checked onChange={() => patch({ skillSlugs: node.skillSlugs!.filter(item => item !== slug) })} />{slug}
+      </label>)}
+    </FormSection>
+    <FormSection title={text('nodeMcp')} description={text('nodeMcpHint')}>
+      {node.role !== 'worker' && <p className="text-xs text-muted-foreground">{text('controlNodeResources')}</p>}
+      {!sources.length && <p className="text-xs text-muted-foreground">{text('noNodeMcp')}</p>}
       <ChoiceList items={sources.map(source => ({ id: source.config.slug, name: source.config.name, description: source.config.tagline }))}
         selected={node.sourceSlugs} onChange={sourceSlugs => patch({ sourceSlugs })} />
-    </FormSection>}
+    </FormSection>
     {abilities.length > 0 && <FormSection title={text('abilities')}>
       <ChoiceList items={abilities} selected={node.abilityProfileIds} onChange={abilityProfileIds => patch({ abilityProfileIds })} />
     </FormSection>}

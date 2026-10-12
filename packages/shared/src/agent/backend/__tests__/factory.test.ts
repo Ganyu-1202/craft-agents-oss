@@ -109,7 +109,7 @@ describe('createBackend / createAgent', () => {
   });
 
   describe('Explicit runtime protocol', () => {
-    it('routes restricted nodes through policy-enforced tools even when native Codex is installed', () => {
+    it('keeps restricted nodes on native Codex with policy-enforced host execution', () => {
       const sessionId = 'restricted-codex-factory-test';
       setSessionExecutionPolicy(sessionId, {
         nodeId: 'worker', role: 'worker', rootPath: process.cwd(),
@@ -123,9 +123,14 @@ describe('createBackend / createAgent', () => {
         });
         const binary = { path: 'codex', source: 'PATH' as const, version: '0.154.0', testedProtocol: true };
         const agent = createCodexBackend(config, binary);
-        expect(agent).toBeInstanceOf(CodexCompatibilityAgent);
+        expect(agent).toBeInstanceOf(NativeCodexAgent);
         agent.destroy();
-        expect(() => createCodexBackend({ ...config, authType: 'none' }, binary)).toThrow('policy-enforced compatibility runtime');
+        const loggedIn = createCodexBackend({ ...config, authType: 'none' }, binary);
+        expect(loggedIn).toBeInstanceOf(NativeCodexAgent);
+        loggedIn.destroy();
+        const fallback = createCodexBackend(config, null);
+        expect(fallback).toBeInstanceOf(CodexCompatibilityAgent);
+        fallback.destroy();
       } finally {
         clearSessionExecutionPolicy(sessionId);
       }

@@ -1,5 +1,6 @@
 import { getProviderRechargeTarget } from '@craft-agent/shared/utils/billing'
-import { BackendFrameworkSettings, agentRuntimeLabel, agentRuntimeDescription } from './BackendFrameworkSettings'
+import { AgentFrameworkDetails, agentRuntimeLabel, agentRuntimeDescription } from './BackendFrameworkSettings'
+import { setAgentPluginCatalog } from '@craft-agent/shared/agent-plugins/catalog'
 /**
  * AiSettingsPage
  *
@@ -492,10 +493,13 @@ function ConnectionRow({ connection, isLastConnection, onRenameClick, onDelete, 
               <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <StyledDropdownMenuContent align="end">
+          <StyledDropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
             {getCompatibleAgentRuntimes(connection).map(runtime => (
               <StyledDropdownMenuItem key={runtime} onClick={() => onSetAgentRuntime(runtime)}>
-                <span className="flex-1">{agentRuntimeLabel(runtime, t)}</span>
+                <span className="min-w-0 flex-1 py-1">
+                  <span className="block font-medium">{agentRuntimeLabel(runtime, t)}</span>
+                  <span className="mt-1 block whitespace-normal text-xs leading-5 text-muted-foreground">{agentRuntimeDescription(runtime, t)}</span>
+                </span>
                 {currentRuntime === runtime && <Check className="h-3.5 w-3.5" />}
               </StyledDropdownMenuItem>
             ))}
@@ -836,6 +840,18 @@ export default function AiSettingsPage() {
   const { llmConnections, refreshLlmConnections, activeWorkspaceId } = useAppShellContext()
   const [pluginCatalogRevision, setPluginCatalogRevision] = useState(0)
   const handlePluginCatalogChanged = useCallback(() => setPluginCatalogRevision(value => value + 1), [])
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const catalog = await window.electronAPI.listAgentPlugins()
+        if (!cancelled) { setAgentPluginCatalog(catalog.plugins); handlePluginCatalogChanged() }
+      } catch (error) { console.error('Failed to load agent plugins:', error) }
+    }
+    void refresh()
+    const unsubscribe = window.electronAPI.onAgentPluginsChanged(() => { void refresh() })
+    return () => { cancelled = true; unsubscribe() }
+  }, [handlePluginCatalogChanged])
 
   // API Setup overlay state
   const [showApiSetup, setShowApiSetup] = useState(false)
@@ -1494,6 +1510,9 @@ export default function AiSettingsPage() {
                       description: agentRuntimeDescription(runtime as AgentRuntimeProtocol, t),
                     }))}
                   />
+                  {defaultConnection && <div className="border-b border-border/50 px-4 py-3">
+                    <AgentFrameworkDetails runtime={resolveAgentRuntime(defaultConnection)} connection={defaultConnection} />
+                  </div>}
                   {defaultConnection?.oauthProvider === 'tokennest' && (defaultConnection.channelGroups?.length ?? 0) > 0 && (
                     <SettingsMenuSelectRow
                       label={t('settings.ai.channelGroup')}
@@ -1534,8 +1553,6 @@ export default function AiSettingsPage() {
               </SettingsSection>
 
               )}
-
-              <BackendFrameworkSettings workspaceId={activeWorkspaceId} onChanged={handlePluginCatalogChanged} />
 
               {/* Workspace Overrides - only show if connections exist */}
               {workspaces.length > 0 && llmConnections.length > 0 && (

@@ -1,0 +1,58 @@
+{
+  "name": "VS Code Light+ / Dark+",
+  "nameEn": "VS Code Light+",
+  "author": "aionui-themes",
+  "tagline": "清晰的编辑器层次、经典蓝调与昼夜配色",
+  "description": "适配词元鸟的经典编辑器主题，完整覆盖侧栏、卡片和输入框。",
+  "tags": [
+    "经典配色",
+    "VS Code"
+  ],
+  "colors": {
+    "background": "#fff",
+    "foreground": "#1f1f1f",
+    "accent": "#007acc",
+    "paper": "#f3f3f3",
+    "navigator": "#ececec",
+    "input": "#fff",
+    "popover": "#fff",
+    "popoverSolid": "#fff",
+    "success": "green",
+    "info": "#bf8803",
+    "destructive": "#e51400",
+    "dark": {
+      "background": "#1e1e1e",
+      "foreground": "#d4d4d4",
+      "accent": "#007acc",
+      "paper": "#252526",
+      "navigator": "#2d2d30",
+      "input": "#252526",
+      "popover": "#2d2d30",
+      "popoverSolid": "#2d2d30",
+      "success": "#89d185",
+      "info": "#cca700",
+      "destructive": "#f14c4c"
+    },
+    "supportedModes": [
+      "light",
+      "dark"
+    ],
+    "mode": "solid"
+  },
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "style": {
+    "backgroundBlur": 8,
+    "borderRadius": "14px",
+    "backgroundPosition": "center",
+    "backgroundSize": "cover"
+  },
+  "id": "vscode-plus",
+  "version": 2,
+  "bodyAttr": "data-tokenbird-vscode-plus",
+  "stylesheets": [
+    "tokenbird.css"
+  ]
+}
