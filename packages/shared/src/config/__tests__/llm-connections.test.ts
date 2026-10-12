@@ -14,6 +14,8 @@ import {
   getCompatibleAgentRuntimes,
   resolveAgentRuntime,
   resolveAutoCompactionTokenLimit,
+  getDefaultAutoCompactionTokenLimit,
+  getModelPromptSettings,
 } from '../llm-connections'
 import { ANTHROPIC_MODELS, getModelDisplayName, getModelContextWindow, getModelShortName, isClaudeModel, normalizeDeprecatedModelId } from '../models'
 
@@ -23,6 +25,36 @@ describe('resolveAutoCompactionTokenLimit', () => {
     expect(resolveAutoCompactionTokenLimit({ autoCompactionTokenLimit: 120_000 }, 100_000)).toBe(99_999)
     expect(resolveAutoCompactionTokenLimit({ autoCompactionTokenLimit: 800 }, 100_000)).toBeUndefined()
     expect(resolveAutoCompactionTokenLimit(undefined, 100_000)).toBeUndefined()
+  })
+})
+
+describe('GPT automatic compaction defaults', () => {
+  it('defaults current, future and provider-prefixed GPT text models to 500k', () => {
+    for (const model of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-future', 'pi/gpt-6-sol', 'openai/gpt-6-luna']) {
+      expect(getDefaultAutoCompactionTokenLimit(model)).toBe(500_000)
+      expect(getModelPromptSettings(undefined, model)).toEqual({ autoCompactionTokenLimit: 500_000 })
+    }
+  })
+
+  it('keeps defaults inside smaller model windows', () => {
+    expect(getDefaultAutoCompactionTokenLimit('gpt-4.1', 1_000_000)).toBe(500_000)
+    expect(getDefaultAutoCompactionTokenLimit('gpt-4o', 128_000)).toBe(127_999)
+    expect(resolveAutoCompactionTokenLimit(getModelPromptSettings(undefined, 'gpt-4o'), 128_000)).toBe(127_999)
+  })
+
+  it('preserves saved overrides and prompt flags, and restores the default after clearing an override', () => {
+    const connection = { modelSettings: { 'gpt-6-sol': { lightweight: true, mcpPromptEnhancement: true, autoCompactionTokenLimit: 320_000 } } }
+    expect(getModelPromptSettings(connection, 'gpt-6-sol')).toEqual(connection.modelSettings['gpt-6-sol'])
+    expect(getModelPromptSettings({ modelSettings: { 'gpt-6-sol': { lightweight: true } } }, 'gpt-6-sol'))
+      .toEqual({ lightweight: true, autoCompactionTokenLimit: 500_000 })
+    expect(getModelPromptSettings({ modelSettings: {} }, 'gpt-6-sol')).toEqual({ autoCompactionTokenLimit: 500_000 })
+  })
+
+  it('leaves non-GPT and image models on their existing runtime defaults', () => {
+    for (const model of ['deepseek-v4-pro', 'claude-opus-4-8', 'codex-auto-review', 'gpt-image-2.5', 'openai/gpt-image-1', undefined]) {
+      expect(getDefaultAutoCompactionTokenLimit(model)).toBeUndefined()
+      expect(getModelPromptSettings(undefined, model)).toBeUndefined()
+    }
   })
 })
 

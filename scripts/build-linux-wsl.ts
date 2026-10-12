@@ -4,17 +4,20 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const args = process.argv.slice(2);
 let distro: string | undefined;
 let checkOnly = false;
 let forceDownload = false;
+let revision: string | undefined;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '--help' || arg === '-h') {
-    console.log('Usage: bun run build:linux:wsl [--distro NAME] [--check] [--force-download]');
+    console.log('Usage: bun run build:linux:wsl [--distro NAME] [--revision REF] [--check] [--force-download]');
     process.exit(0);
   }
   if (arg === '--check') {
@@ -23,6 +26,8 @@ for (let i = 0; i < args.length; i++) {
     forceDownload = true;
   } else if (arg === '--distro' && args[i + 1]) {
     distro = args[++i];
+  } else if (arg === '--revision' && args[i + 1]) {
+    revision = args[++i];
   } else {
     throw new Error(`Unknown or incomplete option: ${arg}`);
   }
@@ -40,6 +45,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 source_dir="$(wslpath -u "$1")"
 check_only="$2"
 force_download="$3"
+snapshot="$4"
 
 if [ ! -f "$source_dir/package.json" ] || [ ! -f "$source_dir/apps/electron/scripts/build-linux.sh" ]; then
   echo "WSL cannot access the repository at: $source_dir" >&2
@@ -91,15 +97,21 @@ save_cache() {
 trap save_cache EXIT
 
 echo "Copying workspace into WSL: $workspace"
+if [ -n "$snapshot" ]; then
+  tar -C "$workspace" -xf "$(wslpath -u "$snapshot")"
+else
 tar -C "$source_dir" \
-  --exclude='./.git' --exclude='./node_modules' --exclude='./dist' \
+  --exclude='./.git' --exclude='node_modules' --exclude='./dist' \
   --exclude='./.build' --exclude='./.build-all' \
   --exclude='./.toolchains' --exclude='./artifacts' --exclude='./.tmp*' \
   --exclude='./apps/electron/node_modules' \
   --exclude='./apps/electron/vendor' --exclude='./apps/electron/release' \
   --exclude='./apps/electron/release-*' --exclude='./apps/android/.gradle' \
   --exclude='./apps/android/app/build' --exclude='./apps/ios/build' \
+  --exclude='./apps/android/app/src/main/assets' --exclude='./apps/android/app/src/main/jniLibs' \
+  --exclude='./apps/electron/dist' --exclude='./apps/webui/dist' \
   -cf - . | tar -C "$workspace" -xf -
+fi
 
 if [ -d "$cache_dir/vendor" ]; then
   mkdir -p "$workspace/apps/electron/vendor"
@@ -133,11 +145,25 @@ const commandArgs = [
   ...(distro ? ['--distribution', distro] : []),
   '--exec', 'bash', '-l', '-s', '--', root, String(checkOnly), String(forceDownload),
 ];
-const result = spawnSync('wsl.exe', commandArgs, {
+// A committed snapshot avoids copying generated files and gives reproducible
+// source even while the Windows checkout is being edited or built elsewhere.
+const snapshot = revision && !checkOnly ? resolve(tmpdir(), `tokenbird-linux-source-${process.pid}.tar`) : '';
+if (snapshot) {
+  const archive = spawnSync('git', ['archive', '--format=tar', `--output=${snapshot}`, revision!], { cwd: root, stdio: 'inherit' });
+  if (archive.error) throw archive.error;
+  if (archive.status !== 0) process.exit(archive.status ?? 1);
+}
+commandArgs.push(snapshot);
+let result: ReturnType<typeof spawnSync>;
+try {
+  result = spawnSync('wsl.exe', commandArgs, {
   input: script,
   stdio: ['pipe', 'inherit', 'inherit'],
   maxBuffer: 1024 * 1024,
-});
+  });
+} finally {
+  if (snapshot) rmSync(snapshot, { force: true });
+}
 if (result.error) throw new Error(`Failed to start WSL: ${result.error.message}`);
 if (result.status !== 0) process.exit(result.status ?? 1);
 

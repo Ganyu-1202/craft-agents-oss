@@ -12,7 +12,7 @@ import { setAgentPluginCatalog } from '@craft-agent/shared/agent-plugins/catalog
  * Follows the Appearance settings pattern: app-level defaults + workspace overrides.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -61,7 +61,7 @@ import { OnboardingWizard, type ApiSetupMethod } from '@/components/onboarding'
 import { RenameDialog } from '@/components/ui/rename-dialog'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { getModelContextWindow, getModelShortName, type ModelDefinition } from '@config/models'
-import { getCompatibleAgentRuntimes, getModelsForProviderType, isImageGenerationModelId, resolveMiniModel, resolveAgentRuntime, resolveMidStreamBehavior, type CustomEndpointApi, type MidStreamBehavior } from '@config/llm-connections'
+import { getCompatibleAgentRuntimes, getModelsForProviderType, getDefaultAutoCompactionTokenLimit, isImageGenerationModelId, resolveMiniModel, resolveAgentRuntime, resolveMidStreamBehavior, type CustomEndpointApi, type MidStreamBehavior } from '@config/llm-connections'
 import { toast } from 'sonner'
 
 /**
@@ -207,10 +207,12 @@ type ApiBalance = Awaited<ReturnType<typeof window.electronAPI.getLlmConnectionB
 
 function AutoCompactionLimitInput({
   value,
+  defaultLimit,
   contextWindow,
   onSave,
 }: {
   value?: number
+  defaultLimit?: number
   contextWindow?: number
   onSave: (value?: number) => Promise<boolean>
 }) {
@@ -218,49 +220,55 @@ function AutoCompactionLimitInput({
   const [draft, setDraft] = useState(value?.toString() ?? '')
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const inputId = useId()
+  const dirty = draft.trim() !== (value?.toString() ?? '')
   useEffect(() => { setDraft(value?.toString() ?? ''); setError(false) }, [value])
   const commit = async () => {
-    if (saving) return
+    if (savingRef.current || !dirty) return
     const trimmed = draft.trim()
-    if (!trimmed) {
-      setError(false)
-      if (value !== undefined) {
-        setSaving(true)
-        if (!await onSave(undefined)) setDraft(value.toString())
-        setSaving(false)
-      }
-      return
-    }
-    const parsed = Number(trimmed)
-    if (!Number.isSafeInteger(parsed) || parsed < 1_000 || (contextWindow && parsed >= contextWindow)) {
+    const parsed = trimmed ? Number(trimmed) : undefined
+    if (parsed !== undefined && (!Number.isSafeInteger(parsed) || parsed < 1_000 || (contextWindow && parsed >= contextWindow))) {
       setError(true)
       return
     }
     setError(false)
-    if (parsed !== value) {
-      setSaving(true)
-      if (!await onSave(parsed)) setDraft(value?.toString() ?? '')
-      setSaving(false)
-    }
+    if (parsed === value) { setDraft(value?.toString() ?? ''); return }
+    savingRef.current = true
+    setSaving(true)
+    try {
+      if (await onSave(parsed)) setDraft(parsed?.toString() ?? '')
+    } catch {
+      toast.error(t('settings.ai.modelPromptSettingsUpdateFailed'))
+    } finally { savingRef.current = false; setSaving(false) }
   }
   return (
     <div className="px-4 py-3.5 space-y-2">
-      <label className="block text-sm font-medium">{t('settings.ai.autoCompactionLimit')}</label>
+      <label htmlFor={inputId} className="block text-sm font-medium">{t('settings.ai.autoCompactionLimit')}</label>
       <p className="text-xs text-muted-foreground">{t('settings.ai.autoCompactionLimitDesc')}{contextWindow ? ` ${t('settings.ai.autoCompactionWindow', { tokens: contextWindow.toLocaleString() })}` : ''}</p>
-      <Input
-        type="number"
-        min={1000}
-        max={contextWindow ? contextWindow - 1 : undefined}
-        step={1000}
-        value={draft}
-        disabled={saving}
-        onChange={event => { setDraft(event.target.value); setError(false) }}
-        onBlur={commit}
-        onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') { setDraft(value?.toString() ?? ''); setError(false) } }}
-        placeholder={t('settings.ai.autoCompactionDefault')}
-        aria-invalid={error}
-        className="w-48 bg-muted/50"
-      />
+      {defaultLimit !== undefined && <p className="text-xs text-muted-foreground">{t('settings.ai.autoCompactionResolvedDefault', { tokens: defaultLimit.toLocaleString() })}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          id={inputId}
+          type="number"
+          min={1000}
+          max={contextWindow ? contextWindow - 1 : undefined}
+          step={1000}
+          value={draft}
+          disabled={saving}
+          onChange={event => { setDraft(event.target.value); setError(false) }}
+          onKeyDown={event => {
+            if (event.key === 'Enter') { event.preventDefault(); void commit() }
+            if (event.key === 'Escape') { setDraft(value?.toString() ?? ''); setError(false) }
+          }}
+          placeholder={defaultLimit?.toString() ?? t('settings.ai.autoCompactionDefault')}
+          aria-invalid={error}
+          className="w-48 bg-muted/50"
+        />
+        <Button type="button" size="sm" disabled={saving || !dirty} onClick={() => { void commit() }}>
+          {saving ? t('common.saving') : t('common.save')}
+        </Button>
+      </div>
       {error && <p className="text-xs text-destructive">{t('settings.ai.autoCompactionLimitError')}</p>}
     </div>
   )
@@ -317,6 +325,7 @@ function ModelPromptSettingsCard({
                   />
                   <AutoCompactionLimitInput
                     value={settings.autoCompactionTokenLimit}
+                    defaultLimit={getDefaultAutoCompactionTokenLimit(model.value, contextWindow)}
                     contextWindow={contextWindow}
                     onSave={value => onCompactionLimitChange(model.value, value)}
                   />
@@ -1310,17 +1319,20 @@ export default function AiSettingsPage() {
     value?: number,
   ) => {
     if (!window.electronAPI) return false
-    const modelSettings = { ...(connection.modelSettings ?? {}) }
-    const current = { ...(modelSettings[model] ?? {}) }
-    if (value !== undefined) current.autoCompactionTokenLimit = value
-    else delete current.autoCompactionTokenLimit
-    if (Object.keys(current).length) modelSettings[model] = current
-    else delete modelSettings[model]
-    const { isAuthenticated: _a, authError: _b, isDefault: _c, ...connectionData } = { ...connection, modelSettings }
     try {
+      const latest = await window.electronAPI.getLlmConnection(connection.slug)
+      if (!latest) throw new Error('Connection no longer exists')
+      const modelSettings = { ...(latest.modelSettings ?? {}) }
+      const current = { ...(modelSettings[model] ?? {}) }
+      if (value !== undefined) current.autoCompactionTokenLimit = value
+      else delete current.autoCompactionTokenLimit
+      if (Object.keys(current).length) modelSettings[model] = current
+      else delete modelSettings[model]
+      const connectionData = { ...latest, modelSettings }
       const result = await window.electronAPI.saveLlmConnection(connectionData as import('../../../shared/types').LlmConnection)
       if (result.success) {
         await refreshLlmConnections()
+        toast.success(t('settings.promptOverview.saved'))
         return true
       }
       toast.error(t('settings.ai.modelPromptSettingsUpdateFailed'))

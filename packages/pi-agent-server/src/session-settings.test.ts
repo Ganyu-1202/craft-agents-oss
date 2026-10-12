@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SettingsManager } from '@earendil-works/pi-coding-agent';
+import { getModelPromptSettings } from '../../shared/src/config/llm-connections.ts';
 import {
   CRAFT_PI_EPHEMERAL_MAX_BACKOFF_MS,
   CRAFT_PI_EPHEMERAL_QUERY_DEADLINE_MS,
@@ -60,6 +61,12 @@ describe('createCraftSettingsManager', () => {
     expect(settings.getCompactionSettings()).toEqual({ enabled: true, reserveTokens: 20_000, keepRecentTokens: 20_000 });
     expect(createCraftSettingsManager('ephemeral', { tokenLimit: 80_000, contextWindow: 100_000 })
       .getCompactionReserveTokens()).toBe(16_384);
+  });
+
+  it('uses the GPT default to start automatic compaction at 500k tokens', () => {
+    const tokenLimit = getModelPromptSettings(undefined, 'gpt-6.1-sol')?.autoCompactionTokenLimit;
+    const settings = createCraftSettingsManager('main', { tokenLimit, contextWindow: 1_000_000 });
+    expect(settings.getCompactionSettings()).toEqual({ enabled: true, reserveTokens: 500_000, keepRecentTokens: 20_000 });
   });
 
   it('ignores a .pi/settings.json in the working directory', () => {

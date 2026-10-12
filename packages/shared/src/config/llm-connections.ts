@@ -122,8 +122,17 @@ export interface ModelPromptSettings {
   lightweight?: boolean;
   /** Add explicit MCP tool discovery/calling workflow guidance. */
   mcpPromptEnhancement?: boolean;
-  /** Context tokens used before automatic compaction starts. Unset uses the runtime default. */
+  /** Context tokens used before automatic compaction starts. GPT defaults to 500k; others use the runtime default. */
   autoCompactionTokenLimit?: number;
+}
+
+export const GPT_DEFAULT_AUTO_COMPACTION_TOKEN_LIMIT = 500_000;
+
+/** Applies to current and future GPT text models, including provider-prefixed ids. */
+export function getDefaultAutoCompactionTokenLimit(model: string | undefined, contextWindow?: number): number | undefined {
+  const bareModel = model?.split('/').pop();
+  if (!bareModel || !/^gpt(?:-|$)/i.test(bareModel) || isImageGenerationModelId(bareModel)) return undefined;
+  return resolveAutoCompactionTokenLimit({ autoCompactionTokenLimit: GPT_DEFAULT_AUTO_COMPACTION_TOKEN_LIMIT }, contextWindow);
 }
 
 /** Ignore malformed persisted limits and keep the threshold inside the model window. */
@@ -141,8 +150,13 @@ export function getModelPromptSettings(
   connection: Pick<LlmConnection, 'modelSettings'> | undefined,
   model: string | undefined,
 ): ModelPromptSettings | undefined {
-  if (!connection?.modelSettings || !model) return undefined;
-  return connection.modelSettings[model] ?? connection.modelSettings[normalizeDeprecatedModelId(model)];
+  if (!model) return undefined;
+  const settings = connection?.modelSettings?.[model] ?? connection?.modelSettings?.[normalizeDeprecatedModelId(model)];
+  const defaultLimit = getDefaultAutoCompactionTokenLimit(model);
+  if (defaultLimit !== undefined && settings?.autoCompactionTokenLimit === undefined) {
+    return { ...settings, autoCompactionTokenLimit: defaultLimit };
+  }
+  return settings;
 }
 
 /**
