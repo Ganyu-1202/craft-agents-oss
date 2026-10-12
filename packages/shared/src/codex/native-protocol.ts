@@ -142,7 +142,7 @@ export interface ThreadTokenUsageUpdatedNotification {
 
 export type ThreadItem =
   | { type: 'userMessage'; id: string; content: UserInput[] }
-  | { type: 'agentMessage'; id: string; text: string }
+  | { type: 'agentMessage'; id: string; text: string; phase?: 'commentary' | 'final_answer' | null }
   | { type: 'reasoning'; id: string; summary: string[]; content: string[] }
   | {
       type: 'commandExecution'; id: string; command: string; cwd: string;

@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "短时间内请求次数过多，请稍等片刻后再试。",
   "chat.rateLimitedTitle": "请求过于频繁",
   "chat.renameSession": "重命名会话",
+  "chat.responseIncompleteMessage": "本轮响应已结束，但没有返回最终回答。请重试以继续。",
+  "chat.responseIncompleteTitle": "回答未完成",
   "chat.responseInterrupted": "消息已中断。点击这里可将原消息恢复到聊天框。",
   "chat.scrollUpForEarlier": "向上滚动查看更早的消息 (还有 {{count}} 条)",
   "chat.selectedText": "选中文本",

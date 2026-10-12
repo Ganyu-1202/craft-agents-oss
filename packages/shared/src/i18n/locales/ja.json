@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "短時間に送信されたリクエストが多すぎます。しばらく待ってから再試行してください。",
   "chat.rateLimitedTitle": "リクエストが多すぎます",
   "chat.renameSession": "セッション名を変更",
+  "chat.responseIncompleteMessage": "最終回答が返される前に応答が終了しました。再試行して続行してください。",
+  "chat.responseIncompleteTitle": "回答が未完了です",
   "chat.responseInterrupted": "応答を中断しました。ここをクリックすると元のメッセージを入力欄に戻せます。",
   "chat.scrollUpForEarlier": "上にスクロールして以前のメッセージを表示 (あと {{count}} 件)",
   "chat.selectedText": "選択テキスト",

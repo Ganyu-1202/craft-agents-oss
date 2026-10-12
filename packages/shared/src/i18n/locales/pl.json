@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "Wysłano zbyt wiele żądań w krótkim czasie. Poczekaj chwilę i spróbuj ponownie.",
   "chat.rateLimitedTitle": "Zbyt wiele żądań",
   "chat.renameSession": "Zmień nazwę sesji",
+  "chat.responseIncompleteMessage": "Odpowiedź zakończyła się bez końcowego wyniku. Spróbuj ponownie, aby kontynuować.",
+  "chat.responseIncompleteTitle": "Niepełna odpowiedź",
   "chat.responseInterrupted": "Odpowiedź przerwana. Kliknij tutaj, aby przywrócić wiadomość do pola wpisywania.",
   "chat.scrollUpForEarlier": "Przewiń w górę, aby zobaczyć wcześniejsze wiadomości (jeszcze {{count}})",
   "chat.selectedText": "Zaznaczony tekst",

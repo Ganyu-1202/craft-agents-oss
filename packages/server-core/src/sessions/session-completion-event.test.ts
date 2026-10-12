@@ -45,6 +45,45 @@ test('guarded history deletion rejects a newly active or changed session before 
   expect(manager.sessions.has('session')).toBe(true)
 })
 
+test('a commentary-only completion publishes and persists a retryable error before UI completion', async () => {
+  const manager = Object.create(SessionManager.prototype) as any
+  const managed: any = {
+    id: 'session', workspace: { id: 'workspace' }, isProcessing: true, messageQueue: [],
+    messages: [
+      { id: 'user', role: 'user', content: 'Finish the task', timestamp: 1 },
+      { id: 'progress', role: 'assistant', content: 'I will prepare a list.', timestamp: 2, isIntermediate: true },
+    ],
+  }
+  const events: any[] = []
+  const completions: SessionCompletionEvent[] = []
+  manager.sessions = new Map([['session', managed]])
+  manager.transcriptViewers = new Map([['session', new Set(['viewer'])]])
+  manager.pendingMcpReloadSessionIds = new Set()
+  manager.clearPendingPermissionRequestsForSession = () => {}
+  manager.setProcessing = (_managed: unknown, value: boolean) => { managed.isProcessing = value }
+  manager.markOrphanedBackgroundTasks = () => {}
+  manager.getBrowserPaneManagerForSession = () => null
+  manager.isSessionBeingViewed = () => true
+  manager.markSessionRead = () => { throw new Error('An incomplete turn must not count as a new answer') }
+  manager.sendEvent = (event: unknown) => { events.push(event) }
+  manager.emitSessionComplete = (event: SessionCompletionEvent) => { completions.push(event) }
+  manager.enforceWarmRuntimeLimit = async () => {}
+  manager.persistSession = () => {}
+  manager.monotonic = () => 3
+
+  await manager.onProcessingStopped('session', 'complete')
+  expect(events.map(event => event.type)).toEqual(['typed_error', 'complete'])
+  expect(events[0]).toMatchObject({ error: { code: 'empty_response', canRetry: true,
+    actions: [{ key: 'r', label: 'Retry', action: 'retry' }] } })
+  expect(managed.messages.at(-1)).toMatchObject({ role: 'error', errorCode: 'empty_response', errorCanRetry: true })
+  expect(completions[0]).toMatchObject({ reason: 'error', errorCode: 'empty_response', canRetry: true })
+
+  // Repeated cleanup cannot duplicate the persisted or displayed error.
+  await manager.onProcessingStopped('session', 'complete')
+  expect(events.filter(event => event.type === 'typed_error')).toHaveLength(1)
+  expect(managed.messages.filter((message: any) => message.role === 'error')).toHaveLength(1)
+})
+
 test('a session undergoing deletion cannot start another model turn', async () => {
   const manager = Object.create(SessionManager.prototype) as any
   manager.sessions = new Map([['session', { id: 'session', persistenceRetired: true }]])

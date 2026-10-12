@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "Too many requests were sent in a short time. Wait a moment, then try again.",
   "chat.rateLimitedTitle": "Too many requests",
   "chat.renameSession": "Rename Session",
+  "chat.responseIncompleteMessage": "The response ended without a final answer. Please retry to continue.",
+  "chat.responseIncompleteTitle": "Incomplete response",
   "chat.responseInterrupted": "Response interrupted. Click here to restore your message to the input box.",
   "chat.scrollUpForEarlier": "Scroll up for earlier messages ({{count}} more)",
   "chat.selectedText": "Selected text",

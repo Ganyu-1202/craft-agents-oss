@@ -49,6 +49,21 @@ function messageIds(state: SessionState): string[] {
 }
 
 describe('Pi retry lifecycle event processing', () => {
+  it('preserves an incomplete-response error and retry action after the completion event', () => {
+    let state = makeState([
+      { id: 'user', role: 'user', content: 'Complete the task', timestamp: 1 },
+      { id: 'progress', role: 'assistant', content: 'I will prepare a list.', timestamp: 2, isIntermediate: true },
+    ])
+    state = applyEvent(state, { type: 'typed_error', sessionId: SESSION_ID, timestamp: 3,
+      error: { code: 'empty_response', title: 'Incomplete response', message: 'Please retry to continue.',
+        canRetry: true, actions: [{ key: 'r', label: 'Retry', action: 'retry' }] } })
+    state = applyEvent(state, { type: 'complete', sessionId: SESSION_ID })
+    expect(state.session.isProcessing).toBe(false)
+    expect(state.streaming).toBeNull()
+    expect(state.session.messages[1]).toMatchObject({ id: 'progress', isIntermediate: true })
+    expect(state.session.messages.at(-1)).toMatchObject({ role: 'error', errorCode: 'empty_response',
+      errorCanRetry: true, errorActions: [{ key: 'r', label: 'Retry', action: 'retry' }] })
+  })
   it('retains a structured recovery notice after retry progress clears and processing completes', () => {
     let state = beginBackoff(makeState())
     state = applyEvent(state, { type: 'info', sessionId: SESSION_ID, message: 'Recovered after 2 retries', statusType: 'retrying', timestamp: 10 })

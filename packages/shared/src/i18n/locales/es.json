@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "Se enviaron demasiadas solicitudes en poco tiempo. Espera un momento y vuelve a intentarlo.",
   "chat.rateLimitedTitle": "Demasiadas solicitudes",
   "chat.renameSession": "Renombrar sesión",
+  "chat.responseIncompleteMessage": "La respuesta terminó sin una respuesta final. Vuelve a intentarlo para continuar.",
+  "chat.responseIncompleteTitle": "Respuesta incompleta",
   "chat.responseInterrupted": "Respuesta interrumpida. Haz clic aquí para recuperar tu mensaje en el cuadro de texto.",
   "chat.scrollUpForEarlier": "Sube para ver mensajes anteriores ({{count}} más)",
   "chat.selectedText": "Texto seleccionado",

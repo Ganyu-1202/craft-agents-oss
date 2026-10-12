@@ -121,6 +121,12 @@ const ERROR_DEFINITIONS: Record<ErrorCode, Omit<AgentError, 'code' | 'originalEr
     canRetry: true,
     retryDelayMs: 2000,
   },
+  empty_response: {
+    title: 'Incomplete Response',
+    message: 'The response ended without a final answer. Please retry to continue.',
+    actions: [{ key: 'r', label: 'Retry', action: 'retry' }],
+    canRetry: true,
+  },
   service_unavailable: {
     title: 'Service Unavailable',
     message: 'The AI service is experiencing issues. All credentials appear valid. Try again in a moment.',

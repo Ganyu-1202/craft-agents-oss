@@ -353,6 +353,8 @@
   "chat.rateLimitedMessage": "短時間內的請求次數過多，請稍候再試。",
   "chat.rateLimitedTitle": "請求過於頻繁",
   "chat.renameSession": "重新命名會話",
+  "chat.responseIncompleteMessage": "本輪回應已結束，但沒有傳回最終回答。請重試以繼續。",
+  "chat.responseIncompleteTitle": "回答未完成",
   "chat.responseInterrupted": "訊息已中斷。點擊這裡可將原訊息還原到輸入框。",
   "chat.scrollUpForEarlier": "向上滾動檢視更早的訊息 (還有 {{count}} 條)",
   "chat.selectedText": "選中文字",

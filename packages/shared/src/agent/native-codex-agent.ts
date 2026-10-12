@@ -48,7 +48,7 @@ import { frameworkToolBlockReason } from '../agent-plugins/framework-tool-policy
 import { assertSuperAgentTools, filterSuperAgentTools } from './core/browser-tool-policy.ts';
 import { CODEX_HOST_EXECUTION_CONFIG, codexHostExecutionArgs, createCodexHostHome } from '../codex/host-execution.ts';
 import { LLM_QUERY_TIMEOUT_MS, withTimeout, type LLMQueryRequest, type LLMQueryResult } from './llm-tool.ts';
-import { parseError } from './errors.ts';
+import { createAgentError, parseError } from './errors.ts';
 import { SourceActivationDrainController } from './source-activation-drain.ts';
 
 const DEFAULT_NATIVE_CODEX_MODEL = 'gpt-5.2-codex';
@@ -587,8 +587,14 @@ export class NativeCodexAgent extends BaseAgent {
       case 'turn/completed': {
         const completed = raw as TurnCompletedNotification;
         if (completed.turn.id !== this.currentTurnId) return;
-        if (completed.turn.status === 'failed' && completed.turn.error) {
-          this.queue.enqueue({ type: 'error', message: completed.turn.error.message });
+        if (completed.turn.status === 'failed') {
+          const message = completed.turn.error?.message ?? 'Codex turn failed without error details. Please retry.';
+          const parsed = parseError(new Error(message));
+          this.queue.enqueue({ type: 'typed_error', error: parsed });
+        } else if (completed.turn.status === 'interrupted' && !this.abortReason) {
+          const error = createAgentError('service_error');
+          error.message = 'Codex stopped before completing the response. Please retry to continue.';
+          this.queue.enqueue({ type: 'typed_error', error });
         }
         this.usageTracker.recordTurnComplete(this.lastUsage);
         this.queue.enqueue({ type: 'complete', usage: this.lastUsage });
@@ -636,7 +642,9 @@ export class NativeCodexAgent extends BaseAgent {
     const item = notification.item;
     switch (item.type) {
       case 'agentMessage':
-        this.queue.enqueue({ type: 'text_complete', text: item.text, turnId: item.id });
+        // Older models omit phase; preserve their final-answer behavior.
+        this.queue.enqueue({ type: 'text_complete', text: item.text,
+          ...(item.phase === 'commentary' ? { isIntermediate: true } : {}), turnId: item.id });
         break;
       case 'reasoning': {
         const text = item.summary.join('\n') || item.content.join('\n');
@@ -1026,12 +1034,13 @@ export class NativeCodexAgent extends BaseAgent {
         if (!utilityThreadId || params.threadId !== utilityThreadId) return;
         if (method === 'item/completed') {
           const item = (raw as ItemNotification).item;
-          if (item.type === 'agentMessage') text += item.text;
+          if (item.type === 'agentMessage' && item.phase !== 'commentary') text += item.text;
         } else if (method === 'thread/tokenUsage/updated') {
           usage = (raw as ThreadTokenUsageUpdatedNotification).tokenUsage.last;
         } else if (method === 'turn/completed') {
           const turn = (raw as TurnCompletedNotification).turn;
-          turn.status === 'failed' ? fail(new Error(turn.error?.message ?? 'Codex utility turn failed')) : finish();
+          turn.status === 'completed' ? finish()
+            : fail(new Error(turn.error?.message ?? `Codex utility turn ${turn.status}`));
         }
       };
       client.on('error', onError);

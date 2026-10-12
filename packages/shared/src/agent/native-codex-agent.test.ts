@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import { extractChatGptAccountId, NativeCodexAgent } from './native-codex-agent.ts';
+import { NativeCodexAppServerClient } from '../codex/native-app-server-client.ts';
 import { AbortReason, type BackendConfig } from './backend/types.ts';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -245,6 +246,99 @@ describe('NativeCodexAgent protocol adaptation', () => {
 
     expect(agent['currentTurnId']).toBe('turn-new');
     agent.destroy();
+  });
+
+  it('keeps Codex commentary intermediate while preserving explicit and legacy final answers', async () => {
+    const agent = createAgent();
+    try {
+      agent['queue'].reset();
+      agent['processing'] = true;
+      agent['codexThreadId'] = 'thread-1';
+      agent['currentTurnId'] = 'turn-1';
+      for (const phase of ['commentary', 'final_answer', null, undefined] as const) {
+        agent['handleNotification']('item/completed', {
+          threadId: 'thread-1', turnId: 'turn-1',
+          item: { type: 'agentMessage', id: String(phase), text: 'Message', phase },
+        });
+      }
+      agent['handleNotification']('turn/completed', {
+        threadId: 'thread-1', turn: { id: 'turn-1', status: 'completed', error: null, items: [] },
+      });
+      const events = [];
+      for await (const event of agent['queue'].drain()) events.push(event);
+      expect(events[0]).toMatchObject({ type: 'text_complete', isIntermediate: true });
+      for (const event of events.slice(1, 4)) {
+        expect(event.type).toBe('text_complete');
+        expect('isIntermediate' in event && event.isIntermediate).not.toBe(true);
+      }
+      expect(events.at(-1)?.type).toBe('complete');
+    } finally { agent.destroy(); }
+  });
+
+  it('surfaces unexpected interruption and failed turns without error details before completing', async () => {
+    for (const status of ['interrupted', 'failed'] as const) {
+      const agent = createAgent();
+      try {
+        agent['queue'].reset();
+        agent['processing'] = true;
+        agent['currentTurnId'] = 'turn-1';
+        agent['handleNotification']('turn/completed', {
+          turn: { id: 'turn-1', status, error: null, items: [] },
+        });
+        const events = [];
+        for await (const event of agent['queue'].drain()) events.push(event);
+        expect(events.map(event => event.type)).toEqual(['typed_error', 'complete']);
+        expect(events[0]).toMatchObject({ error: { canRetry: true,
+          ...(status === 'interrupted' ? { message: expect.stringContaining('Codex') }
+            : { originalError: expect.stringContaining('Codex') }) } });
+      } finally { agent.destroy(); }
+    }
+  });
+
+  it('does not report intentional stop or handoff notifications as failures', async () => {
+    for (const reason of [AbortReason.UserStop, AbortReason.PlanSubmitted, AbortReason.AuthRequest]) {
+      const agent = createAgent();
+      try {
+        agent['queue'].reset();
+        agent['processing'] = true;
+        agent['currentTurnId'] = 'turn-1';
+        agent.forceAbort(reason);
+        agent['handleNotification']('turn/completed', {
+          turn: { id: 'turn-1', status: 'interrupted', error: null, items: [] },
+        });
+        const events = [];
+        for await (const event of agent['queue'].drain()) events.push(event);
+        expect(events).toEqual([]);
+      } finally { agent.destroy(); }
+    }
+  });
+
+  it('uses final utility answers and rejects interrupted utility queries', async () => {
+    for (const status of ['completed', 'interrupted'] as const) {
+      const agent = createAgent();
+      agent['buildCodexEnvironment'] = async () => undefined;
+      agent['authenticateClient'] = async () => true;
+      const connect = spyOn(NativeCodexAppServerClient.prototype, 'connect').mockResolvedValue({
+        userAgent: 'test', codexHome: '', platformFamily: 'windows', platformOs: 'windows',
+      });
+      const request = spyOn(NativeCodexAppServerClient.prototype, 'request').mockImplementation(
+        async function<T>(this: NativeCodexAppServerClient, method: string): Promise<T> {
+          if (method === 'thread/start') return { thread: { id: 'utility' } } as T;
+          for (const phase of ['commentary', 'final_answer'] as const) {
+            this.emit('notification', 'item/completed', { threadId: 'utility',
+              item: { type: 'agentMessage', id: phase, text: phase, phase } });
+          }
+          this.emit('notification', 'turn/completed', { threadId: 'utility',
+            turn: { id: 'utility-turn', status, error: null, items: [] } });
+          return {} as T;
+        },
+      );
+      try {
+        const result = agent.queryLlm({ prompt: 'Return a result' });
+        if (status === 'completed') expect((await result).text).toBe('final_answer');
+        else await expect(result).rejects.toThrow('Codex utility turn interrupted');
+      } finally { request.mockRestore(); connect.mockRestore(); agent.destroy(); }
+    }
   });
 
   it('keeps processing locked until an aborted generator reaches its finally block', () => {

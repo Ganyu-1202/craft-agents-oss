@@ -1,5 +1,5 @@
 import type { EventSink, RpcServer } from '@craft-agent/server-core/transport'
-import { parseError } from '@craft-agent/shared/agent'
+import { createAgentError, parseError } from '@craft-agent/shared/agent'
 import { TurnClientContexts, type TurnClientContext } from './turn-client-context'
 import { saveClientFiles } from './client-files'
 import { MessageBranchGate, editedBranchMessages, branchSeedMessages, copyBranchAttachmentFiles } from './message-branching'
@@ -9,7 +9,7 @@ import { executeShell, type AndroidAdbArgs, type AndroidPermissionArgs, type She
 import type { ISessionManager, IBrowserPaneManager, ExecutePromptAutomationInput } from '@craft-agent/server-core/handlers'
 import { RemoteBrowserPaneManager } from './RemoteBrowserPaneManager'
 import { runStudioImageToolAction } from './studio-image-tool'
-import { resolveSessionTurnCompletion } from './session-turn-completion'
+import { EMPTY_RESPONSE_ERROR_CODE, resolveSessionTurnCompletion } from './session-turn-completion'
 import { validateFilePath, getWorkspaceAllowedDirs } from '@craft-agent/server-core/handlers'
 import { createScopedLogger, CONSOLE_LOGGER, type PlatformServices, type Logger } from '@craft-agent/server-core/runtime'
 import { basename, dirname, join } from 'path'
@@ -7591,7 +7591,12 @@ export class SessionManager implements ISessionManager {
         sessionLog.info('Chat loop exited after stop request')
         this.onProcessingStopped(sessionId, 'interrupted')
       } else {
-        sessionLog.info('Chat loop exited unexpectedly')
+        const error = createAgentError('service_error')
+        error.message = 'The response stream ended before completion. Please retry to continue.'
+        await this.processEvent(managed, { type: 'typed_error', error })
+        sendSpan.mark('chat.unexpected_exit')
+        sendSpan.end()
+        await this.onProcessingStopped(sessionId, 'error')
       }
     } catch (error) {
       if (managed.processingGeneration !== myGeneration) {
@@ -8006,6 +8011,22 @@ export class SessionManager implements ISessionManager {
       authResume.cleanupInProgress = false
       if (authResume.loginCompleted) setImmediate(() => this.resumeAfterAuthentication(authResume.connectionSlug))
       return
+    }
+
+    // Empty completion errors used to reach only the in-process conductor.
+    // Persist and publish them before completion so ordinary chat can recover too.
+    if (completion.errorCode === EMPTY_RESPONSE_ERROR_CODE &&
+      !managed.messages.slice(managed.messages.findLastIndex(m => m.role === 'user') + 1)
+        .some(m => m.role === 'error' && m.errorCode === EMPTY_RESPONSE_ERROR_CODE)) {
+      const error = createAgentError(EMPTY_RESPONSE_ERROR_CODE)
+      const timestamp = this.monotonic()
+      managed.messages.push({
+        id: generateMessageId(), role: 'error',
+        content: `${error.title}: ${error.message}`, timestamp,
+        errorCode: error.code, errorTitle: error.title,
+        errorCanRetry: error.canRetry, errorActions: error.actions,
+      })
+      this.sendEvent({ type: 'typed_error', sessionId, error, timestamp }, managed.workspace.id)
     }
 
     // 5. Check queue and process or complete

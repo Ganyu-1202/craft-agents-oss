@@ -482,6 +482,7 @@ export type ErrorCode =
   | 'token_expired'
   | 'rate_limited'
   | 'service_error'
+  | 'empty_response'       // Turn ended without a final assistant answer
   | 'service_unavailable'
   | 'network_error'
   | 'proxy_error'           // Proxy/firewall/captive portal intercepted the request

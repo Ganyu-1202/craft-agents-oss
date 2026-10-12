@@ -2354,6 +2354,8 @@ function ErrorMessage({ message, onOpenUrl, sessionId, onRetry, onDismiss }: { m
         return { title: t('chat.loginExpiredTitle'), description: t('chat.loginExpiredMessage') }
       case 'rate_limited':
         return { title: t('chat.rateLimitedTitle'), description: t('chat.rateLimitedMessage') }
+      case 'empty_response':
+        return { title: t('chat.responseIncompleteTitle'), description: t('chat.responseIncompleteMessage') }
       case 'service_error':
       case 'service_unavailable':
       case 'provider_error':
