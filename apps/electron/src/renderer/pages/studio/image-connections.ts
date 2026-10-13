@@ -32,3 +32,16 @@ export function imageModels(connection: LlmConnectionWithStatus, groupId = ''): 
     && (!connection.baseUrl || /^https:\/\/api\.openai\.com\/v1\/?$/i.test(connection.baseUrl))) return ['gpt-image-1']
   return []
 }
+
+/** Retain the user's account choice; initialize a missing choice with a drawing connection. */
+export function preferredImageConnection(connections: LlmConnectionWithStatus[], current = '', workspaceDefault = ''): string {
+  const compatible = connections.filter(isImageConnection)
+  if (compatible.some(item => item.slug === current)) return current
+  const ready = compatible.filter(item => item.isAuthenticated && imageModels(item, preferredImageGroup(item)).length > 0)
+  return (ready.find(item => item.slug === workspaceDefault)
+    ?? ready.find(item => item.isDefault)
+    ?? ready[0]
+    ?? compatible.find(item => item.slug === workspaceDefault)
+    ?? compatible.find(item => item.isAuthenticated)
+    ?? compatible[0])?.slug ?? ''
+}

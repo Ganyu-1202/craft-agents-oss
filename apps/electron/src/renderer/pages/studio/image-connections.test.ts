@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { LlmConnectionWithStatus } from '../../../shared/types'
-import { imageGroups, imageModels, isImageConnection, preferredImageGroup } from './image-connections'
+import { imageGroups, imageModels, isImageConnection, preferredImageGroup, preferredImageConnection } from './image-connections'
 
 const connection = (overrides: Partial<LlmConnectionWithStatus>) => ({
   slug: 'image', name: 'Image', providerType: 'pi_compat', authType: 'api_key_with_endpoint',
@@ -8,6 +8,23 @@ const connection = (overrides: Partial<LlmConnectionWithStatus>) => ({
 }) as LlmConnectionWithStatus
 
 describe('Studio image connections', () => {
+  const drawing = connection({ slug: 'tokennest', oauthProvider: 'tokennest', authType: 'oauth', isDefault: true,
+    channelGroups: [{ id: 'drawing', name: 'GPT图片生成渠道', models: ['gpt-image-1'] }] })
+
+  it('selects an authenticated drawing account when the saved selection is missing', () => {
+    const stale = connection({ slug: 'stale', oauthProvider: 'tokennest', authType: 'oauth', channelGroups: [] })
+    expect(preferredImageConnection([stale, drawing])).toBe('tokennest')
+    expect(preferredImageConnection([stale, drawing], 'deleted')).toBe('tokennest')
+    expect(preferredImageConnection([stale, drawing], 'stale')).toBe('stale')
+    expect(preferredImageConnection([connection({ ...drawing, slug: 'expired', isAuthenticated: false }), drawing], 'expired')).toBe('expired')
+  })
+
+  it('keeps a usable saved connection and respects the workspace default otherwise', () => {
+    const custom = connection({ slug: 'custom', piAuthProvider: 'openai', models: ['gpt-image-1'] })
+    expect(preferredImageConnection([drawing, custom], 'custom')).toBe('custom')
+    expect(preferredImageConnection([drawing, custom], '', 'custom')).toBe('custom')
+  })
+
   it('uses the first model in the dedicated TokenNest image group', () => {
     const item = connection({ oauthProvider: 'tokennest', authType: 'oauth', models: ['gpt-text', 'gpt-image-global'], channelGroups: [
       { id: 'chat', name: '聊天', models: ['gpt-text'] },

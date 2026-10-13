@@ -1,7 +1,7 @@
 import { RPC_CHANNELS, STUDIO_IMAGE_PROVIDER_TIMEOUT_MS, STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE, STUDIO_TOKENNEST_REAUTH_REQUIRED } from '@craft-agent/shared/protocol'
-import { getLlmConnection, type LlmConnection } from '@craft-agent/shared/config'
+import { getLlmConnection, updateLlmConnection, type LlmConnection } from '@craft-agent/shared/config'
 import { getCredentialManager } from '@craft-agent/shared/credentials'
-import { fetchTokenNestChannelGroups, getValidTokenNestCredentials, TokenNestGroupsScopeError, TOKENNEST_OAUTH_CONFIG } from '@craft-agent/shared/auth'
+import { fetchTokenNestChannelGroups, getValidTokenNestCredentials, TokenNestGroupsScopeError, TokenNestRequestError, TOKENNEST_OAUTH_CONFIG } from '@craft-agent/shared/auth'
 import type { RpcServer } from '@craft-agent/server-core/transport'
 import { exportDrawioToVisio } from './studio-visio'
 import { readMindMapSession, writeMindMapSession, deleteMindMapSession, mindMapWorkspaceContext } from '../../services/studio-mindmap-files'
@@ -73,6 +73,34 @@ async function getToken(connection: LlmConnection, refresh = false): Promise<str
   return key
 }
 
+async function refreshImageGroups(connection: LlmConnection, onChanged?: () => void): Promise<void> {
+  try {
+    let groups: NonNullable<LlmConnection['channelGroups']>
+    try { groups = await fetchTokenNestChannelGroups(await getToken(connection)) }
+    catch (cause) {
+      if (!(cause instanceof TokenNestRequestError) || cause.status !== 401) throw cause
+      groups = await fetchTokenNestChannelGroups(await getToken(connection, true))
+    }
+    connection.channelGroups = groups
+    if (updateLlmConnection(connection.slug, { channelGroups: groups })) onChanged?.()
+  } catch (cause) {
+    if (cause instanceof TokenNestGroupsScopeError) {
+      throw studioConnectionError(STUDIO_TOKENNEST_REAUTH_REQUIRED, '当前 TokenNest 授权缺少分组读取权限，请重新登录')
+    }
+    if (cause instanceof TokenNestRequestError && cause.status === 401) {
+      throw studioConnectionError(STUDIO_TOKENNEST_REAUTH_REQUIRED, 'TokenNest 登录已失效，请重新登录')
+    }
+    throw cause
+  }
+}
+
+function imageGroupForModel(connection: LlmConnection, model: string, preferred?: string, excluded?: string): string | undefined {
+  const groups = (connection.channelGroups ?? []).filter(group => group.id !== excluded && group.models?.includes(model))
+  return groups.find(group => group.id === preferred)?.id
+    ?? groups.find(group => group.name === 'GPT图片生成渠道')?.id
+    ?? groups[0]?.id
+}
+
 function endpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/$/, '')}/${path}`
 }
@@ -129,8 +157,8 @@ async function post(
         if (response.status === 403 && (payload.error?.code === 'insufficient_scope' || payload.error === 'insufficient_scope')) {
           throw studioConnectionError(STUDIO_TOKENNEST_REAUTH_REQUIRED, 'TokenNest 授权权限不足，请重新登录')
         }
-        if (/无可用渠道|no available channel|no_available_channel/i.test(message)) {
-          try { await fetchTokenNestChannelGroups(token) }
+        if (/无可用渠道|no available channel|no_available_channel/i.test(message) || payload.error?.code === 'no_available_channel') {
+          try { if (!path.startsWith('images/')) await fetchTokenNestChannelGroups(token) }
           catch (cause) {
             if (cause instanceof TokenNestGroupsScopeError) {
               throw studioConnectionError(STUDIO_TOKENNEST_REAUTH_REQUIRED, '当前 TokenNest 授权缺少分组读取权限，请重新登录')
@@ -196,7 +224,7 @@ function parseMindMapReply(raw: string): { xml: string; summary: string } {
   return { xml: requireDrawioXml(xml), summary }
 }
 
-export async function generateStudioImage(input: ImageInput): Promise<{ imageBase64: string; mimeType: string; images: Array<{ imageBase64: string; mimeType: string }> }> {
+export async function generateStudioImage(input: ImageInput, onConnectionsChanged?: () => void): Promise<{ imageBase64: string; mimeType: string; channelGroup?: string; images: Array<{ imageBase64: string; mimeType: string }> }> {
     const { connection, baseUrl } = resolveConnection(input.connectionSlug)
     const model = requireText(input.model, 'Image model', 120)
     const prompt = requireText(input.prompt, 'Prompt', 4000)
@@ -206,37 +234,58 @@ export async function generateStudioImage(input: ImageInput): Promise<{ imageBas
     if (!Number.isInteger(count) || count < 1 || count > 4) throw new Error('Image count must be between 1 and 4')
     const editing = !!input.imageBase64
     const transparentBackground = input.transparentBackground === true && /^gpt-image/i.test(model)
-    const imageGroup = connection.oauthProvider === 'tokennest' && input.channelGroup
-      ? connection.channelGroups?.find(group => group.id === input.channelGroup && group.models?.includes(model))?.id
-      : undefined
+    let imageGroup: string | undefined
+    if (connection.oauthProvider === 'tokennest') {
+      imageGroup = imageGroupForModel(connection, model, input.channelGroup)
+      // A renderer can submit a group from an older discovery result. Check live
+      // permissions before rejecting the request based on a stale local cache.
+      if (!imageGroup || (input.channelGroup && imageGroup !== input.channelGroup)) {
+        await refreshImageGroups(connection, onConnectionsChanged)
+        imageGroup = imageGroupForModel(connection, model, input.channelGroup)
+      }
+    }
     if (connection.oauthProvider === 'tokennest' && !imageGroup) {
       throw studioConnectionError(STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE, '当前账户没有可用于此模型的图片分组，请检查 TokenNest 分组权限并刷新连接')
     }
     if (input.maskBase64 && !editing) throw new Error('A mask requires a source image')
+    const requestDeadline = Date.now() + STUDIO_IMAGE_PROVIDER_TIMEOUT_MS
+    const request = async (): Promise<Record<string, any>> => {
+      const timeoutMs = Math.max(1, requestDeadline - Date.now())
+      if (editing) {
+        const image = imageBytes(input.imageBase64, 'Source image')
+        const mask = input.maskBase64 ? imageBytes(input.maskBase64, 'Mask') : undefined
+        return await post(connection, baseUrl, 'images/edits', () => {
+          const form = new FormData()
+          form.set('model', model)
+          form.set('prompt', prompt)
+          form.set('size', size)
+          if (count > 1) form.set('n', String(count))
+          if (transparentBackground) form.set('background', 'transparent')
+          form.set('image', image, 'canvas.png')
+          if (mask) form.set('mask', mask, 'mask.png')
+          return form
+        }, undefined, imageGroup, timeoutMs)
+      }
+      return await post(connection, baseUrl, 'images/generations', () =>
+        JSON.stringify({ model, prompt, size, ...(count > 1 ? { n: count } : {}), ...(transparentBackground ? { background: 'transparent' } : {}), ...(/dall-e/i.test(model) ? { response_format: 'b64_json' } : {}) }), 'application/json', imageGroup, timeoutMs)
+    }
     let payload: Record<string, any>
-    if (editing) {
-      const image = imageBytes(input.imageBase64, 'Source image')
-      const mask = input.maskBase64 ? imageBytes(input.maskBase64, 'Mask') : undefined
-      payload = await post(connection, baseUrl, 'images/edits', () => {
-        const form = new FormData()
-        form.set('model', model)
-        form.set('prompt', prompt)
-        form.set('size', size)
-        if (count > 1) form.set('n', String(count))
-        if (transparentBackground) form.set('background', 'transparent')
-        form.set('image', image, 'canvas.png')
-        if (mask) form.set('mask', mask, 'mask.png')
-        return form
-      }, undefined, imageGroup, STUDIO_IMAGE_PROVIDER_TIMEOUT_MS)
-    } else {
-      payload = await post(connection, baseUrl, 'images/generations', () =>
-        JSON.stringify({ model, prompt, size, ...(count > 1 ? { n: count } : {}), ...(transparentBackground ? { background: 'transparent' } : {}), ...(/dall-e/i.test(model) ? { response_format: 'b64_json' } : {}) }), 'application/json', imageGroup, STUDIO_IMAGE_PROVIDER_TIMEOUT_MS)
+    try { payload = await request() }
+    catch (cause) {
+      if (connection.oauthProvider !== 'tokennest' || (cause as { code?: string })?.code !== STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE) throw cause
+      // Retry only a definite routing rejection, using the same model in another
+      // authorized group. Timeouts and ambiguous failures must not duplicate a generation.
+      await refreshImageGroups(connection, onConnectionsChanged)
+      const alternative = imageGroupForModel(connection, model, undefined, imageGroup)
+      if (!alternative) throw cause
+      imageGroup = alternative
+      payload = await request()
     }
     const images = Array.isArray(payload.data)
       ? payload.data.filter((item: { b64_json?: unknown }) => typeof item?.b64_json === 'string')
         .slice(0, count).map((item: { b64_json: string }) => ({ imageBase64: item.b64_json, mimeType: 'image/png' }))
       : []
-    if (images.length) return { ...images[0], images }
+    if (images.length) return { ...images[0], images, ...(imageGroup ? { channelGroup: imageGroup } : {}) }
     throw new Error('Image provider did not return image data')
 }
 
@@ -252,7 +301,8 @@ export function registerStudioHandlers(server: RpcServer): void {
   server.handle(RPC_CHANNELS.studio.MINDMAP_WORKSPACE_CONTEXT, async (ctx, directory: string) =>
     mindMapWorkspaceContext(await validateFilePath(directory, getWorkspaceAllowedDirs(ctx.workspaceId))))
   server.handle(RPC_CHANNELS.studio.EXPORT_VISIO, async (_ctx, xml: string) => ({ base64: await exportDrawioToVisio(xml) }))
-  server.handle(RPC_CHANNELS.studio.GENERATE_IMAGE, async (_ctx, input: ImageInput) => generateStudioImage(input))
+  server.handle(RPC_CHANNELS.studio.GENERATE_IMAGE, async (_ctx, input: ImageInput) =>
+    generateStudioImage(input, () => server.push(RPC_CHANNELS.llmConnections.CHANGED, { to: 'all' })))
 
   server.handle(RPC_CHANNELS.studio.ASSIST_CANVAS, async (_ctx, input: CanvasAssistRequest) => {
     const { connection, baseUrl } = resolveConnection(input.connectionSlug)

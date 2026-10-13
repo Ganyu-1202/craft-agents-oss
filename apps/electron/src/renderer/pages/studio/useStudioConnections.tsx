@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { WorkbenchSelect } from '@/components/ui/workbench-select'
 import { useEffect, useMemo, useState } from 'react'
 import type { LlmConnectionWithStatus } from '../../../shared/types'
-import { imageGroups, imageModels, isImageConnection, preferredImageGroup } from './image-connections'
+import { imageGroups, imageModels, isImageConnection, preferredImageGroup, preferredImageConnection } from './image-connections'
 import { mindMapGroupForModel, mindMapTextModels } from './mindmap-models'
 import { useAppShellContext } from '@/context/AppShellContext'
 
@@ -14,7 +14,7 @@ function supportsMindMap(connection: LlmConnectionWithStatus): boolean {
   return connection.oauthProvider === 'tokennest' || connection.authType === 'api_key' || connection.authType === 'api_key_with_endpoint'
 }
 
-export function useStudioConnections(options: { image?: boolean; assistant?: boolean } = {}) {
+export function useStudioConnections(options: { image?: boolean; assistant?: boolean; active?: boolean } = {}) {
   const { t } = useTranslation()
   const { workspaceDefaultLlmConnection } = useAppShellContext()
   const [connections, setConnections] = useState<LlmConnectionWithStatus[]>([])
@@ -25,11 +25,24 @@ export function useStudioConnections(options: { image?: boolean; assistant?: boo
 
   useEffect(() => {
     let alive = true
+    let initializing = true
+    let revision = 0
     const load = async () => {
-      const items = await window.electronAPI.listLlmConnectionsWithStatus()
-      if (alive) {
+      const requestRevision = ++revision
+      let items = await window.electronAPI.listLlmConnectionsWithStatus()
+      if (initializing && options.image && options.active !== false) {
+        const selected = items.find(item => item.slug === preferredImageConnection(items, localStorage.getItem(IMAGE_CONNECTION_KEY) ?? '', workspaceDefaultLlmConnection))
+        if (selected?.oauthProvider === 'tokennest' && selected.isAuthenticated) {
+          // Keep persisted discovery data if a temporary network failure prevents refresh.
+          await window.electronAPI.refreshLlmConnectionModels(selected.slug).catch(() => {})
+          items = await window.electronAPI.listLlmConnectionsWithStatus()
+        }
+      }
+      if (alive && requestRevision === revision) {
         setConnections(items); setLoaded(true)
-        if (!options.image) {
+        if (options.image) {
+          setConnectionSlug(current => preferredImageConnection(items, current, workspaceDefaultLlmConnection))
+        } else {
           setConnectionSlug(current => {
             const compatible = items.filter(supportsMindMap)
             if (compatible.some(item => item.slug === current && item.isAuthenticated && mindMapTextModels(item).length)) return current
@@ -45,10 +58,11 @@ export function useStudioConnections(options: { image?: boolean; assistant?: boo
         }
       }
     }
-    void load().catch(() => {})
-    const stop = window.electronAPI.onLlmConnectionsChanged(() => { void load().catch(() => {}) })
+    if (options.image && options.active !== false) setLoaded(false)
+    void load().catch(() => {}).finally(() => { initializing = false })
+    const stop = window.electronAPI.onLlmConnectionsChanged(() => { if (!initializing) void load().catch(() => {}) })
     return () => { alive = false; stop() }
-  }, [options.image, options.assistant, workspaceDefaultLlmConnection])
+  }, [options.image, options.assistant, options.active, workspaceDefaultLlmConnection])
 
   const connection = useMemo(() => connections.find(item => item.slug === connectionSlug), [connections, connectionSlug])
   const groups = useMemo(() => connection && options.image ? imageGroups(connection) : [], [connection, options.image])
@@ -56,6 +70,10 @@ export function useStudioConnections(options: { image?: boolean; assistant?: boo
   const availableModels = useMemo(() => connection
     ? options.image ? imageModels(connection, selectedGroup) : mindMapTextModels(connection)
     : [], [connection, options.image, selectedGroup])
+  // Discovery and the selected group update together; do not expose an empty or
+  // stale image model for one render while the state synchronization effect runs.
+  const selectedModel = options.image && availableModels.length && !availableModels.includes(model)
+    ? availableModels[0]! : model
   const modelChannelGroup = connection && !options.image ? mindMapGroupForModel(connection, model) : ''
 
   useEffect(() => {
@@ -96,7 +114,7 @@ export function useStudioConnections(options: { image?: boolean; assistant?: boo
     setConnections(await window.electronAPI.listLlmConnectionsWithStatus())
   }
 
-  return { connections, connection, connectionSlug, setConnectionSlug: chooseConnection, model, setModel, modelChannelGroup, channelGroup: selectedGroup, setChannelGroup, availableModels, groups, loaded, loginTokenNest, refresh }
+  return { connections, connection, connectionSlug, setConnectionSlug: chooseConnection, model: selectedModel, setModel, modelChannelGroup, channelGroup: selectedGroup, setChannelGroup, availableModels, groups, loaded, loginTokenNest, refresh }
 }
 
 export function StudioConnectionPicker({

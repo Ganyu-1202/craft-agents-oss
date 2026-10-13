@@ -34,8 +34,9 @@ export function StudioImageConnectionDialog(props: Props) {
   const [page, setPage] = useState<'tokennest' | 'other'>('tokennest')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  const tokenNest = props.connections.find(item => item.oauthProvider === 'tokennest')
   const tokenNestSelected = props.connection?.oauthProvider === 'tokennest'
+  const tokenNest = tokenNestSelected ? props.connection : props.connections.find(item => item.oauthProvider === 'tokennest')
+  const needsLogin = !tokenNest?.isAuthenticated || props.issue === 'reauth'
   const tokenNestReady = tokenNestSelected && props.imageReady && props.issue !== 'reauth'
   const otherConnections = props.connections.filter(item => isImageConnection(item) && item.oauthProvider !== 'tokennest')
 
@@ -58,6 +59,12 @@ export function StudioImageConnectionDialog(props: Props) {
     props.onReauthorized()
   }
 
+  async function connectTokenNest() {
+    if (needsLogin) await login()
+    else if (!tokenNestSelected) selectTokenNest()
+    else await props.refresh()
+  }
+
   const fieldClass = 'flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background/70 p-4 text-left shadow-minimal transition-colors hover:border-primary/40 hover:bg-accent/40'
   const primaryClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50'
 
@@ -78,8 +85,7 @@ export function StudioImageConnectionDialog(props: Props) {
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('studio.oauthDrawingHint')}</p></div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button className={primaryClass} disabled={pending} onClick={() => void run(login)}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}{tokenNest?.isAuthenticated ? t('studio.reauthTokenNest') : t('studio.signInWithTokenNest')}</button>
-            {tokenNest?.isAuthenticated && !tokenNestSelected && <button className="h-10 rounded-lg border border-border px-3 text-xs hover:bg-accent" onClick={selectTokenNest}>{t('studio.useSignedInAccount')}</button>}
+            <button className={primaryClass} disabled={pending} onClick={() => void run(connectTokenNest)}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : !needsLogin && tokenNestSelected ? <RefreshCw className="size-4" /> : <ArrowRight className="size-4" />}{needsLogin ? t(tokenNest?.isAuthenticated ? 'studio.reauthTokenNest' : 'studio.signInWithTokenNest') : t(tokenNestSelected ? 'studio.refreshGroups' : 'studio.useSignedInAccount')}</button>
           </div>
         </div>
 

@@ -86,6 +86,7 @@ export async function runStudioImageToolAction(
     await writeFile(path, data, { flag: 'wx' })
     return { path, bytes: data.length }
   }))
+  const channelGroup = result.channelGroup ?? option.channelGroup
   return { images, count: images.length, connectionSlug: option.connectionSlug, model: option.model,
-    ...(option.channelGroup ? { channelGroup: option.channelGroup } : {}) }
+    ...(channelGroup ? { channelGroup } : {}) }
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import * as config from '@craft-agent/shared/config'
 import * as credentials from '@craft-agent/shared/credentials'
 import * as auth from '@craft-agent/shared/auth'
@@ -8,11 +8,12 @@ import { deflateRawSync } from 'node:zlib'
 import { registerStudioHandlers } from './studio'
 
 const originalFetch = globalThis.fetch
+beforeEach(() => { spyOn(config, 'updateLlmConnection').mockReturnValue(false) })
 afterEach(() => { globalThis.fetch = originalFetch; mock.restore() })
 
 function harness() {
   const handlers = new Map<string, HandlerFn>()
-  registerStudioHandlers({ handle: (channel, fn) => { handlers.set(channel, fn) } } as RpcServer)
+  registerStudioHandlers({ handle: (channel: string, fn: HandlerFn) => { handlers.set(channel, fn) }, push: () => {} } as unknown as RpcServer)
   return (channel: string, input: unknown) => handlers.get(channel)!({ clientId: 'test', workspaceId: null, webContentsId: null }, input)
 }
 
@@ -24,12 +25,146 @@ function connection() {
   spyOn(credentials, 'getCredentialManager').mockReturnValue({ getLlmApiKey: async () => 'secret' } as never)
 }
 
+function tokenNestConnection(groups: NonNullable<config.LlmConnection['channelGroups']> = []) {
+  const item: config.LlmConnection = {
+    slug: 'tokennest', name: 'TokenNest', providerType: 'pi_compat', authType: 'oauth',
+    oauthProvider: 'tokennest', channelGroup: 'chat', channelGroups: groups, createdAt: 1,
+  }
+  spyOn(config, 'getLlmConnection').mockReturnValue(item)
+  spyOn(credentials, 'getCredentialManager').mockReturnValue({} as never)
+  spyOn(auth, 'getValidTokenNestCredentials').mockResolvedValue({ accessToken: 'oauth-access' } as never)
+  return item
+}
+
+const imageInput = { connectionSlug: 'tokennest', channelGroup: 'old', model: 'gpt-image-1', prompt: 'A cat' }
+const drawingGroup = { id: 'drawing', name: 'GPT图片生成渠道', models: ['gpt-image-1'] }
+
 describe('Studio server requests', () => {
+  it('refreshes stale image groups and sends the same model through a newly available group', async () => {
+    tokenNestConnection()
+    const discover = spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([drawingGroup])
+    const save = spyOn(config, 'updateLlmConnection').mockReturnValue(true)
+    const pushed = mock(() => {})
+    const handlers = new Map<string, HandlerFn>()
+    registerStudioHandlers({ handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: pushed } as unknown as RpcServer)
+    let request: RequestInit | undefined
+    globalThis.fetch = mock(async (_url, init) => { request = init; return Response.json({ data: [{ b64_json: 'aGVsbG8=' }] }) }) as unknown as typeof fetch
+    await handlers.get(RPC_CHANNELS.studio.GENERATE_IMAGE)!({ clientId: 'test', workspaceId: null, webContentsId: null }, imageInput)
+    expect(discover).toHaveBeenCalledTimes(1)
+    expect(save).toHaveBeenCalledWith('tokennest', { channelGroups: [drawingGroup] })
+    expect(pushed).toHaveBeenCalledWith(RPC_CHANNELS.llmConnections.CHANGED, { to: 'all' })
+    expect(new Headers(request?.headers).get('X-TokenNest-Group')).toBe('drawing')
+    expect(JSON.parse(String(request?.body)).model).toBe('gpt-image-1')
+  })
+
+  it('resolves an omitted image group without using the account chat group', async () => {
+    tokenNestConnection([drawingGroup])
+    const discover = spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([])
+    let request: RequestInit | undefined
+    globalThis.fetch = mock(async (_url, init) => { request = init; return Response.json({ data: [{ b64_json: 'aGVsbG8=' }] }) }) as unknown as typeof fetch
+    await harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, { ...imageInput, channelGroup: undefined })
+    expect(discover).not.toHaveBeenCalled()
+    expect(new Headers(request?.headers).get('X-TokenNest-Group')).toBe('drawing')
+  })
+
+  it('recovers a definite no-channel rejection once using another authorized group for the same model', async () => {
+    tokenNestConnection([{ ...drawingGroup, id: 'old' }])
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([{ ...drawingGroup, id: 'old' }, drawingGroup])
+    const sent: RequestInit[] = []
+    globalThis.fetch = mock(async (_url, init) => {
+      sent.push(init!)
+      return sent.length === 1
+        ? Response.json({ error: { code: 'no_available_channel', message: 'Temporarily unavailable' } }, { status: 503 })
+        : Response.json({ data: [{ b64_json: 'aGVsbG8=' }] })
+    }) as unknown as typeof fetch
+    const result = await harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)
+    expect(result.imageBase64).toBe('aGVsbG8=')
+    expect(result.channelGroup).toBe('drawing')
+    expect(sent.map(init => new Headers(init.headers).get('X-TokenNest-Group'))).toEqual(['old', 'drawing'])
+    expect(sent.map(init => JSON.parse(String(init.body)).model)).toEqual(['gpt-image-1', 'gpt-image-1'])
+  })
+
+  it('rebuilds the edit multipart body when retrying a rejected image route', async () => {
+    tokenNestConnection([{ ...drawingGroup, id: 'old' }])
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([drawingGroup])
+    const bodies: FormData[] = []
+    globalThis.fetch = mock(async (_url, init) => {
+      bodies.push(init?.body as FormData)
+      return bodies.length === 1
+        ? Response.json({ error: { message: '无可用渠道' } }, { status: 503 })
+        : Response.json({ data: [{ b64_json: 'aGVsbG8=' }] })
+    }) as unknown as typeof fetch
+    await harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, { ...imageInput, imageBase64: 'iVBORw0KGgo=', maskBase64: 'iVBORw0KGgo=' })
+    expect(bodies).toHaveLength(2)
+    expect(bodies[0]).not.toBe(bodies[1])
+    for (const body of bodies) {
+      expect(body.get('model')).toBe('gpt-image-1')
+      expect(body.get('image')).toBeInstanceOf(File)
+      expect(body.get('mask')).toBeInstanceOf(File)
+    }
+  })
+
+  it('does not retry a model in a group that only advertises other image models', async () => {
+    tokenNestConnection([{ ...drawingGroup, id: 'old' }])
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([{ ...drawingGroup, models: ['gpt-image-2'] }])
+    const send = mock(async () => Response.json({ error: { message: '无可用渠道' } }, { status: 503 }))
+    globalThis.fetch = send as unknown as typeof fetch
+    await expect(harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)).rejects.toThrow('STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE')
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops after one alternative route fails', async () => {
+    tokenNestConnection([{ ...drawingGroup, id: 'old' }])
+    const discover = spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([drawingGroup, { ...drawingGroup, id: 'third' }])
+    const send = mock(async () => Response.json({ error: { message: '无可用渠道' } }, { status: 503 }))
+    globalThis.fetch = send as unknown as typeof fetch
+    await expect(harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)).rejects.toThrow('STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE')
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(discover).toHaveBeenCalledTimes(1)
+  })
+
+  it('renews a rejected discovery credential before deciding whether an image group exists', async () => {
+    tokenNestConnection()
+    const discover = spyOn(auth, 'fetchTokenNestChannelGroups')
+      .mockRejectedValueOnce(new auth.TokenNestRequestError('Expired', 401))
+      .mockResolvedValueOnce([drawingGroup])
+    const renew = spyOn(auth, 'getValidTokenNestCredentials').mockResolvedValue({ accessToken: 'oauth-access' } as never)
+    globalThis.fetch = mock(async () => Response.json({ data: [{ b64_json: 'aGVsbG8=' }] })) as unknown as typeof fetch
+    await harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)
+    expect(discover).toHaveBeenCalledTimes(2)
+    expect(renew).toHaveBeenCalledWith('tokennest', expect.anything(), true)
+  })
+
+  it('preserves cached groups and does not turn a discovery network failure into an authorization error', async () => {
+    const cached = [{ id: 'chat', name: 'Chat', models: ['gpt-text'] }]
+    const item = tokenNestConnection(cached)
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockRejectedValue(new Error('Network offline'))
+    const send = mock(async () => Response.json({ data: [] }))
+    globalThis.fetch = send as unknown as typeof fetch
+    await expect(harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)).rejects.toThrow('Network offline')
+    expect(item.channelGroups).toEqual(cached)
+    expect(config.updateLlmConnection).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('does not retry ambiguous image failures', async () => {
+    tokenNestConnection([{ ...drawingGroup, id: 'old' }])
+    const discover = spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([drawingGroup])
+    const send = mock(async () => { throw new Error('Request timed out') })
+    globalThis.fetch = send as unknown as typeof fetch
+    await expect(harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, imageInput)).rejects.toThrow('Request timed out')
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(discover).not.toHaveBeenCalled()
+  })
+
   it('returns a transport-safe recovery code when image generation has no TokenNest group', async () => {
     spyOn(config, 'getLlmConnection').mockReturnValue({
       slug: 'tokennest', name: 'TokenNest', providerType: 'pi_compat', authType: 'oauth',
       oauthProvider: 'tokennest', channelGroups: [{ id: 'chat', models: ['gpt-text'] }], createdAt: 1,
     } as never)
+    spyOn(credentials, 'getCredentialManager').mockReturnValue({} as never)
+    spyOn(auth, 'getValidTokenNestCredentials').mockResolvedValue({ accessToken: 'oauth-access' } as never)
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([{ id: 'chat', name: 'chat', models: ['gpt-text'] }])
     try {
       await harness()(RPC_CHANNELS.studio.GENERATE_IMAGE, { connectionSlug: 'tokennest', model: 'gpt-image-1', prompt: 'A cat' })
       throw new Error('Expected missing image group')
@@ -172,8 +307,6 @@ describe('Studio server requests', () => {
     await invoke(RPC_CHANNELS.studio.GENERATE_IMAGE, { connectionSlug: 'tokennest', channelGroup: 'drawing', model: 'gpt-image-1', prompt: 'A tree' })
     expect(new Headers(request?.headers).get('X-TokenNest-Group')).toBe('drawing')
     expect(new Headers(request?.headers).get('Authorization')).toBe('Bearer oauth-access')
-    expect(invoke(RPC_CHANNELS.studio.GENERATE_IMAGE, { connectionSlug: 'tokennest', channelGroup: 'chat', model: 'gpt-image-1', prompt: 'A tree' }))
-      .rejects.toThrow('STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE')
   })
 
   it('sends a Chinese TokenNest image group as UTF-8 header bytes', async () => {
@@ -207,6 +340,7 @@ describe('Studio server requests', () => {
     } as never)
     spyOn(credentials, 'getCredentialManager').mockReturnValue({} as never)
     spyOn(auth, 'getValidTokenNestCredentials').mockResolvedValue({ accessToken: 'old-oauth-access' } as never)
+    spyOn(auth, 'fetchTokenNestChannelGroups').mockResolvedValue([])
     const request = mock(async () => Response.json({ data: [{ b64_json: 'aGVsbG8=' }] }))
     globalThis.fetch = request as unknown as typeof fetch
 

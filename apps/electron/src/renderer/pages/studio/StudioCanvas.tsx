@@ -222,7 +222,7 @@ function CanvasEditor({ compactLayout, active, onOpenAiSettings, session, onSave
   const hydrated = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [, refreshHistory] = useState(0)
-  const { connections, connection, connectionSlug, setConnectionSlug, model, setModel, channelGroup, setChannelGroup, groups, loaded, loginTokenNest, refresh } = useStudioConnections({ image: true })
+  const { connections, connection, connectionSlug, setConnectionSlug, model, setModel, channelGroup, setChannelGroup, groups, loaded, loginTokenNest, refresh } = useStudioConnections({ image: true, active })
   const assistantConnection = useStudioConnections({ assistant: true })
   const imageReady = !!connection?.isAuthenticated && !!model.trim()
     && (connection.oauthProvider !== 'tokennest' || !!channelGroup)
@@ -988,6 +988,7 @@ function CanvasEditor({ compactLayout, active, onOpenAiSettings, session, onSave
         ...(mask ? { maskBase64: base64(mask) } : {}),
         ...(mode === 'cutout' ? { transparentBackground: true } : {}),
       })
+      if (result.channelGroup) setChannelGroup(result.channelGroup)
       const outputs = result.images?.length ? result.images : [result]
       const records: StudioGeneration[] = []
       const issues = new Map<string, EditOutputIssue>()
@@ -1001,7 +1002,7 @@ function CanvasEditor({ compactLayout, active, onOpenAiSettings, session, onSave
           sessionTitle: session.title === t('studio.untitledCanvas') ? generationPrompt.slice(0, 40) : session.title,
           kind: mode === 'inpaint' ? 'edit' : mode,
           prompt: generationPrompt, model: model.trim(), connectionName: connection?.name ?? connectionSlug,
-          ...(connection?.oauthProvider === 'tokennest' ? { channelGroup } : {}),
+          ...(connection?.oauthProvider === 'tokennest' ? { channelGroup: result.channelGroup ?? channelGroup } : {}),
           width: image.naturalWidth, height: image.naturalHeight,
           image: new Blob([bytes], { type: 'image/png' }),
         }
