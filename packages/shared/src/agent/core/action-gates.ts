@@ -27,6 +27,7 @@ export function classifyActionGate(toolName: string, input: Record<string, unkno
   if (SUPER_AGENT_ACTION_TOOLS.some(def => def.name === tool)) return;
   const name = tool.replace(/_/g, '');
   if (tool === 'super_agent_task' && input.action === 'install-skill') return 'state-change';
+  if (tool === 'super_agent_settings') return input.action === 'get' ? undefined : 'state-change';
   if (tool === 'super_agent_library') {
     if (['library-list', 'library-get', 'memory-upsert', 'memory-delete'].includes(String(input.type))) return;
     return 'state-change';

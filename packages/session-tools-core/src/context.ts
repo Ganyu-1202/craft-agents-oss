@@ -461,6 +461,7 @@ export interface SessionToolContext {
   getCollaboration?(query?: { goalId?: string; taskId?: string; itemIds?: string[]; offset?: number; limit?: number }): Promise<unknown>;
   superAgentAction?(toolName: string, args: Record<string, unknown>): Promise<unknown>;
   superAgentTask?(args: Record<string, unknown>): Promise<unknown>;
+  superAgentSettings?(args: Record<string, unknown>): Promise<unknown>;
   superAgentLibrary?(args: Record<string, unknown>): Promise<unknown>;
 
   /** Write one item to the collaboration shared board. */

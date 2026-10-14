@@ -577,6 +577,10 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     if (slug !== 'session') return deny('use the session continuity tool');
     return policy.role === 'worker' || input.action === 'get' ? { allowed: true } : deny('only workers may update task checkpoints or artifacts');
   }
+  if (canonical === 'super_agent_settings') {
+    if (slug !== 'session') return deny('use the registered session settings tool');
+    return policy.role === 'coordinator' ? { allowed: true } : deny('only the interaction node may edit team settings');
+  }
   if (canonical === 'super_agent_library') {
     if (slug !== 'session') return deny('use the session library tool');
     if (input.type === 'library-list' || input.type === 'library-get') return { allowed: true };

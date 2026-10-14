@@ -3,6 +3,7 @@ import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { z } from 'zod'
+import { SuperAgentSettingsSchema } from '@tokenbird/session-tools-core/super-agent-tools'
 import { SuperAgentActionsSchema as ActionsSchema, parseSuperAgentToolCall, isSuperAgentToolValidationError, SUPER_AGENT_COLLABORATION_SKILL, type SuperAgentActions } from '@tokenbird/session-tools-core/super-agent-tools'
 import { type ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
 import type { CreateSessionOptions, Session, SessionEvent } from '@tokenbird/shared/protocol'
@@ -180,6 +181,7 @@ class SuperAgentOperationOutcomeError extends Error {
  * execution; this service owns serial queues, communication, board and scripts.
  */
 export class SuperAgentService {
+  private readonly settingsUpdates = new Map<string, { sessionId: string; config: SuperAgentConfig; revision: string; applying?: boolean }>()
   private readonly documents = new Map<string, SuperAgentDocument>()
   private readonly historyCleanupResults = new Map<string, SuperAgentHistoryCleanupResult>()
   private readonly queues = new Map<string, Promise<unknown>>()
@@ -226,6 +228,28 @@ export class SuperAgentService {
           await this.commit(event.workspaceId, document)
           this.schedule(event.workspaceId)
         }
+      }).then(async () => {
+        const update = this.settingsUpdates.get(event.workspaceId)
+        if (!update || update.sessionId !== event.sessionId || update.applying || this.closed) return
+        update.applying = true
+        try {
+          if (event.reason !== 'complete') throw new Error('Settings update cancelled because the interaction turn did not complete successfully')
+          await this.save(event.workspaceId, update.config, update.revision)
+          await this.serial(event.workspaceId, async () => {
+            const document = await this.load(event.workspaceId)
+            this.message(document, 'system', 'user', 'chat', '超级智能体设置已保存。')
+            await this.commit(event.workspaceId, document)
+          })
+        } catch (error) {
+          await this.serial(event.workspaceId, async () => {
+            const document = await this.load(event.workspaceId)
+            this.message(document, 'system', 'user', 'error', `Settings update was not saved: ${error instanceof Error ? error.message : String(error)}`)
+            await this.commit(event.workspaceId, document)
+          })
+        } finally {
+          this.settingsUpdates.delete(event.workspaceId)
+          this.schedule(event.workspaceId)
+        }
       }).catch(() => undefined)
     })
     this.unsubscribeEvents = deps.host.onSessionEvent?.((event, workspaceId) => {
@@ -238,6 +262,43 @@ export class SuperAgentService {
     }
   }
 
+  private settingsRevision(config: SuperAgentConfig | null | undefined): string {
+    return createHash('sha256').update(JSON.stringify(config ?? null)).digest('hex')
+  }
+
+  async accessSettings(workspaceId: string, value: unknown, sessionId?: string): Promise<unknown> {
+    const request = SuperAgentSettingsSchema.parse(value)
+    const prepared = await this.serial(workspaceId, async () => {
+      const document = await this.load(workspaceId)
+      const active = sessionId ? this.activeNode(document, sessionId) : undefined
+      if (active && active.node.role !== 'coordinator') throw new Error('Only the interaction node may edit team settings')
+      const revision = this.settingsRevision(document.config)
+      if (request.action === 'get') {
+        if (request.changes || request.expectedRevision) throw new Error('get accepts no changes or expectedRevision')
+        return { result: { config: document.config ? structuredClone(document.config) : null, revision, pending: this.settingsUpdates.has(workspaceId) } }
+      }
+      if (!document.config) throw new Error('Configure Super Agent in the setup page before editing settings')
+      if (!request.expectedRevision || request.expectedRevision !== revision) throw new Error('Super Agent settings changed or revision is missing; call get before updating')
+      if (!request.changes || !Object.keys(request.changes).length) throw new Error('Provide at least one setting to change')
+      if ('version' in request.changes) throw new Error('The configuration format version cannot be edited')
+      const config = validateSuperAgentConfig({ ...document.config, ...request.changes })
+      if (this.settingsUpdates.has(workspaceId)) throw new Error('A settings update is already pending; wait for completion')
+      if (active) {
+        if (document.pendingTurns.length !== 1 || document.state.scripts.some(script => script.status === 'running')
+          || document.state.nodes.some(node => node.nodeId !== active.node.id && ['working', 'preparing', 'recovering'].includes(node.status))) {
+          throw new Error('Stop active and queued work before changing Super Agent settings')
+        }
+        await this.deps.validateConfig?.(workspaceId, config)
+        this.settingsUpdates.set(workspaceId, { sessionId: sessionId!, config, revision })
+        return { result: { status: 'pending', message: 'Settings will be saved after this interaction turn completes successfully. End this turn without dispatching work; read back afterwards to verify.' } }
+      }
+      return { config, revision }
+    })
+    if ('result' in prepared) return prepared.result
+    const saved = await this.save(workspaceId, prepared.config!, prepared.revision)
+    return { status: 'saved', config: saved.config, revision: this.settingsRevision(saved.config) }
+  }
+
   async get(workspaceId: string): Promise<SuperAgentSnapshot> {
     return this.serial(workspaceId, async () => {
       const document = await this.load(workspaceId)
@@ -245,13 +306,14 @@ export class SuperAgentService {
     })
   }
 
-  async save(workspaceId: string, value: SuperAgentConfig): Promise<SuperAgentSnapshot> {
+  async save(workspaceId: string, value: SuperAgentConfig, expectedRevision?: string): Promise<SuperAgentSnapshot> {
     let config = validateSuperAgentConfig(value)
     if (config.workflow?.independentReview && config.nodes.filter(node => node.role === 'worker').length < 2) throw new Error('Independent review requires at least two worker nodes')
     const snapshot = await this.serial(workspaceId, async () => {
       if (this.resetting.has(workspaceId)) throw new Error('Super Agent reset is in progress')
       const document = await this.load(workspaceId)
       const previous = document.config
+      if (expectedRevision && this.settingsRevision(previous) !== expectedRevision) throw new Error('Super Agent settings changed; read them again before updating')
       if (this.deps.upgradeArchitecture && !document.pendingTurns.length
         && !document.state.nodes.some(node => ['working', 'preparing', 'recovering'].includes(node.status))
         && !document.state.scripts.some(script => ['running', 'untracked'].includes(script.status) || script.resultPending || script.resultQueuedAt != null)) {
@@ -703,6 +765,7 @@ export class SuperAgentService {
     return this.serial(workspaceId, async () => {
       const document = await this.load(workspaceId)
       const { node, turn, task } = this.activeNode(document, sessionId)
+      if (this.settingsUpdates.has(workspaceId) && toolName !== 'super_agent_deliver') throw new Error('Settings update is pending; end this turn without further collaboration actions')
       if (turn.kind === 'compact' || task?.phase === 'waiting') throw new Error('End this turn before submitting more collaboration actions')
       const calls = turn.toolCalls ??= []
       const fingerprint = createHash('sha256').update(JSON.stringify({ toolName, actions: parsed.actions })).digest('hex')
@@ -1210,6 +1273,7 @@ export class SuperAgentService {
 
   async cleanup(): Promise<void> {
     this.closed = true
+    this.settingsUpdates.clear()
     this.deps.workflow?.close()
     if (this.timer) clearInterval(this.timer)
     this.unsubscribe()
@@ -2019,7 +2083,7 @@ export class SuperAgentService {
   }
 
   private schedule(workspaceId: string): void {
-    if (this.closed || this.resetting.has(workspaceId)) return
+    if (this.closed || this.resetting.has(workspaceId) || this.settingsUpdates.has(workspaceId)) return
     const document = this.documents.get(workspaceId)
     if (!document?.config) return
     for (const node of document.config.nodes) {

@@ -142,6 +142,7 @@ export interface SessionScopedToolCallbacks {
   getCollaborationFn?: (query?: { goalId?: string; taskId?: string; itemIds?: string[]; offset?: number; limit?: number }) => Promise<unknown>;
   superAgentActionFn?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
   superAgentTaskFn?: (args: Record<string, unknown>) => Promise<unknown>;
+  superAgentSettingsFn?: (args: Record<string, unknown>) => Promise<unknown>;
   superAgentLibraryFn?: (args: Record<string, unknown>) => Promise<unknown>;
   /** Update one shared-board item as the invoking collaboration member. */
   updateCollaborationBoardFn?: (itemId: string, value: unknown) => Promise<unknown>;

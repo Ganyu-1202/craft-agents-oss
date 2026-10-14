@@ -11,7 +11,7 @@ export type SuperAgentToolRole = 'coordinator' | 'orchestrator' | 'worker';
 
 const sharedTeamTools = ['send_agent_message', 'collaboration_board', 'get_session_info', 'super_agent_message', 'super_agent_task', 'super_agent_library'];
 const roleTools: Record<SuperAgentToolRole, readonly string[]> = {
-  coordinator: [...sharedTeamTools, 'super_agent_intent', 'super_agent_deliver'],
+  coordinator: [...sharedTeamTools, 'super_agent_settings', 'super_agent_intent', 'super_agent_deliver'],
   orchestrator: [...sharedTeamTools, 'super_agent_dispatch', 'super_agent_plan', 'super_agent_board', 'super_agent_accept', 'super_agent_resources'],
   worker: [...sharedTeamTools, 'super_agent_board', 'super_agent_resources', 'super_agent_script'],
 };

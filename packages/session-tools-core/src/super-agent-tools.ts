@@ -65,3 +65,9 @@ export function parseSuperAgentToolCall(toolName: string, input: unknown) {
   } else actions = { [tool.field]: tool.array ? [args] : args }
   return { requestId, actions: SuperAgentActionsSchema.parse(actions) }
 }
+
+export const SuperAgentSettingsSchema = z.object({
+  action: z.enum(['get', 'update']),
+  expectedRevision: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  changes: z.record(z.unknown()).optional(),
+}).strict()

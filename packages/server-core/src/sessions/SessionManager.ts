@@ -5449,6 +5449,7 @@ export class SessionManager implements ISessionManager {
           if (!managed.executionPolicy) throw new Error('This is not a Super Agent node')
           return getSuperAgentService(this).updateNodeTask(managed.workspace.id, managed.id, args)
         },
+        superAgentSettingsFn: async args => getSuperAgentService(this).accessSettings(managed.workspace.id, args, managed.executionPolicy ? managed.id : undefined),
         superAgentLibraryFn: async args => {
           if (!managed.executionPolicy) throw new Error('This is not a Super Agent node')
           return getSuperAgentService(this).accessNodeLibrary(managed.workspace.id, managed.id, args)
