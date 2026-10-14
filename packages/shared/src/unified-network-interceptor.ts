@@ -33,6 +33,11 @@ import {
 import { FEATURE_FLAGS } from './feature-flags.ts';
 import { resolveRequestContext } from './interceptor-request-utils.ts';
 import { fetchWithNetworkDiagnostics } from './network-diagnostics.ts';
+import { createHash } from 'node:crypto';
+
+const RESPONSES_CALL_ID_MAX_LENGTH = 64;
+// Keep metadata lookup on the SDK's original ID without modifying its history.
+const originalResponsesCallIds = new WeakMap<Record<string, unknown>, string>();
 
 // Type alias for fetch's HeadersInit
 type HeadersInitType = Headers | Record<string, string> | string[][];
@@ -141,7 +146,7 @@ interface ApiAdapter {
  */
 export class MalformedBodyError extends Error {
   /** Stable error code for telemetry/UX */
-  readonly code: 'duplicate_tool_call_id' | 'missing_tool_call_id' | 'missing_call_id' | 'orphaned_function_call_output' | 'empty_tool_name';
+  readonly code: 'duplicate_tool_call_id' | 'missing_tool_call_id' | 'missing_call_id' | 'call_id_too_long' | 'orphaned_function_call_output' | 'empty_tool_name';
   /** Human-readable detail to show in logs and surface to the user */
   readonly detail: string;
   /** Adapter name (for diagnostics) */
@@ -1450,7 +1455,8 @@ const openAiResponsesAdapter: ApiAdapter = {
     // function_call entries, or emit a function_call_output that doesn't
     // reference any earlier function_call. The upstream replies with an
     // opaque 400 (#613). We synthesize a deterministic id and drop true
-    // orphans so the request reaches the API in a usable shape.
+    // orphans so the request reaches the API in a usable shape. Oversized IDs
+    // are shortened together with their tool-result references.
     repairResponsesHistoryInPlace(input);
 
     let injectedCount = 0;
@@ -1469,7 +1475,7 @@ const openAiResponsesAdapter: ApiAdapter = {
       const hasDisplayName = '_displayName' in args;
       if (hasIntent && hasDisplayName) continue;
 
-      const stored = toolMetadataStore.get(entry.call_id);
+      const stored = toolMetadataStore.get(originalResponsesCallIds.get(entry) ?? entry.call_id);
       if (!stored) continue;
 
       const newArgs: Record<string, unknown> = {};
@@ -1670,6 +1676,13 @@ export function validateOpenAiResponsesBody(body: Record<string, unknown>): void
   for (let i = 0; i < input.length; i++) {
     const entry = input[i];
     if (!entry) continue;
+    if (typeof entry.call_id === 'string' && entry.call_id.length > RESPONSES_CALL_ID_MAX_LENGTH) {
+      throw new MalformedBodyError({
+        code: 'call_id_too_long',
+        detail: `input[${i}].call_id exceeds ${RESPONSES_CALL_ID_MAX_LENGTH} characters (${entry.call_id.length})`,
+        adapter: 'openai-responses',
+      });
+    }
     if (entry.type === 'function_call') {
       const callId = typeof entry.call_id === 'string' ? entry.call_id : '';
       if (!callId) {
@@ -1722,6 +1735,7 @@ export function validateOpenAiResponsesBody(body: Record<string, unknown>): void
  * defects we can recover from. Mutates `input` and returns the number of repairs.
  *
  * - `function_call` entries missing `call_id` get a deterministic synthesized id.
+ * - Oversized call IDs and their result references share a stable short ID.
  * - `function_call_output` entries referencing an unknown `call_id` are dropped
  *   (the upstream would 400 anyway; better to lose one tool result than the turn).
  *
@@ -1730,10 +1744,11 @@ export function validateOpenAiResponsesBody(body: Record<string, unknown>): void
 export function repairResponsesHistoryInPlace(input: Array<Record<string, unknown>>): {
   synthesizedCallIds: number;
   droppedOrphans: number;
+  normalizedCallIds: number;
 } {
   let synthesizedCallIds = 0;
   let droppedOrphans = 0;
-  const knownCallIds = new Set<string>();
+  let normalizedCallIds = 0;
 
   // First pass: synthesize missing call_ids on function_call entries so later
   // entries can reference them.
@@ -1742,22 +1757,45 @@ export function repairResponsesHistoryInPlace(input: Array<Record<string, unknow
     if (!entry) continue;
     if (entry.type !== 'function_call') continue;
     if (typeof entry.call_id === 'string' && entry.call_id.length > 0) {
-      knownCallIds.add(entry.call_id);
       continue;
     }
     const name = typeof entry.name === 'string' ? entry.name : 'unknown';
     const argsHash = typeof entry.arguments === 'string'
       ? hashShortString(entry.arguments)
       : '0';
-    const synthetic = `repaired_${i}_${name}_${argsHash}`;
+    const synthetic = `repaired_${i}_${hashShortString(name)}_${argsHash}`;
     entry.call_id = synthetic;
-    knownCallIds.add(synthetic);
     synthesizedCallIds++;
     debugLog(`[OpenAI Responses Repair] Synthesized call_id "${synthetic}" for input[${i}] (name=${name})`);
   }
 
-  if (synthesizedCallIds === 0 && input.every(e => e.type !== 'function_call_output')) {
-    return { synthesizedCallIds, droppedOrphans };
+  // IDs can come from another provider, persisted history, or a relay. A plain
+  // truncation would merge distinct calls with the same prefix. Reserve valid
+  // IDs, hash the complete oversized value, and update both sides together.
+  const callEntries = input.filter(entry => entry && ['function_call', 'function_call_output', 'custom_tool_call', 'custom_tool_call_output'].includes(String(entry.type)));
+  const reservedIds = new Set(input.flatMap(entry => entry && typeof entry.call_id === 'string'
+    && entry.call_id.length <= RESPONSES_CALL_ID_MAX_LENGTH ? [entry.call_id] : []));
+  const aliases = new Map<string, string>();
+  for (const entry of callEntries) {
+    const original = entry.call_id;
+    if (typeof original !== 'string' || original.length <= RESPONSES_CALL_ID_MAX_LENGTH) continue;
+    let shortened = aliases.get(original);
+    if (!shortened) {
+      let attempt = 0;
+      do {
+        const digest = createHash('sha256').update(original).update(`\0${attempt++}`).digest('hex').slice(0, 48);
+        shortened = `call_${digest}`;
+      } while (reservedIds.has(shortened));
+      reservedIds.add(shortened);
+      aliases.set(original, shortened);
+      normalizedCallIds++;
+    }
+    originalResponsesCallIds.set(entry, original);
+    entry.call_id = shortened;
+  }
+  const knownCallIds = new Set<string>();
+  for (const entry of input) {
+    if (entry?.type === 'function_call' && typeof entry.call_id === 'string') knownCallIds.add(entry.call_id);
   }
 
   // Second pass: drop orphan function_call_output entries.
@@ -1773,7 +1811,7 @@ export function repairResponsesHistoryInPlace(input: Array<Record<string, unknow
     }
   }
 
-  return { synthesizedCallIds, droppedOrphans };
+  return { synthesizedCallIds, droppedOrphans, normalizedCallIds };
 }
 
 /** Tiny stable hash for synthesizing deterministic call_ids. Not a security primitive. */

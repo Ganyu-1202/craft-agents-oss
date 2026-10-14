@@ -39,6 +39,7 @@ import {
   CLIENT_BROWSER_INVOKE,
   CLIENT_CANVAS_INVOKE,
   CLIENT_RUN_SHELL,
+  CLIENT_MINDMAP_PROJECT_TOOL,
   CLIENT_REMOTE_ACCESS,
   CLIENT_REQUEST_FILES,
   CLIENT_SFTP_TRANSFER,
@@ -297,7 +298,21 @@ client.handleCapability(CLIENT_SFTP_TRANSFER, async (req: { direction: 'upload' 
 // Build ElectronAPI proxy
 // ---------------------------------------------------------------------------
 
+// A remote server may only read the project associated with this active request.
+const activeMindMapProjects = new Map<string, string>()
+client.handleCapability(CLIENT_MINDMAP_PROJECT_TOOL, async (request: { requestId: string; name: string; args: Record<string, unknown> }) => {
+  const directory = activeMindMapProjects.get(request.requestId)
+  if (!directory) throw new Error('Mind map project request is no longer active')
+  return ipcRenderer.invoke('__studio:mindmap:tool', directory, request.name, request.args)
+})
 const api = buildClientApi(client, CHANNEL_MAP, (ch) => client.isChannelAvailable(ch))
+const generateMindMap = api.generateStudioMindMap as ElectronAPI['generateStudioMindMap']
+;(api as ElectronAPI).generateStudioMindMap = async input => {
+  const requestId = input.requestId ?? crypto.randomUUID()
+  if (input.workspaceDirectory) activeMindMapProjects.set(requestId, input.workspaceDirectory)
+  try { return await generateMindMap({ ...input, requestId }) }
+  finally { activeMindMapProjects.delete(requestId) }
+}
 ;(api as ElectronAPI).onStudioCanvasRequest = (handler) => {
   canvasRequestHandler = handler
   return () => { if (canvasRequestHandler === handler) canvasRequestHandler = null }

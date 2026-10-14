@@ -84,4 +84,22 @@ describe('resizeImageForAPI', () => {
     expect(result?.buffer.length).toBe(140_000)
     expect(result?.format).toBe('jpeg')
   })
+
+  it('preserves a tall image ratio and never enlarges its short edge during compression', async () => {
+    const dimensions: Array<{ width: number; height: number }> = []
+    setImageProcessor({
+      getMetadata: async () => ({ width: 100, height: 2000 }),
+      process: async (_input, options) => {
+        if (options?.resize) dimensions.push(options.resize)
+        return Buffer.alloc(150_000)
+      },
+    })
+    await resizeImageForAPI(Buffer.alloc(500_000), { maxSizeBytes: 100 * 1024, bestEffort: true })
+    expect(dimensions.length).toBeGreaterThan(2)
+    for (const size of dimensions) {
+      expect(size.width).toBeLessThanOrEqual(100)
+      expect(size.height).toBeLessThanOrEqual(1568)
+      expect(Math.abs(size.width / size.height - 0.05)).toBeLessThan(0.005)
+    }
+  })
 })

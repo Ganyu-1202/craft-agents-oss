@@ -20,6 +20,7 @@ import {
   DISCONNECTED_CLIENT_TTL_MS,
   RPC_CHANNELS,
   STUDIO_IMAGE_HANDLER_TIMEOUT_MS,
+  isStudioTextChannel,
   isErrorCode,
   type MessageEnvelope,
   type PushTarget,
@@ -137,7 +138,8 @@ export class WsRpcServer implements RpcServer {
   private handlers = new Map<string, HandlerFn>()
   private pendingInvokes = new Map<string, PendingInvoke>()
   private activeHandlerTimeouts = new Set<{
-    timer: ReturnType<typeof setTimeout>
+    timer: ReturnType<typeof setTimeout> | undefined
+    controller: AbortController
     reject: (reason: Error) => void
   }>()
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
@@ -389,6 +391,7 @@ export class WsRpcServer implements RpcServer {
       const err = new Error('Server shutting down')
       ;(err as any).code = 'CLIENT_DISCONNECTED'
       timeout.reject(err)
+      timeout.controller.abort(err)
     }
     this.activeHandlerTimeouts.clear()
     // WebSocketServer also tracks sockets that have not completed handshake;
@@ -737,11 +740,13 @@ export class WsRpcServer implements RpcServer {
       return
     }
 
+    const controller = new AbortController()
     const ctx: RequestContext = {
       clientId: client.id,
       workspaceId: client.workspaceId,
       webContentsId: client.webContentsId,
       authenticatedBy: client.authenticatedBy,
+      signal: controller.signal,
     }
 
     let rejectHandlerTimeout!: (reason: Error) => void
@@ -752,13 +757,20 @@ export class WsRpcServer implements RpcServer {
       ? STUDIO_IMAGE_HANDLER_TIMEOUT_MS
       : WsRpcServer.HANDLER_TIMEOUT_MS
     const handlerTimeout = {
-      // Image providers may need several minutes; ordinary RPCs retain the 60s limit.
-      timer: setTimeout(
+      // Text requests follow the connection lifetime; other RPCs keep their deadlines.
+      timer: isStudioTextChannel(channel) ? undefined : setTimeout(
         () => rejectHandlerTimeout(new Error(`Handler timeout: ${channel} (${handlerTimeoutMs}ms)`)),
         handlerTimeoutMs,
       ),
       reject: rejectHandlerTimeout,
+      controller,
     }
+    const onDisconnect = () => {
+      const error = new Error('Client disconnected')
+      controller.abort(error)
+      rejectHandlerTimeout(error)
+    }
+    client.ws.once('close', onDisconnect)
     this.activeHandlerTimeouts.add(handlerTimeout)
 
     try {
@@ -780,6 +792,7 @@ export class WsRpcServer implements RpcServer {
       this.sendResponseError(client.ws, id, channel, code, message)
     } finally {
       clearTimeout(handlerTimeout.timer)
+      client.ws.off('close', onDisconnect)
       this.activeHandlerTimeouts.delete(handlerTimeout)
     }
   }

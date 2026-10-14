@@ -11,7 +11,9 @@
  * one entry in SESSION_TOOL_DEFS.
  */
 
-import { z } from 'zod';
+// zod-to-json-schema consumes Zod 3 schemas. Packaged servers resolve the
+// hoisted Zod 4 package, which also exposes this compatibility entrypoint.
+import { z } from 'zod/v3';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { SessionToolContext } from './context.ts';
 import type { ToolResult } from './types.ts';
@@ -84,9 +86,9 @@ export const SubmitPlanSchema = z.object({
 
 const CredentialNameSchema = z.string().trim().min(1).max(256).refine(value => !value.includes('::') && !/[\u0000-\u001f\u007f]/.test(value));
 export const SavedCredentialsSchema = z.object({
-  action: z.enum(['list', 'request', 'fill', 'run']),
-  name: CredentialNameSchema.optional(),
-  kind: z.enum(['password', 'api-key', 'secret']).optional(),
+  action: z.enum(['list', 'request', 'fill', 'run']).describe('Required operation. Use request to display the secure credential form and pause for user input.'),
+  name: CredentialNameSchema.optional().describe('Exact workspace-scoped credential name. Required for request, fill and run.'),
+  kind: z.enum(['password', 'api-key', 'secret']).optional().describe('Secure input type for request: password asks for username and password; api-key or secret asks for one value. Defaults to password.'),
   url: z.string().url().refine(value => {
     const url = new URL(value);
     return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;

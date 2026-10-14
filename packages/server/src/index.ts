@@ -44,6 +44,8 @@ import { initModelRefreshService, setFetcherPlatform } from '@craft-agent/server
 import { setSearchPlatform, setImageProcessor } from '@craft-agent/server-core/services'
 import type { HandlerDeps } from '@craft-agent/server-core/handlers'
 import type { ServerInstance } from '@craft-agent/server-core/bootstrap'
+import { createHeadlessSessionManager } from './session-manager'
+import { createHeadlessCredentialHost } from './credential-host'
 
 async function main(): Promise<void> {
 // --generate-token: print a crypto-random token and exit
@@ -247,7 +249,7 @@ const instance = await (async () => {
           oauthIdToken: oauth?.idToken,
         }
       }),
-      createSessionManager: () => new SessionManager(),
+      createSessionManager: createHeadlessSessionManager,
       bindRpcServer: (sm, server) => sm.setRpcServer(server),
       createHandlerDeps: ({ sessionManager, platform, oauthFlowStore }) => {
         if (createMessagingBootstrap) {
@@ -270,6 +272,7 @@ const instance = await (async () => {
           platform,
           oauthFlowStore,
           messagingRegistry: messagingHandle?.registry,
+          remoteCredentialHost: createHeadlessCredentialHost(sessionManager),
         }
       },
       registerAllRpcHandlers: registerCoreRpcHandlers,

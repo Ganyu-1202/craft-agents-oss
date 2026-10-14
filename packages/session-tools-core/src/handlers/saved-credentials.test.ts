@@ -1,6 +1,26 @@
 import { expect, mock, test } from 'bun:test';
 import { handleSavedCredentials } from './saved-credentials';
-import { SavedCredentialsSchema, getSessionSafeBlockedToolNames } from '../tool-defs';
+import { SavedCredentialsSchema, getSessionSafeBlockedToolNames, getToolDefsAsJsonSchema } from '../tool-defs';
+
+test('model-facing schemas preserve the secure request action, name and kind', () => {
+  const tool = getToolDefsAsJsonSchema({ prefix: 'mcp__session__' }).find(tool => tool.name === 'mcp__session__saved_credentials')!;
+  expect(tool.inputSchema.required).toContain('action');
+  const properties = tool.inputSchema.properties as Record<string, any>;
+  expect(properties.action.enum).toContain('request');
+  expect(properties.name.type).toBe('string');
+  expect(properties.kind.enum).toContain('api-key');
+  expect(properties.env.additionalProperties.enum).toEqual(['username', 'secret']);
+});
+
+test('missing action fails before host access and explains how to request input', async () => {
+  const savedCredentialsFn = mock(async () => []);
+  const onAuthRequest = mock(() => {});
+  const result = await handleSavedCredentials({ savedCredentialsFn, callbacks: { onAuthRequest } } as any, { name: 'binance-operations', description: 'Binance credentials' } as any);
+  expect(result.isError).toBe(true);
+  expect(JSON.stringify(result)).toContain('action');
+  expect(savedCredentialsFn).not.toHaveBeenCalled();
+  expect(onAuthRequest).not.toHaveBeenCalled();
+});
 
 test('requests use secure auth handoff with a named destination and explicit replacement hint', async () => {
   const onAuthRequest = mock((_request: unknown) => {});

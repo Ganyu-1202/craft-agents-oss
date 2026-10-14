@@ -1,6 +1,6 @@
 {
   "name": "@craft-agent/shared",
-  "version": "26.10.11",
+  "version": "26.10.13",
   "license": "Apache-2.0",
   "description": "Shared business logic for TokenBird - agent, auth, config, credentials, MCP integration",
   "type": "module",
@@ -37,6 +37,7 @@
     "./credentials": "./src/credentials/index.ts",
     "./credentials/native-types": "./src/credentials/native-types.ts",
     "./credentials/native-validation": "./src/credentials/native-validation.ts",
+    "./credentials/workspace-scope": "./src/credentials/workspace-scope.ts",
     "./credentials/backends/secure-storage": "./src/credentials/backends/secure-storage.ts",
     "./credentials/backends/vault-protection": "./src/credentials/backends/vault-protection.ts",
     "./mcp": "./src/mcp/index.ts",

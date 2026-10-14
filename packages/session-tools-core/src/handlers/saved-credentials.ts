@@ -20,6 +20,9 @@ export interface SavedCredentialArgs {
 /** The model supplies names and operations; plaintext stays inside the host. */
 export async function handleSavedCredentials(ctx: SessionToolContext, args: SavedCredentialArgs): Promise<ToolResult> {
   if (!ctx.savedCredentialsFn) return errorResponse('Saved credentials are unavailable in this session.');
+  if (!['list', 'request', 'fill', 'run'].includes(args.action)) {
+    return errorResponse('A valid action is required: list, request, fill or run. To display secure input, use action="request" with name and kind.');
+  }
   try {
     if (args.action !== 'list' && !args.name) return errorResponse('A credential name is required.');
     if (args.action === 'request') {

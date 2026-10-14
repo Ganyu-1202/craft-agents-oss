@@ -37,12 +37,12 @@ val hasReleaseSigning = releaseStoreFile != null && releaseStorePassword != null
     releaseKeyAlias != null && releaseKeyPassword != null
 
 val configuredVersionCode = providers.gradleProperty("versionCode")
-    .orElse(providers.environmentVariable("ANDROID_VERSION_CODE")).orElse("4").get()
+    .orElse(providers.environmentVariable("ANDROID_VERSION_CODE")).orElse("5").get()
     .toIntOrNull()?.takeIf { it in 1..2100000000 }
     ?: throw GradleException("versionCode must be an integer between 1 and 2100000000.")
 val configuredVersionName = providers.gradleProperty("versionName")
-    .orElse(providers.environmentVariable("ANDROID_VERSION_NAME").map { it.ifBlank { "26.10.11" } })
-    .orElse("26.10.11").get()
+    .orElse(providers.environmentVariable("ANDROID_VERSION_NAME").map { it.ifBlank { "26.10.13" } })
+    .orElse("26.10.13").get()
 require(configuredVersionName.isNotBlank()) { "versionName must not be blank." }
 
 val validateReleaseSigning = tasks.register("validateReleaseSigning") {

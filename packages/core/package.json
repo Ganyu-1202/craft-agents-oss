@@ -1,6 +1,6 @@
 {
   "name": "@craft-agent/core",
-  "version": "26.10.11",
+  "version": "26.10.13",
   "license": "Apache-2.0",
   "description": "Core types, storage, and agent logic for TokenBird",
   "type": "module",

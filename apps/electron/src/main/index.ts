@@ -30,7 +30,7 @@ import { exportChatTranscript } from './chat-export'
 import { openTokenNestRechargeWindow } from './tokennest-recharge'
 import { BirdCompanionManager } from './bird-companion'
 import { TOKENNEST_RECHARGE_IPC } from '../shared/tokennest-recharge'
-import { deleteMindMapSession, mindMapWorkspaceContext, readMindMapSession, writeMindMapSession } from './studio-mindmap-files'
+import { deleteMindMapSession, mindMapWorkspaceContext, readMindMapSession, writeMindMapSession, executeMindMapTool } from './studio-mindmap-files'
 
 // Keep Electron-managed state separate from every Craft Agents installation,
 // including development launches where Electron would otherwise derive the
@@ -529,6 +529,7 @@ ipcMain.handle('__studio:mindmap:read', (_event, directory: string, id: string) 
 ipcMain.handle('__studio:mindmap:write', (_event, directory: string, id: string, data: string) => writeMindMapSession(directory, id, data))
 ipcMain.handle('__studio:mindmap:delete', (_event, directory: string, id: string) => deleteMindMapSession(directory, id))
 ipcMain.handle('__studio:mindmap:context', (_event, directory: string) => mindMapWorkspaceContext(directory))
+ipcMain.handle('__studio:mindmap:tool', (_event, directory: string, name: string, args: Record<string, unknown>) => executeMindMapTool(directory, name, args))
 ipcMain.handle('__client:get-update-info', async () => {
   const { getUpdateInfo } = await import('./auto-update')
   return getUpdateInfo()

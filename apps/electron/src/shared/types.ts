@@ -2,7 +2,7 @@
 // Protocol re-exports (channels, DTOs, events, wire types)
 // =============================================================================
 export * from '@craft-agent/shared/protocol'
-import type { FileReadOptions } from '@craft-agent/shared/protocol'
+import type { FileReadOptions, StudioWorkEvent } from '@craft-agent/shared/protocol'
 
 // =============================================================================
 // Package re-exports (convenience for renderer imports)
@@ -876,7 +876,9 @@ export interface ElectronAPI {
   generateStudioImage(input: { connectionSlug: string; model: string; prompt: string; channelGroup?: string; imageBase64?: string; maskBase64?: string; size?: string; count?: number; transparentBackground?: boolean }): Promise<{ imageBase64: string; mimeType: string; channelGroup?: string; images: Array<{ imageBase64: string; mimeType: string }> }>
   assistStudioCanvas(input: { connectionSlug: string; model: string; channelGroup?: string; sessionId: string; sessionTitle: string; question: string; imageBase64?: string; selection?: { x: number; y: number; width: number; height: number }; priorQuestions?: string[]; history?: Array<{ role: 'user' | 'assistant'; text: string }>; thinkingLevel?: 'auto' | 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' }): Promise<{ reply: string; operation: 'none' | 'generate' | 'inpaint' | 'outpaint' | 'adjust'; prompt?: string; adjustments?: { brightness?: number; contrast?: number; saturation?: number; hue?: number; temperature?: number; blur?: number; style?: 'none' | 'grayscale' | 'sepia' | 'vintage' | 'noir' } }>
   onStudioCanvasRequest(handler: (request: Record<string, unknown>) => Promise<unknown>): () => void
-  generateStudioMindMap(input: { connectionSlug: string; model: string; channelGroup?: string; prompt: string; currentXml?: string; workspaceContext?: string; priorRequests?: string[]; history?: Array<{ role: 'user' | 'assistant'; text: string }>; thinkingLevel?: 'auto' | 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'; mode?: 'execute' | 'ask' }): Promise<{ xml: string; summary: string; mode?: 'execute' } | { summary: string; mode: 'ask' }>
+  onStudioWorkEvent(callback: (event: StudioWorkEvent) => void): () => void
+  cancelStudioText(requestId: string): Promise<void>
+  generateStudioMindMap(input: { requestId?: string; workspaceDirectory?: string; connectionSlug: string; model: string; channelGroup?: string; prompt: string; currentXml?: string; workspaceContext?: string; priorRequests?: string[]; history?: Array<{ role: 'user' | 'assistant'; text: string }>; thinkingLevel?: 'auto' | 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'; mode?: 'execute' | 'ask' }): Promise<{ xml: string; summary: string; mode?: 'execute' } | { summary: string; mode: 'ask' }>
   exportStudioVisio(xml: string): Promise<{ base64: string }>
   listLlmConnectionsWithStatus(): Promise<LlmConnectionWithStatus[]>
   getLlmConnection(slug: string): Promise<LlmConnection | null>

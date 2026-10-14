@@ -29,6 +29,8 @@ export const CLIENT_SAVE_FILE_DIALOG = 'client:saveFileDialog'
 export const CLIENT_BROWSER_INVOKE = 'client:browser:invoke'
 /** Invoke the mounted canvas editor, whose projects live in client IndexedDB. */
 export const CLIENT_CANVAS_INVOKE = 'client:canvas:invoke'
+/** Read the active mind map's project files on the desktop client. */
+export const CLIENT_MINDMAP_PROJECT_TOOL = 'client:mindmap:projectTool'
 
 /**
  * Capability: run a shell command on the CLIENT machine on behalf of the
@@ -116,6 +118,7 @@ export const LOCAL_CLIENT_CAPABILITIES: readonly string[] = [
   CLIENT_SAVE_FILE_DIALOG,
   CLIENT_BROWSER_INVOKE,
   CLIENT_CANVAS_INVOKE,
+  CLIENT_MINDMAP_PROJECT_TOOL,
   CLIENT_RUN_SHELL,
   CLIENT_REQUEST_FILES,
   CLIENT_SFTP_TRANSFER,

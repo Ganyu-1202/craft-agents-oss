@@ -14,6 +14,7 @@ import {
   REQUEST_TIMEOUT_MS,
   RPC_CHANNELS,
   STUDIO_IMAGE_REQUEST_TIMEOUT_MS,
+  isStudioTextChannel,
   FRAMEWORK_TEST_REQUEST_TIMEOUT_MS,
   FRAMEWORK_INSTALL_REQUEST_TIMEOUT_MS,
   SEQUENCE_ACK_INTERVAL_MS,
@@ -36,7 +37,7 @@ import type { CloudPeerFactory } from '../cloud/peer'
 interface PendingRequest {
   resolve: (value: any) => void
   reject: (error: Error) => void
-  timeout: ReturnType<typeof setTimeout>
+  timeout: ReturnType<typeof setTimeout> | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +244,7 @@ export class WsRpcClient implements RpcClient {
         : channel === RPC_CHANNELS.agentPlugins.INSTALL_FRAMEWORK || channel === RPC_CHANNELS.codex.INSTALL
           ? Math.max(this.requestTimeout, FRAMEWORK_INSTALL_REQUEST_TIMEOUT_MS)
         : this.requestTimeout
-      const timeout = setTimeout(() => {
+      const timeout = isStudioTextChannel(channel) ? undefined : setTimeout(() => {
         this.pending.delete(id)
         reject(this.createConnectionError('timeout', `Request timeout: ${channel} (${timeoutMs}ms)`, 'REQUEST_TIMEOUT'))
       }, timeoutMs)

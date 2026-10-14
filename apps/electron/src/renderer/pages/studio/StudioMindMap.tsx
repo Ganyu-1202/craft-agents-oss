@@ -11,6 +11,8 @@ import { StudioSessionWorkspace, type StudioSessionEditorProps } from './StudioS
 import { Markdown } from '@/components/markdown'
 import { StudioThinkingPicker, studioThinkingLevel, type StudioThinkingLevel } from './StudioThinkingPicker'
 import { StudioExecutionModePicker, studioExecutionMode, type StudioExecutionMode } from './StudioExecutionModePicker'
+import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import { StudioWorkLog, appendStudioWorkEvent } from './StudioWorkLog'
 
 const EMPTY_DRAWIO = '<mxfile host="TokenBird"><diagram name="Mind Map"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>'
 
@@ -23,7 +25,7 @@ function download(data: Blob | string, name: string) {
 
 type DrawioMessage = { event?: string; xml?: string; data?: string; format?: string; message?: { requestId?: string } }
 
-type MindMapMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: number; beforeXml?: string; failed?: boolean }
+type MindMapMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: number; beforeXml?: string; failed?: boolean; work?: StudioWorkEvent[] }
 type MindMapSessionData = { xml: string; prompt: string; thinkingLevel?: StudioThinkingLevel; mode?: StudioExecutionMode; messages: MindMapMessage[] }
 
 function readSessionData(raw: string): MindMapSessionData {
@@ -90,6 +92,9 @@ function MindMapEditor({ session, onSave, createSession, bindWorkDirectory, flus
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [busy, setBusy] = useState(false)
+  const activeRequest = useRef<{ id: string; cancelled: boolean; started: boolean } | null>(null)
+  const workRef = useRef<StudioWorkEvent[]>([])
+  const [work, setWork] = useState<StudioWorkEvent[]>([])
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const { connections, connection, connectionSlug, setConnectionSlug, model, setModel, modelChannelGroup, loginTokenNest } = useStudioConnections()
@@ -116,7 +121,22 @@ function MindMapEditor({ session, onSave, createSession, bindWorkDirectory, flus
     return () => { if (flushRef.current === flush) flushRef.current = null }
   })
   useEffect(() => { schedulePersist(); return () => { if (saveTimer.current) clearTimeout(saveTimer.current) } }, [prompt, thinkingLevel, mode, messages, schedulePersist])
-  useEffect(() => { if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight }, [messages.length, chatOpen, busy])
+  useEffect(() => { if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight }, [messages.length, chatOpen, busy, work])
+  useEffect(() => {
+    const off = window.electronAPI.onStudioWorkEvent(event => {
+      if (event.requestId !== activeRequest.current?.id) return
+      workRef.current = appendStudioWorkEvent(workRef.current, event)
+      setWork(workRef.current)
+    })
+    return () => {
+      off()
+      const request = activeRequest.current
+      if (request) {
+        request.cancelled = true
+        if (request.started) void window.electronAPI.cancelStudioText(request.id).catch(() => {})
+      }
+    }
+  }, [])
   useEffect(() => { setLocked(busy); return () => setLocked(false) }, [busy, setLocked])
 
   const language = i18n.resolvedLanguage ?? 'en'
@@ -235,7 +255,11 @@ function MindMapEditor({ session, onSave, createSession, bindWorkDirectory, flus
   async function generate(retryInstruction?: string) {
     const instruction = (retryInstruction ?? prompt).trim()
     if (!ready || !connectionSlug || !model.trim() || !instruction) { setError(t('studio.diagramRequestRequired')); return }
-    if (busy) return
+    if (busy || activeRequest.current) return
+    const request = { id: crypto.randomUUID(), cancelled: false, started: false }
+    activeRequest.current = request
+    workRef.current = [{ requestId: request.id, type: 'phase', phase: 'preparing' }]
+    setWork(workRef.current)
     const previous = messagesRef.current
     const retry = !!retryInstruction && previous.at(-1)?.failed && previous.at(-2)?.role === 'user' && previous.at(-2)?.content === instruction
     const conversation = retry ? previous.slice(0, -2) : previous
@@ -247,30 +271,40 @@ function MindMapEditor({ session, onSave, createSession, bindWorkDirectory, flus
     try {
       const latest = await requestExport('xml')
       const beforeXml = latest.xml || xmlRef.current
+      if (request.cancelled) throw new Error('Studio request cancelled')
       if (!beforeXml) throw new Error(t('studio.diagramReadFailed'))
       xmlRef.current = beforeXml
       const workspaceContext = session.workspaceDir
         ? await window.electronAPI.getStudioMindMapWorkspaceContext(session.workspaceDir) : undefined
+      if (request.cancelled) throw new Error('Studio request cancelled')
+      request.started = true
       const result = await window.electronAPI.generateStudioMindMap({
+        requestId: request.id, workspaceDirectory: session.workspaceDir || undefined,
         connectionSlug, model: model.trim(), channelGroup: modelChannelGroup || undefined,
         prompt: instruction, currentXml: beforeXml, workspaceContext, history, thinkingLevel, mode,
       })
+      if (request.cancelled) throw new Error('Studio request cancelled')
       if (result.mode === 'ask') {
-        setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: result.summary, createdAt: Date.now() }].slice(-100))
+        setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: result.summary, createdAt: Date.now(), work: workRef.current }].slice(-100))
         return
       }
       validateDrawioDocument(result.xml)
       load(result.xml)
-      setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: result.summary, createdAt: Date.now(), beforeXml }].slice(-100))
+      setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: result.summary, createdAt: Date.now(), beforeXml, work: workRef.current }].slice(-100))
       suggestTitle(instruction.slice(0, 40))
     } catch (cause) {
+      if (request.cancelled) {
+        setPrompt(instruction)
+        setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: t('chat.taskStatusStopped'), createdAt: Date.now(), work: workRef.current }].slice(-100))
+        return
+      }
       const message = cause instanceof Error ? cause.message : String(cause)
       rechargeOnInsufficientBalance(cause, connection)
       setError(message)
       setPrompt(instruction)
-      setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: t('studio.diagramEditFailed', { value1: message }), createdAt: Date.now(), failed: true }].slice(-100))
+      setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant' as const, content: t('studio.diagramEditFailed', { value1: message }), createdAt: Date.now(), failed: true, work: workRef.current }].slice(-100))
     }
-    finally { setBusy(false) }
+    finally { activeRequest.current = null; setBusy(false) }
   }
 
   return (
@@ -311,13 +345,19 @@ function MindMapEditor({ session, onSave, createSession, bindWorkDirectory, flus
                 <button type="button" className="ml-auto rounded p-1 hover:bg-accent hover:text-foreground" title={t('studio.copyMessage')} aria-label={t('studio.copyMessage')} onClick={() => void navigator.clipboard.writeText(message.content)}><Clipboard className="size-3" /></button>
               </div>
               {message.role === 'assistant' ? <Markdown className={`break-words text-xs leading-5 ${message.failed ? 'text-destructive' : ''}`}>{message.content}</Markdown> : <div className="whitespace-pre-wrap break-words text-xs leading-5">{message.content}</div>}
+              {message.work?.length ? <StudioWorkLog events={message.work} /> : null}
               {message.role === 'assistant' && message.beforeXml && <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
                 <div className="flex items-center gap-2 text-xs font-medium"><Sparkles className="size-3.5 text-primary" />{t('studio.diagramApplied')}</div>
                 <button type="button" disabled={busy || !ready} className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-40" onClick={() => { load(message.beforeXml!); setError('') }}><RotateCcw className="size-3.5" />{t('studio.restoreBeforeEdit')}</button>
               </div>}
               {message.failed && index === messages.length - 1 && messages[index - 1]?.role === 'user' && <button type="button" disabled={busy || !ready} className="mt-2 flex items-center gap-1 text-xs text-primary underline disabled:opacity-40" onClick={() => void generate(messages[index - 1].content)}><RotateCcw className="size-3" />{t('studio.retry')}</button>}
             </article>)}
-            {busy && <div className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin" />{t('studio.editingDiagram')}</div>}
+            {busy && <div><div className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin" />{t('studio.editingDiagram')}<button type="button" className="ml-auto text-primary underline" onClick={() => {
+              const request = activeRequest.current
+              if (!request || request.cancelled) return
+              request.cancelled = true
+              if (request.started) void window.electronAPI.cancelStudioText(request.id).catch(cause => setError(String(cause)))
+            }}>{t('chat.stopResponse')}</button></div><StudioWorkLog events={work} busy answer={mode === 'ask'} /></div>}
             {error && !messages.at(-1)?.failed && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
           </div>
           <div className="shrink-0 border-t border-border/70 bg-background p-3">

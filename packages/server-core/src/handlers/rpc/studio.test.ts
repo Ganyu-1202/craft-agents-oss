@@ -3,8 +3,11 @@ import * as config from '@craft-agent/shared/config'
 import * as credentials from '@craft-agent/shared/credentials'
 import * as auth from '@craft-agent/shared/auth'
 import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { HandlerFn, RpcServer } from '@craft-agent/server-core/transport'
+import { CLIENT_MINDMAP_PROJECT_TOOL, type HandlerFn, type RpcServer } from '@craft-agent/server-core/transport'
 import { deflateRawSync } from 'node:zlib'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { registerStudioHandlers } from './studio'
 
 const originalFetch = globalThis.fetch
@@ -398,6 +401,187 @@ describe('Studio server requests', () => {
       .toEqual({ xml: changedXml, summary: '已修改主题' })
     expect(body?.model).toBe('gpt-4.1')
     expect(JSON.parse(body!.messages[1].content)).toEqual({ instruction: 'Rename topic', priorRequests: ['Create a plan'], currentXml })
+  })
+
+  it('does not create provider deadlines for mind map and canvas text generation', async () => {
+    connection()
+    const timeout = spyOn(AbortSignal, 'timeout')
+    globalThis.fetch = mock(async () => Response.json({ choices: [{ message: { content: '项目说明' } }] })) as unknown as typeof fetch
+    const invoke = harness()
+    await invoke(RPC_CHANNELS.studio.GENERATE_MIND_MAP, {
+      connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '说明项目', mode: 'ask',
+    })
+    await invoke(RPC_CHANNELS.studio.ASSIST_CANVAS, {
+      connectionSlug: 'gptimage', model: 'gpt-4.1', sessionId: 'canvas', sessionTitle: 'Canvas', question: '说明画布',
+    })
+    expect(timeout).not.toHaveBeenCalled()
+  })
+
+  it('shares the cancellation signal across TokenNest authorization renewal', async () => {
+    tokenNestConnection([{ id: 'chat', name: '文本', models: ['gpt-4.1'] }])
+    const timeout = spyOn(AbortSignal, 'timeout')
+    const signals: Array<AbortSignal | null | undefined> = []
+    globalThis.fetch = mock(async (_url, init) => {
+      signals.push(init?.signal)
+      return signals.length === 1
+        ? Response.json({ error: 'expired' }, { status: 401 })
+        : Response.json({ choices: [{ message: { content: '项目说明' } }] })
+    }) as unknown as typeof fetch
+    await expect(harness()(RPC_CHANNELS.studio.GENERATE_MIND_MAP, {
+      connectionSlug: 'tokennest', model: 'gpt-4.1', prompt: '说明项目', mode: 'ask',
+    })).resolves.toEqual({ mode: 'ask', summary: '项目说明' })
+    expect(signals).toHaveLength(2)
+    expect(signals[0]).toBe(signals[1])
+    expect(timeout).not.toHaveBeenCalled()
+  })
+
+  it('does not start another generation after cancellation during authorization renewal', async () => {
+    tokenNestConnection([{ id: 'chat', name: '文本', models: ['gpt-4.1'] }])
+    const controller = new AbortController()
+    spyOn(auth, 'getValidTokenNestCredentials').mockImplementation(async (_slug, _manager, refresh) => {
+      if (refresh) controller.abort(new Error('Client disconnected'))
+      return { accessToken: 'oauth-access' } as never
+    })
+    const request = mock(async () => Response.json({ error: 'expired' }, { status: 401 }))
+    globalThis.fetch = request as unknown as typeof fetch
+    const handlers = new Map<string, HandlerFn>()
+    registerStudioHandlers({ handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: () => {} } as unknown as RpcServer)
+    await expect(handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!({ clientId: 'test', workspaceId: null, webContentsId: null, signal: controller.signal }, {
+      connectionSlug: 'tokennest', model: 'gpt-4.1', prompt: '说明项目', mode: 'ask',
+    })).rejects.toThrow('Client disconnected')
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs a project tool, reports its real progress to the caller, and continues generation', async () => {
+    connection()
+    const directory = await mkdtemp(join(tmpdir(), 'studio-tool-loop-'))
+    try {
+      await writeFile(join(directory, 'schema.sql'), 'CREATE TABLE users (id INT PRIMARY KEY);')
+      const handlers = new Map<string, HandlerFn>()
+      const pushed: any[][] = []
+      registerStudioHandlers({ handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: (...args: any[]) => pushed.push(args) } as unknown as RpcServer)
+      let calls = 0
+      let followup: Record<string, any> | undefined
+      globalThis.fetch = mock(async (_url, init) => {
+        if (++calls === 1) return Response.json({ choices: [{ message: { content: null, tool_calls: [{ id: 'read-schema', type: 'function', function: { name: 'read_project_file', arguments: '{"path":"schema.sql"}' } }] } }] })
+        followup = JSON.parse(String(init?.body))
+        return Response.json({ choices: [{ message: { content: '项目定义了 users 表。' } }] })
+      }) as unknown as typeof fetch
+      await expect(handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!({ clientId: 'caller', workspaceId: null, webContentsId: null }, {
+        requestId: 'request-1', connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '读取项目数据表', mode: 'ask', workspaceDirectory: directory,
+      })).resolves.toEqual({ mode: 'ask', summary: '项目定义了 users 表。' })
+      const toolMessage = followup?.messages.find((message: any) => message.role === 'tool')
+      expect(JSON.parse(toolMessage.content).content).toContain('CREATE TABLE users')
+      expect(followup?.tools).toHaveLength(2)
+      const tools = pushed.filter(item => item[2].type === 'tool')
+      expect(tools.map(item => item[2].status)).toEqual(['running', 'completed'])
+      expect(tools.every(item => item[0] === RPC_CHANNELS.studio.WORK_EVENT && item[1].clientId === 'caller' && item[2].requestId === 'request-1')).toBe(true)
+    } finally { await rm(directory, { recursive: true, force: true }) }
+  })
+
+  it('reads the desktop project through the requesting client when its model server is remote', async () => {
+    connection()
+    const handlers = new Map<string, HandlerFn>()
+    const invokeClient = mock(async () => '{"content":"CREATE TABLE users (id INT);"}')
+    registerStudioHandlers({
+      handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: () => {},
+      hasClientCapability: (_client: string, capability: string) => capability === CLIENT_MINDMAP_PROJECT_TOOL,
+      invokeClient,
+    } as unknown as RpcServer)
+    let calls = 0
+    globalThis.fetch = mock(async () => ++calls === 1
+      ? Response.json({ choices: [{ message: { tool_calls: [{ id: 'tool-1', type: 'function', function: { name: 'read_project_file', arguments: '{"path":"schema.sql"}' } }] } }] })
+      : Response.json({ choices: [{ message: { content: 'users table' } }] })) as unknown as typeof fetch
+    await expect(handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!({ clientId: 'desktop', workspaceId: null, webContentsId: null }, {
+      requestId: 'local-project', connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '读取项目', mode: 'ask', workspaceDirectory: 'Z:\\client-only-project',
+    })).resolves.toEqual({ mode: 'ask', summary: 'users table' })
+    expect(invokeClient).toHaveBeenCalledWith('desktop', CLIENT_MINDMAP_PROJECT_TOOL, { requestId: 'local-project', name: 'read_project_file', args: { path: 'schema.sql' } })
+  })
+
+  it.each(['repeated', 'oversized'])('completes a streamed mind map tool round with %s call IDs', async (variant) => {
+    connection()
+    const handlers = new Map<string, HandlerFn>()
+    const invokeClient = mock(async () => '{"content":"CREATE TABLE users (id INT);"}')
+    registerStudioHandlers({
+      handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: () => {},
+      hasClientCapability: () => true, invokeClient,
+    } as unknown as RpcServer)
+    const id = variant === 'oversized' ? 'x'.repeat(222) : 'call_' + 'a'.repeat(32)
+    const xml = '<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="users" value="users" vertex="1" parent="1"><mxGeometry x="40" y="40" width="120" height="40" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>'
+    const event = (delta: unknown, finish_reason?: string) => `data: ${JSON.stringify({ choices: [{ delta, finish_reason }] })}\n\n`
+    let requests = 0
+    globalThis.fetch = mock(async (_url, init) => {
+      const body = JSON.parse(String(init?.body))
+      if (++requests === 1) {
+        const stream = ['{"path":', '"schema', '.sql', '"', '}', ''].map(argumentsDelta => event({
+          tool_calls: [{ index: 0, id, function: { name: 'read_project_file', arguments: argumentsDelta } }],
+        })).join('') + event({}, 'tool_calls')
+        return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } })
+      }
+      const outgoingId = body.messages[2].tool_calls[0].id
+      expect(outgoingId.length).toBeLessThanOrEqual(64)
+      if (variant === 'repeated') expect(outgoingId).toBe(id)
+      else expect(outgoingId).not.toBe(id)
+      expect(body.messages[2].tool_calls[0].function.name).toBe('read_project_file')
+      expect(body.messages[3].tool_call_id).toBe(outgoingId)
+      expect(body.messages[3].content).toContain('CREATE TABLE users')
+      return new Response(event({ content: JSON.stringify({ xml, summary: '已生成导图' }) }, 'stop'), {
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    }) as unknown as typeof fetch
+    await expect(handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!({ clientId: 'desktop', workspaceId: null, webContentsId: null }, {
+      requestId: 'repeated-tool-id', connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '生成项目导图', workspaceDirectory: 'Z:\\client-project',
+    })).resolves.toEqual({ xml, summary: '已生成导图' })
+    expect(requests).toBe(2)
+    expect(invokeClient).toHaveBeenCalledTimes(1)
+    expect(invokeClient).toHaveBeenCalledWith('desktop', CLIENT_MINDMAP_PROJECT_TOOL, {
+      requestId: 'repeated-tool-id', name: 'read_project_file', args: { path: 'schema.sql' },
+    })
+  })
+
+  it('stops immediately while waiting for a desktop file tool', async () => {
+    connection()
+    const handlers = new Map<string, HandlerFn>()
+    let entered!: () => void
+    const ready = new Promise<void>(resolve => { entered = resolve })
+    registerStudioHandlers({
+      handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: () => {},
+      hasClientCapability: () => true,
+      invokeClient: () => { entered(); return new Promise(() => {}) },
+    } as unknown as RpcServer)
+    globalThis.fetch = mock(async () => Response.json({ choices: [{ message: { tool_calls: [{ id: 'tool-1', type: 'function', function: { name: 'read_project_file', arguments: '{"path":"schema.sql"}' } }] } }] })) as unknown as typeof fetch
+    const ctx = { clientId: 'desktop', workspaceId: null, webContentsId: null }
+    const pending = handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!(ctx, {
+      requestId: 'stop-file', connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '读取项目', workspaceDirectory: 'Z:\\project',
+    })
+    await ready
+    await handlers.get(RPC_CHANNELS.studio.CANCEL_TEXT)!(ctx, 'stop-file')
+    await expect(pending).rejects.toThrow('cancelled')
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('only allows the requesting client to stop a running generation', async () => {
+    connection()
+    const handlers = new Map<string, HandlerFn>()
+    registerStudioHandlers({ handle: (channel: string, fn: HandlerFn) => handlers.set(channel, fn), push: () => {} } as unknown as RpcServer)
+    let entered!: () => void
+    const ready = new Promise<void>(resolve => { entered = resolve })
+    let signal: AbortSignal | undefined
+    globalThis.fetch = mock(async (_url, init) => {
+      signal = init?.signal ?? undefined
+      entered()
+      return new Response(new ReadableStream(), { headers: { 'Content-Type': 'text/event-stream' } })
+    }) as unknown as typeof fetch
+    const ctx = { clientId: 'caller', workspaceId: null, webContentsId: null }
+    const pending = handlers.get(RPC_CHANNELS.studio.GENERATE_MIND_MAP)!(ctx, {
+      requestId: 'cancel-test', connectionSlug: 'gptimage', model: 'gpt-4.1', prompt: '生成导图',
+    })
+    await ready
+    await handlers.get(RPC_CHANNELS.studio.CANCEL_TEXT)!({ ...ctx, clientId: 'other-client' }, 'cancel-test')
+    expect(signal?.aborted).toBe(false)
+    await handlers.get(RPC_CHANNELS.studio.CANCEL_TEXT)!(ctx, 'cancel-test')
+    await expect(pending).rejects.toThrow('cancelled')
+    expect(signal?.aborted).toBe(true)
   })
 
   it('includes both sides of the mind map conversation in follow-up requests', async () => {

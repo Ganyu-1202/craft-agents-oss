@@ -463,6 +463,8 @@ export const CHANNEL_MAP = {
   generateStudioImage: invoke(RPC_CHANNELS.studio.GENERATE_IMAGE),
   assistStudioCanvas: invoke(RPC_CHANNELS.studio.ASSIST_CANVAS),
   generateStudioMindMap: invoke(RPC_CHANNELS.studio.GENERATE_MIND_MAP),
+  onStudioWorkEvent: listener(RPC_CHANNELS.studio.WORK_EVENT),
+  cancelStudioText: invoke(RPC_CHANNELS.studio.CANCEL_TEXT),
   exportStudioVisio: invoke(RPC_CHANNELS.studio.EXPORT_VISIO),
   readStudioMindMapSession: invoke(RPC_CHANNELS.studio.READ_MINDMAP_SESSION),
   writeStudioMindMapSession: invoke(RPC_CHANNELS.studio.WRITE_MINDMAP_SESSION),

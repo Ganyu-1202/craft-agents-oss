@@ -825,14 +825,13 @@ function CanvasEditor({ compactLayout, active, onOpenAiSettings, session, onSave
       assertPixelEditable(layer)
       if (!batch.reference) throw new Error(t('studio.missingSnapshot'))
       const overlay = document.createElement('canvas')
-      overlay.width = image.naturalWidth; overlay.height = image.naturalHeight
+      // Compose in canvas pixels. Resizing the snapshot to the provider output
+      // and back would alter even the protected artwork on every edit.
+      overlay.width = batch.reference.width; overlay.height = batch.reference.height
       const ctx = overlay.getContext('2d')!
       ctx.drawImage(image, 0, 0, overlay.width, overlay.height)
-      const reference = document.createElement('canvas')
-      reference.width = overlay.width; reference.height = overlay.height
-      reference.getContext('2d')!.drawImage(batch.reference, 0, 0, reference.width, reference.height)
       const generatedPixels = ctx.getImageData(0, 0, overlay.width, overlay.height)
-      const referencePixels = reference.getContext('2d')!.getImageData(0, 0, reference.width, reference.height)
+      const referencePixels = batch.reference.getContext('2d')!.getImageData(0, 0, overlay.width, overlay.height)
       const feather = Math.max(8, Math.min(32, Math.round(Math.min(overlay.width, overlay.height) * 0.02)))
       if (batch.mode === 'inpaint') composeInpaint(generatedPixels, referencePixels, feather)
       else composeOutpaint(generatedPixels, referencePixels, feather)
@@ -911,8 +910,8 @@ function CanvasEditor({ compactLayout, active, onOpenAiSettings, session, onSave
           if (!selected || !selection) throw new Error(mode === 'inpaint' ? t('studio.inpaintSelectionRequired') : t('studio.outpaintSelectionRequired'))
           if (!activeLayer.visible) throw new Error(t('studio.showEditLayer'))
           if (activeLayer.opacity !== 1) throw new Error(t('studio.fullOpacityRequired'))
-          reference = rasterizeLayer(activeLayer, target, SIZE, SIZE)
-          const activePixels = reference.getContext('2d')!.getImageData(0, 0, SIZE, SIZE).data
+          reference = rasterizeLayer(activeLayer, target, target.width, target.height)
+          const activePixels = reference.getContext('2d')!.getImageData(0, 0, reference.width, reference.height).data
           let activeHasContent = false
           for (let index = 3; index < activePixels.length; index += 4) if (activePixels[index]) { activeHasContent = true; break }
           if (!activeHasContent) throw new Error(t('studio.originalLayerRequired'))

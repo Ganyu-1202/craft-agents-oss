@@ -102,9 +102,9 @@ export async function resizeIconBuffer(buffer: Buffer, targetSize: number): Prom
  * Strategy:
  * 1. If dimensions exceed OPTIMAL_EDGE (1568px), resize down
  * 2. Output as PNG (or JPEG if isPhoto)
- * 3. If still over maxSizeBytes, try JPEG at 90 quality
- * 4. If still over, try JPEG at 75 quality
- * 5. If still over, return null (can't fix)
+ * 3. If still over maxSizeBytes, progressively reduce JPEG quality and dimensions
+ * 4. Preserve aspect ratio without enlarging small edges
+ * 5. Return null for mandatory limits, or the smallest result in best-effort mode
  *
  * @returns Resized image data, or null if image can't be made small enough
  */
@@ -133,8 +133,8 @@ export async function resizeImageForAPI(
 
   if (maxEdge > IMAGE_LIMITS.OPTIMAL_EDGE) {
     const scale = IMAGE_LIMITS.OPTIMAL_EDGE / maxEdge
-    outWidth = Math.round(metadata.width * scale)
-    outHeight = Math.round(metadata.height * scale)
+    outWidth = Math.max(1, Math.round(metadata.width * scale))
+    outHeight = Math.max(1, Math.round(metadata.height * scale))
   }
 
   const needsResize = outWidth !== metadata.width || outHeight !== metadata.height
@@ -171,8 +171,9 @@ export async function resizeImageForAPI(
   let height = outHeight
   for (let index = 0; index < qualities.length; index += 1) {
     if (index > 0) {
-      width = Math.max(320, Math.round(width * 0.78))
-      height = Math.max(240, Math.round(height * 0.78))
+      const scale = Math.max(0.78, Math.min(1, 320 / Math.max(width, height)))
+      width = Math.max(1, Math.round(width * scale))
+      height = Math.max(1, Math.round(height * scale))
     }
 
     const candidate = await imageProcessor.process(buffer, {
@@ -188,7 +189,7 @@ export async function resizeImageForAPI(
       return { buffer: candidate, width, height, format: 'jpeg' }
     }
 
-    if (width === 320 && height === 240) break
+    if (Math.max(width, height) <= 320) break
   }
 
   // Step 5: Mandatory API-limit callers still fail closed. Optional upload

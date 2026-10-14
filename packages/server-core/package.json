@@ -1,6 +1,6 @@
 {
   "name": "@craft-agent/server-core",
-  "version": "26.10.11",
+  "version": "26.10.13",
   "license": "Apache-2.0",
   "description": "Reusable headless server infrastructure for TokenBird",
   "type": "module",
@@ -32,6 +32,7 @@
     "jose": "^6.0.0",
     "reflect-metadata": "0.2.2",
     "sharp": "0.34.5",
+    "undici": "^7.22.0",
     "werift": "0.25.0",
     "ws": "^8.19.0"
   },

@@ -1,8 +1,9 @@
-import { DefaultResourceLoader, type SettingsManager } from '@earendil-works/pi-coding-agent';
+import { DefaultResourceLoader, type SettingsManager, type InlineExtension } from '@earendil-works/pi-coding-agent';
 
 /** Worker code must never be loaded as a host extension, including in utility inference. */
-export async function restrictedResources(cwd: string, agentDir: string, settingsManager: SettingsManager) {
+export async function restrictedResources(cwd: string, agentDir: string, settingsManager: SettingsManager, extensionFactories: InlineExtension[] = []) {
   const loader = new DefaultResourceLoader({ cwd, agentDir, settingsManager,
+    extensionFactories,
     noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
     systemPromptOverride: () => undefined, appendSystemPromptOverride: () => [],
   });

@@ -271,6 +271,8 @@ export const RPC_CHANNELS = {
     GENERATE_IMAGE: 'studio:generateImage',
     ASSIST_CANVAS: 'studio:assistCanvas',
     GENERATE_MIND_MAP: 'studio:generateMindMap',
+    WORK_EVENT: 'studio:workEvent',
+    CANCEL_TEXT: 'studio:cancelText',
     EXPORT_VISIO: 'studio:exportVisio',
     READ_MINDMAP_SESSION: 'studio:mindmap:read',
     WRITE_MINDMAP_SESSION: 'studio:mindmap:write',

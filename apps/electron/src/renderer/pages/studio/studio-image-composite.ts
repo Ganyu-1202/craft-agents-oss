@@ -1,16 +1,16 @@
-/** Blend in premultiplied color space so transparent edges do not develop dark halos. */
+/** An edit response may be a translucent patch. Composite it over the snapshot
+ * before feathering so its alpha never punches a hole in existing artwork. */
 function blendPixel(result: Uint8ClampedArray, reference: Uint8ClampedArray, index: number, weight: number): void {
   if (weight <= 0) {
     for (let channel = 0; channel < 4; channel++) result[index + channel] = reference[index + channel]
     return
   }
-  if (weight >= 1) return
   const oldAlpha = reference[index + 3] / 255
-  const newAlpha = result[index + 3] / 255
-  const alpha = oldAlpha * (1 - weight) + newAlpha * weight
+  const newAlpha = result[index + 3] / 255 * weight
+  const alpha = oldAlpha * (1 - newAlpha) + newAlpha
   for (let channel = 0; channel < 3; channel++) {
-    const premultiplied = reference[index + channel] * oldAlpha * (1 - weight)
-      + result[index + channel] * newAlpha * weight
+    const premultiplied = reference[index + channel] * oldAlpha * (1 - newAlpha)
+      + result[index + channel] * newAlpha
     result[index + channel] = alpha ? Math.round(premultiplied / alpha) : 0
   }
   result[index + 3] = Math.round(alpha * 255)
@@ -108,7 +108,7 @@ export function composeInpaint(result: ImageData, reference: ImageData, feather:
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const index = (y * width + x) * 4
     const distance = Math.min(x, y, width - 1 - x, height - 1 - y)
-    const weight = reference.data[index + 3] === 0 ? 1 : Math.min(1, distance / feather)
+    const weight = reference.data[index + 3] === 0 ? 1 : feather > 0 ? Math.min(1, distance / feather) : 1
     blendPixel(result.data, reference.data, index, weight)
   }
 }
@@ -133,7 +133,7 @@ export function composeOutpaint(result: ImageData, reference: ImageData, feather
   }
   for (let index = 0; index < length; index++) {
     const pixel = index * 4
-    const weight = reference.data[pixel + 3] === 0 ? 1 : Math.max(0, 1 - distance[index] / feather)
+    const weight = reference.data[pixel + 3] === 0 ? 1 : feather > 0 ? Math.max(0, 1 - distance[index] / feather) : 0
     blendPixel(result.data, reference.data, pixel, weight)
   }
 }

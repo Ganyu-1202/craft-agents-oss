@@ -11,7 +11,7 @@ export interface RemoteCredentialHost {
   listMetadata(): Promise<NativeCredentialMetadata[]>
   apply(changes: NativeCredentialChange[]): Promise<{ upsertedCount: number; deletedCount: number }>
   onApplied?(changes: NativeCredentialChange[]): Promise<void>
-  approve(request: { clientId: string; workspaceId: string; expiresAt: number }): Promise<boolean>
+  approve(request: { clientId: string; workspaceId: string; expiresAt: number; authenticatedBy?: RequestContext['authenticatedBy'] }): Promise<boolean>
 }
 const TTL = 10 * 60_000
 const REQUEST_TTL = 2 * 60_000
@@ -19,7 +19,7 @@ const inScope = (id: NativeCredentialChange['id'], scope: NativeCredentialScope)
   ? !!scope.sourceWorkspaceId && id.workspaceId === scope.sourceWorkspaceId
   : !id.workspaceId || id.workspaceId === scope.workspaceId
 
-/** Every network caller, including loopback/browser clients, requires host approval. */
+/** Network callers require a scoped, expiring grant from the host's access policy. */
 export function registerCredentialHandlers(server: RpcServer, deps: HandlerDeps): void {
   const grants = new Map<string, { expiresAt: number; scope: string }>()
   const pending = new Set<string>()
@@ -53,7 +53,7 @@ export function registerCredentialHandlers(server: RpcServer, deps: HandlerDeps)
     pending.add(id)
     let settled = false
     const timer = setTimeout(() => { settled = true; pending.delete(id) }, REQUEST_TTL)
-    void host!.approve({ clientId: ctx.clientId, workspaceId: scope.workspaceId, expiresAt: Date.now() + REQUEST_TTL })
+    void host!.approve({ clientId: ctx.clientId, workspaceId: scope.workspaceId, expiresAt: Date.now() + REQUEST_TTL, authenticatedBy: ctx.authenticatedBy })
       .then(allowed => {
         if (!settled && allowed && JSON.stringify(resolve(ctx)) === requestedScope) {
           grants.set(id, { expiresAt: Date.now() + TTL, scope: requestedScope })

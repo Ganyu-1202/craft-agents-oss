@@ -7,6 +7,7 @@
 
 import { describe, it, expect, afterEach, mock } from 'bun:test'
 import WebSocket from 'ws'
+import { EventEmitter } from 'node:events'
 import { WsRpcServer } from '../server'
 import { PROTOCOL_VERSION } from '@craft-agent/shared/protocol'
 
@@ -231,7 +232,7 @@ describe('WsRpcServer lifecycle', () => {
   it('removes handler timeout state after a request completes', async () => {
     server = createServer()
     server.handle('test:quick', () => 'ok')
-    const ws = { OPEN: 1, readyState: 1, send: mock(() => {}) }
+    const ws = Object.assign(new EventEmitter(), { OPEN: 1, readyState: 1, send: mock(() => {}) })
     const client = { id: 'client', ws, workspaceId: null, webContentsId: null }
 
     await (server as any).onRequest(client, {
@@ -244,7 +245,7 @@ describe('WsRpcServer lifecycle', () => {
   it('settles active handler timeouts during close()', async () => {
     server = createServer()
     server.handle('test:never', () => new Promise(() => {}))
-    const ws = { OPEN: 1, readyState: 3, send: mock(() => {}) }
+    const ws = Object.assign(new EventEmitter(), { OPEN: 1, readyState: 3, send: mock(() => {}) })
     const client = { id: 'client', ws, workspaceId: null, webContentsId: null }
     const request = (server as any).onRequest(client, {
       id: 'request', type: 'request', channel: 'test:never', args: [],

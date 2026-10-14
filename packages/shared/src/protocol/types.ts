@@ -186,6 +186,22 @@ export const STUDIO_IMAGE_PROVIDER_TIMEOUT_MS = 300_000
 export const STUDIO_IMAGE_HANDLER_TIMEOUT_MS = 330_000
 export const STUDIO_IMAGE_REQUEST_TIMEOUT_MS = 360_000
 
+/** Studio text requests wait until completion, cancellation or connection loss. */
+export function isStudioTextChannel(channel: string): boolean {
+  return channel === 'studio:generateMindMap' || channel === 'studio:assistCanvas'
+}
+
+export type StudioWorkEvent = {
+  requestId: string
+  type: 'phase' | 'tool' | 'output'
+  phase?: 'preparing' | 'waiting' | 'thinking' | 'receiving' | 'validating'
+  tool?: string
+  status?: 'running' | 'completed' | 'error'
+  detail?: string
+  characters?: number
+  text?: string
+}
+
 // -- Reliable delivery constants --
 
 /** Max events to retain per client in the ring buffer. */

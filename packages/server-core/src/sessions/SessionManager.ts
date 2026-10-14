@@ -1258,7 +1258,7 @@ export class SessionManager implements ISessionManager {
   // Pending credential request resolvers (keyed by requestId)
   private pendingCredentialResolvers: Map<string, (response: import('@craft-agent/shared/protocol').CredentialResponse) => void> = new Map()
   private localCredentialAccessEnabled = false
-  /** Enabled only by the embedded desktop host after configuring its local vault. */
+  /** Enabled by desktop and standalone hosts for their own encrypted credential store. */
   setLocalCredentialAccessEnabled(enabled: boolean): void { this.localCredentialAccessEnabled = enabled }
   // Permission request metadata tracking (keyed by requestId)
   private pendingPermissionRequests: Map<string, {
@@ -2789,7 +2789,7 @@ export class SessionManager implements ISessionManager {
 
     if (request.type !== 'credential') return
     if (request.savedCredentialName) {
-      if (!this.localCredentialAccessEnabled) throw new Error('Local desktop credentials are unavailable')
+      if (!this.localCredentialAccessEnabled) throw new Error('Host credentials are unavailable')
       if (response.cancelled) {
         await this.completeAuthRequest(sessionId, { requestId, sourceSlug: request.savedCredentialName, success: false, cancelled: true })
         return
@@ -2798,7 +2798,7 @@ export class SessionManager implements ISessionManager {
         await saveRequestedCredential(managed.workspace.id, request, response)
       } catch {
         // Keep the request pending so the user can correct/retry without losing it.
-        throw new Error('Could not save credential. Check the account, password/key and local storage, then retry.')
+        throw new Error('Could not save credential. Check the account, password/key and host storage, then retry.')
       }
       await this.completeAuthRequest(sessionId, { requestId, sourceSlug: request.savedCredentialName, success: true })
       return
@@ -5174,7 +5174,7 @@ export class SessionManager implements ISessionManager {
       // Wire up session self-management tools (set_session_labels, set_session_status, etc.)
       mergeSessionScopedToolCallbacks(managed.id, {
         savedCredentialsFn: async (args) => {
-          if (!this.localCredentialAccessEnabled) throw new Error('Local desktop credentials are unavailable')
+          if (!this.localCredentialAccessEnabled) throw new Error('Host credentials are unavailable')
           if (managed.executionPolicy && (!managed.executionPolicy.fullControl || managed.executionPolicy.actionGates)) throw new Error('Node policy does not permit credential access')
           return runSavedCredentialOperation(managed.workspace.id, args, {
             browser: args.action === 'fill' ? getSessionScopedToolCallbacks(managed.id)?.browserPaneFns : undefined,

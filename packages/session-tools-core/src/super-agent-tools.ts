@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod/v3'
 
 export const SuperAgentPlanBlockerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('system'), summary: z.string().trim().min(1).max(500),

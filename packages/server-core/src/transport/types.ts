@@ -10,6 +10,8 @@ export interface RequestContext {
   webContentsId: number | null
   /** Set by the server's authentication verifier, never from handshake claims. */
   authenticatedBy?: 'bearer' | 'cookie' | null
+  /** Aborted when the requesting socket closes or the server shuts down. */
+  signal?: AbortSignal
 }
 
 export type HandlerFn = (ctx: RequestContext, ...args: any[]) => Promise<any> | any

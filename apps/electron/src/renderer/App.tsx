@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { prepareImageUpload } from './utils/image-upload'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@/hooks/useTheme'
 import type { ThemeOverrides } from '@config/theme'
@@ -1564,7 +1565,11 @@ export default function App() {
         // Store each attachment to disk (generates thumbnails, converts Office→markdown)
         // Use allSettled so one failure doesn't kill all attachments
         const storeResults = await Promise.allSettled(
-          attachments.map(a => window.electronAPI.storeAttachment(sessionId, a, { compressImagesBeforeUpload }))
+          attachments.map(async attachment => {
+            const prepared = await prepareImageUpload(attachment)
+            const stored = await window.electronAPI.storeAttachment(sessionId, prepared, { compressImagesBeforeUpload })
+            return { prepared, stored }
+          })
         )
 
         // Filter successful stores, warn about failures
@@ -1572,8 +1577,8 @@ export default function App() {
         const successfulAttachments: FileAttachment[] = []
         storeResults.forEach((result, i) => {
           if (result.status === 'fulfilled') {
-            storedAttachments!.push(result.value)
-            successfulAttachments.push(attachments[i])
+            storedAttachments!.push(result.value.stored)
+            successfulAttachments.push(result.value.prepared)
           } else {
             console.warn(`Failed to store attachment "${attachments[i].name}":`, result.reason)
           }

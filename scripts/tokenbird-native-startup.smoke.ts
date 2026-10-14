@@ -7,10 +7,14 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { WsRpcServer } from '../packages/server-core/src/transport/server'
 import { RPC_CHANNELS } from '../packages/shared/src/protocol'
+import { CLIENT_MINDMAP_PROJECT_TOOL } from '../packages/server-core/src/transport/capabilities'
 
 const root = mkdtempSync(join(tmpdir(), 'tokenbird-native-startup-'))
 const configDir = join(root, 'config')
 mkdirSync(configDir)
+const projectDir = join(root, 'project')
+mkdirSync(projectDir)
+writeFileSync(join(projectDir, 'README.md'), 'Mind map remote project fixture')
 const token = 'dummy-native-startup-token'
 const failure = process.argv.find(arg => arg.startsWith('--failure='))?.split('=')[1]
 assert.ok(!failure || ['network', 'protocol', 'unsupported'].includes(failure))
@@ -18,6 +22,13 @@ const recovered = join(root, 'recovered')
 const server = new WsRpcServer({ host: '127.0.0.1', port: 0, requireAuth: true, validateToken: async value => value === token })
 server.handle(RPC_CHANNELS.window.GET_WORKSPACE, async context => context.workspaceId)
 server.handle(RPC_CHANNELS.onboarding.GET_AUTH_STATE, async () => ({ setupNeeds: { isFullyConfigured: true } }))
+server.handle(RPC_CHANNELS.studio.GENERATE_MIND_MAP, async (context, input) => {
+  assert.ok(server.hasClientCapability(context.clientId, CLIENT_MINDMAP_PROJECT_TOOL), 'Desktop did not advertise mind map project tools')
+  const result = await server.invokeClient(context.clientId, CLIENT_MINDMAP_PROJECT_TOOL, {
+    requestId: input.requestId, name: 'read_project_file', args: { path: 'README.md' },
+  })
+  return { mode: 'ask', summary: JSON.parse(result).content }
+})
 server.handle(RPC_CHANNELS.server.GET_WORKSPACES, async () => {
   if (failure === 'unsupported' && !existsSync(recovered)) {
     throw Object.assign(new Error('Synthetic missing older-server interface'), { code: 'CHANNEL_NOT_FOUND' })
@@ -89,6 +100,7 @@ app.on('web-contents-created', (_event, contents) => {
         }
       }
       const rows = await contents.executeJavaScript('window.electronAPI.getServerWorkspaces()');
+      const projectTool = await contents.executeJavaScript(${JSON.stringify(`window.electronAPI.generateStudioMindMap(${JSON.stringify({ requestId: 'startup-project-tool', workspaceDirectory: projectDir, connectionSlug: 'fixture', model: 'fixture', prompt: 'Read project', mode: 'ask' })})`)});
       let translations;
       if (${JSON.stringify(checkTranslations)}) {
         translations = await contents.executeJavaScript(${JSON.stringify(`(async () => {
@@ -99,7 +111,7 @@ app.on('web-contents-created', (_event, contents) => {
           return Object.fromEntries(${JSON.stringify(Object.keys(expectedTranslations ?? {}))}.map(key => [key, t(key)]));
         })()`)});
       }
-      report({ rows, initial, translations });
+      report({ rows, initial, translations, projectTool });
       app.exit(0);
     } catch (error) { report({ error: error.message, initial }); app.exit(1); }
   });
@@ -119,6 +131,7 @@ try {
   const result = JSON.parse(readFileSync(report, 'utf8'))
   assert.equal(code, 0, JSON.stringify(result) + '\n' + stderr + '\n' + stdout)
   assert.deepEqual(result.rows, [{ id: 'fixture-workspace', name: 'Fixture Workspace' }], JSON.stringify(result))
+  assert.deepEqual(result.projectTool, { mode: 'ask', summary: 'Mind map remote project fixture' })
   if (checkTranslations) {
     assert.deepEqual(result.translations, expectedTranslations)
     console.log('PASS real Electron bundled Simplified Chinese MCP translations')
@@ -134,4 +147,5 @@ try {
     if (failure === 'unsupported') assert.ok(result.initial.screen.text.includes('Update the server'))
   }
   console.log(`PASS real Electron saved-server discovery${failure ? `, ${failure} failure screen and retry recovery` : ''}`)
+  console.log('PASS mind map project file read through main, preload and remote WebSocket')
 } finally { child.kill(); await server.close() }

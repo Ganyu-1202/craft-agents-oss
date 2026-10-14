@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export const ComputerUseSchema = z.object({
   action: z.enum(['status', 'screenshot', 'position', 'windows', 'snapshot', 'focus', 'move', 'click', 'drag', 'scroll', 'type', 'key', 'wait']),

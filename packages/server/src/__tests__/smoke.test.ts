@@ -10,12 +10,14 @@
 
 import { describe, it, expect, afterEach } from 'bun:test'
 import { join } from 'node:path'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import type { Subprocess } from 'bun'
 import WebSocket from 'ws'
+import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
 
-const SERVER_ENTRY = join(import.meta.dir, '..', 'index.ts')
+const SERVER_ENTRY = process.env.TOKENBIRD_SERVER_SMOKE_ENTRY ?? join(import.meta.dir, '..', 'index.ts')
+const SERVER_RUNTIME = process.env.TOKENBIRD_SERVER_SMOKE_RUNTIME ?? process.execPath
 const STARTUP_TIMEOUT = 15_000
 const TEST_TIMEOUT = 30_000
 
@@ -23,6 +25,7 @@ interface SpawnedServer {
   url: string
   token: string
   healthPort: number
+  configDir: string
   proc: Subprocess
   stop: () => Promise<void>
 }
@@ -34,8 +37,13 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
   // every smoke instance its own config root so one test cannot poison the
   // next one (or collide with the user's real headless server).
   const configDir = mkdtempSync(join(tmpdir(), 'craft-agent-server-smoke-'))
+  const rootPath = join(configDir, 'workspaces', 'smoke')
+  mkdirSync(rootPath, { recursive: true })
+  const workspace = { id: 'smoke-workspace', slug: 'smoke', name: 'Smoke', rootPath, createdAt: Date.now() }
+  writeFileSync(join(rootPath, 'config.json'), JSON.stringify({ id: workspace.id, name: workspace.name, createdAt: workspace.createdAt }))
+  writeFileSync(join(configDir, 'config.json'), JSON.stringify({ workspaces: [workspace], activeWorkspaceId: workspace.id, activeSessionId: null }))
 
-  const proc = Bun.spawn([process.execPath, SERVER_ENTRY], {
+  const proc = Bun.spawn([SERVER_RUNTIME, SERVER_ENTRY], {
     env: {
       ...parentEnv,
       ...extraEnv,
@@ -43,7 +51,8 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
       CRAFT_RPC_PORT: '0',
       CRAFT_RPC_HOST: '127.0.0.1',
       CRAFT_HEALTH_PORT: '0', // random port
-      CRAFT_CONFIG_DIR: configDir,
+      TOKENBIRD_CONFIG_DIR: configDir,
+      CRAFT_DISABLE_MESSAGING: '1',
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -72,6 +81,7 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
             url,
             token,
             healthPort: 0, // health port not printed; we skip health test if 0
+            configDir,
             proc,
             stop: async () => {
               proc.kill('SIGTERM')
@@ -104,7 +114,7 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
   })
 }
 
-function connectWs(url: string, token: string): Promise<WebSocket> {
+function connectWs(url: string, token: string, workspaceId?: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url)
     ws.on('open', () => {
@@ -114,6 +124,7 @@ function connectWs(url: string, token: string): Promise<WebSocket> {
         type: 'handshake',
         protocolVersion: '1.0',
         token,
+        workspaceId,
       }))
     })
     ws.on('message', (data) => {
@@ -129,6 +140,22 @@ function connectWs(url: string, token: string): Promise<WebSocket> {
     ws.on('close', (code, reason) => {
       reject(new Error(`WS closed: ${code} ${reason}`))
     })
+  })
+}
+
+function invokeRpc(ws: WebSocket, channel: string, ...args: unknown[]): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const id = crypto.randomUUID()
+    const timer = setTimeout(() => { ws.off('message', onMessage); reject(new Error(`RPC timed out: ${channel}`)) }, 5000)
+    const onMessage = (data: WebSocket.RawData) => {
+      const message = JSON.parse(data.toString())
+      if (message.id !== id) return
+      clearTimeout(timer); ws.off('message', onMessage)
+      if (message.error) reject(new Error(message.error.message))
+      else resolve(message.result)
+    }
+    ws.on('message', onMessage)
+    ws.send(JSON.stringify({ id, type: 'request', channel, args }))
   })
 }
 
@@ -149,6 +176,27 @@ describe('headless server smoke test', () => {
     ws.close()
   }, TEST_TIMEOUT)
 
+  it('manages the standalone encrypted vault through authenticated workspace RPC', async () => {
+    server = await spawnTestServer()
+    const ws = await connectWs(server.url, server.token, 'smoke-workspace')
+    try {
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.ACCESS)).state).toBe('required')
+      await invokeRpc(ws, RPC_CHANNELS.credentials.REQUEST_ACCESS)
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.ACCESS)).state).toBe('approved')
+      const id = { type: 'saved_credential', workspaceId: 'smoke-workspace', name: 'binance-operations' }
+      const secret = 'dummy-rpc-binance-secret'
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.APPLY, { changes: [{ op: 'upsert', id, credential: { value: secret, credentialKind: 'api-key' } }] })).ok).toBe(true)
+      const list = await invokeRpc(ws, RPC_CHANNELS.credentials.LIST)
+      expect(list.ok).toBe(true)
+      expect(list.value.entries.map((entry: any) => entry.id.name)).toContain('binance-operations')
+      expect(JSON.stringify(list)).not.toContain(secret)
+      expect(readFileSync(join(server.configDir, 'credentials.enc')).includes(Buffer.from(secret))).toBe(false)
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.APPLY, { changes: [{ op: 'upsert', id, credential: { value: 'updated-dummy-secret' } }] })).ok).toBe(true)
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.APPLY, { changes: [{ op: 'delete', id }] })).ok).toBe(true)
+      expect((await invokeRpc(ws, RPC_CHANNELS.credentials.LIST)).value.entries).toEqual([])
+    } finally { ws.close() }
+  }, TEST_TIMEOUT)
+
   it('rejects invalid token', async () => {
     server = await spawnTestServer()
     await expect(
@@ -160,13 +208,13 @@ describe('headless server smoke test', () => {
     const token = 'short'
     const { CLAUDECODE: _, ...parentEnv } = process.env
     const configDir = mkdtempSync(join(tmpdir(), 'craft-agent-server-smoke-'))
-    const proc = Bun.spawn([process.execPath, SERVER_ENTRY], {
+    const proc = Bun.spawn([SERVER_RUNTIME, SERVER_ENTRY], {
       env: {
         ...parentEnv,
         CRAFT_SERVER_TOKEN: token,
         CRAFT_RPC_PORT: '0',
         CRAFT_RPC_HOST: '127.0.0.1',
-        CRAFT_CONFIG_DIR: configDir,
+        TOKENBIRD_CONFIG_DIR: configDir,
       },
       stdout: 'pipe',
       stderr: 'pipe',

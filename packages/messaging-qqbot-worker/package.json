@@ -1,6 +1,6 @@
 {
   "name": "@craft-agent/messaging-qqbot-worker",
-  "version": "26.10.11",
+  "version": "26.10.13",
   "private": true,
   "type": "module",
   "main": "src/worker.ts",

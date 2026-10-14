@@ -3,7 +3,7 @@ import { isAbsolute, join, resolve, dirname, parse as parsePath } from 'path'
 import { homedir } from 'os'
 import { validatePathFormat } from '../../utils/path-validation'
 import { randomUUID } from 'crypto'
-import { RPC_CHANNELS, type FileAttachment, type FileReadOptions, type DirectoryListingResult } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS, IMAGE_UPLOAD_MAX_BYTES, type FileAttachment, type FileReadOptions, type DirectoryListingResult } from '@craft-agent/shared/protocol'
 import type { StoredAttachment } from '@craft-agent/core/types'
 import { readFileAttachment, validateImageForClaudeAPI, IMAGE_LIMITS } from '@craft-agent/shared/utils'
 import { getSessionAttachmentsPath, validateSessionId } from '@craft-agent/shared/sessions'
@@ -327,11 +327,11 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
 
           // Determine if we should resize
           let shouldResize = false
-          let resizeRequiredForApi = false
+          let resizeRequiredForApi = decoded.length > IMAGE_UPLOAD_MAX_BYTES
 
           if (imageInspection.status === 'processor_unavailable') {
             deps.platform.logger.warn('Image processing unavailable while validating attachment:', imageInspection.error?.message ?? 'unknown error')
-            if (decoded.length > IMAGE_LIMITS.MAX_SIZE) {
+            if (decoded.length > IMAGE_UPLOAD_MAX_BYTES) {
               throw new Error('Image processing is unavailable, so oversized images cannot be validated or resized automatically. Please attach a smaller image.')
             }
           } else if (imageInspection.status === 'invalid_image') {
@@ -344,11 +344,11 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
               shouldResize = true
               resizeRequiredForApi = true
               deps.platform.logger.info(`Image exceeds ${IMAGE_LIMITS.MAX_DIMENSION}px limit (${imageSize!.width}x${imageSize!.height}), will resize`)
-            } else if (!validation.valid && validation.errorCode === 'size_exceeded') {
-              // File >5MB — try resize+compress instead of rejecting
+            } else if (resizeRequiredForApi || (!validation.valid && validation.errorCode === 'size_exceeded')) {
+              // Enforce the upload limit regardless of the optional 100KB setting.
               shouldResize = true
               resizeRequiredForApi = true
-              deps.platform.logger.info(`Image exceeds 5MB (${(decoded.length / 1024 / 1024).toFixed(1)}MB), will attempt resize`)
+              deps.platform.logger.info(`Image exceeds 2MB (${(decoded.length / 1024 / 1024).toFixed(1)}MB), will attempt resize`)
             } else if (!validation.valid) {
               throw new Error(validation.error)
             } else if (compressBeforeUpload && (decoded.length > IMAGE_UPLOAD_TARGET_BYTES || validation.needsResize)) {
@@ -356,14 +356,14 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
             }
           }
 
-          // Optional upload compression aims for 100KB. Hard API-limit resizing
+          // Optional upload compression aims for 100KB. Mandatory 2MB resizing
           // remains active even when the user disables the optional setting.
           if (shouldResize) {
             const isPhoto = attachment.mimeType === 'image/jpeg'
             const originalDecoded = decoded
             const targetBytes = compressBeforeUpload
               ? IMAGE_UPLOAD_TARGET_BYTES
-              : IMAGE_LIMITS.MAX_SIZE
+              : IMAGE_UPLOAD_MAX_BYTES
 
             try {
               const result = await resizeImageForAPI(decoded, {
@@ -384,7 +384,7 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
                 finalMimeType = result.format === 'jpeg' ? 'image/jpeg' : 'image/png'
               }
 
-              if (decoded.length > IMAGE_LIMITS.MAX_SIZE) {
+              if (decoded.length > IMAGE_UPLOAD_MAX_BYTES) {
                 throw new Error(`Image still too large after resize (${(decoded.length / 1024 / 1024).toFixed(1)}MB)`)
               }
             } catch (resizeError) {
@@ -411,6 +411,10 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
           }
         }
 
+        if (attachment.type === 'image' && decoded.length > IMAGE_UPLOAD_MAX_BYTES) {
+          throw new Error('Image must be compressed below 2 MB before storing')
+        }
+
         // Keep the stored extension aligned with the encoded bytes. Native
         // Codex sends image paths directly, so a PNG-named JPEG is unsafe.
         if (attachment.type === 'image' && finalMimeType !== attachment.mimeType) {
@@ -422,7 +426,7 @@ export function registerFilesHandlers(server: RpcServer, deps: HandlerDeps): voi
         await writeFile(storedPath, decoded)
         filesToCleanup.push(storedPath)
         if (stagedPath) await unlink(stagedPath)
-      } else if (attachment.text) {
+      } else if (attachment.text && attachment.type !== 'image') {
         // Text files - save as UTF-8
         await writeFile(storedPath, attachment.text, 'utf-8')
         filesToCleanup.push(storedPath)

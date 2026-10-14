@@ -48,6 +48,9 @@ import type { PresetTheme } from '@config/theme'
 import { BirdCompanionSettings } from '@/components/settings/BirdCompanionSettings'
 import { ThemePresetGallery } from '@/components/settings/ThemePresetGallery'
 import { ThemePresentationSettings } from '@/components/settings/ThemePresentationSettings'
+import { CatalogPagination } from './CatalogPagination'
+
+const THEME_PACK_PAGE_SIZE = 6
 
 export const meta: DetailsPageMeta = {
   navigator: 'settings',
@@ -143,6 +146,19 @@ export default function AppearanceSettingsPage() {
 
   // Preset themes for the color theme dropdown
   const [presetThemes, setPresetThemes] = useState<PresetTheme[]>([])
+
+  const [themePackPage, setThemePackPage] = useState(1)
+  const themePackPageCount = Math.max(1, Math.ceil(themePacks.length / THEME_PACK_PAGE_SIZE))
+  const currentThemePackPage = Math.min(themePackPage, themePackPageCount)
+  const visibleThemePacks = themePacks.slice(
+    (currentThemePackPage - 1) * THEME_PACK_PAGE_SIZE,
+    currentThemePackPage * THEME_PACK_PAGE_SIZE,
+  )
+
+  // Keep the current page valid when deleting packs from the last page.
+  useEffect(() => {
+    setThemePackPage(page => Math.min(page, themePackPageCount))
+  }, [themePackPageCount])
 
   // Match preview artwork to the current appearance and load packs in parallel.
   const [packPreviews, setPackPreviews] = useState<Record<string, string>>({})
@@ -500,7 +516,7 @@ export default function AppearanceSettingsPage() {
 
                   {themePacks.length > 0 && (
                     <div className="grid gap-3 px-4 py-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))' }}>
-                      {themePacks.map((pack: ThemePack) => (
+                      {visibleThemePacks.map((pack: ThemePack) => (
                         <div
                           key={pack.id}
                           className={
@@ -564,6 +580,13 @@ export default function AppearanceSettingsPage() {
                       ))}
                     </div>
                   )}
+
+                  <CatalogPagination
+                    page={currentThemePackPage}
+                    pageSize={THEME_PACK_PAGE_SIZE}
+                    total={themePacks.length}
+                    onPageChange={setThemePackPage}
+                  />
 
                   <div className="flex flex-wrap items-center gap-2 px-4 py-3">
                     <Button

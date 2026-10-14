@@ -33,12 +33,32 @@ describe('AI replacement compositing', () => {
     expect(pixel(generated, 3, 0)).toEqual([255, 0, 0, 255])
   })
 
-  it('keeps partially transparent original edges when generated output is transparent', () => {
+  it('keeps original artwork when an edit patch is transparent', () => {
     const generated = frame(3, 3, [255, 0, 0, 0])
     const original = frame(3, 3, [0, 255, 0, 128])
     composeInpaint(generated, original, 1)
     expect(pixel(generated, 1, 0)).toEqual([0, 255, 0, 128])
-    expect(pixel(generated, 1, 1)[3]).toBe(0)
+    expect(pixel(generated, 1, 1)).toEqual([0, 255, 0, 128])
+  })
+
+  it('composites a translucent edit over opaque artwork without exposing the canvas background', () => {
+    const generated = frame(5, 5, [255, 0, 0, 128])
+    const original = frame(5, 5, [0, 0, 255, 255])
+    composeInpaint(generated, original, 2)
+    expect(pixel(generated, 2, 2)).toEqual([128, 0, 127, 255])
+    expect(pixel(generated, 2, 1)).toEqual([64, 0, 191, 255])
+    expect(pixel(generated, 2, 0)).toEqual([0, 0, 255, 255])
+  })
+
+  it('does not fade the original at an outpaint seam when the provider returns a translucent patch', () => {
+    const generated = frame(5, 1, [255, 0, 0, 128])
+    const original = frame(5, 1, [0, 0, 255, 255])
+    original.data[3 * 4 + 3] = 0
+    original.data[4 * 4 + 3] = 0
+    composeOutpaint(generated, original, 2)
+    expect(pixel(generated, 2, 0)).toEqual([64, 0, 191, 255])
+    expect(pixel(generated, 3, 0)).toEqual([255, 0, 0, 128])
+    expect(pixel(generated, 0, 0)).toEqual([0, 0, 255, 255])
   })
 
   it('gives a transparent manga canvas an opaque white edit background', () => {
