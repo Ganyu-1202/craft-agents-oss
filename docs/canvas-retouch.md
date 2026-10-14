@@ -184,6 +184,10 @@
 
 ## 运行测试
 
+AI 局部重绘和扩图在选区的原始像素尺寸上拼接，只有生成结果需要缩放。半透明生成结果作为补丁叠加到原图，避免直接替换透明度后透出画布底色；扩图接缝以外的已有像素保留原值。抠图仍使用独立的透明素材流程。
+
+`bun run scripts/test-studio-image-edit.ts` 在隔离的隐藏 Chromium 中挂载生产画布，使用 1254×1254 半透明响应检查非正方形选区、负坐标、图层位移、跨图块拼接、原始边缘像素、扩图和撤销/重做。AI 接口使用本地固定响应，不访问真实用户画布或付费生成服务。
+
 `bun test ./apps/electron/src/renderer/pages/studio ./apps/electron/src/shared/canvas-export.test.ts ./packages/session-tools-core/src/handlers/canvas-drawing-schema.test.ts ./packages/session-tools-core/src/handlers/canvas-retouch-schema.test.ts ./packages/session-tools-core/src/handlers/canvas-photoshop-schema.test.ts ./packages/session-tools-core/src/handlers/canvas-tool.test.ts`
 
 `bun run scripts/test-canvas-retouch.ts` 在隐藏 Electron/Chromium 窗口中验证真实 Canvas 合成，包括负坐标、图层位移、选区空洞、跨图块图章、撤销、调色和透明度，并执行 `canvas-drawing.browser.ts`、`canvas-editing.browser.ts` 和 `canvas-photoshop.browser.ts` 中新增工具的实际像素测试及保存恢复；使用临时隔离配置，不访问真实用户画布或 AI 服务。

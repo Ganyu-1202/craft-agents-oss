@@ -305,6 +305,22 @@ cd /opt/craft-server && bash install.sh     # 会生成 systemd 服务 craft-ser
 ./bin/craft-server
 ```
 
+### 远程服务器凭据库
+
+独立 Linux 服务端提供完整凭据管理：在连接该服务端的工作区中打开
+“设置 → 凭据”，点击申请访问后即可查看元数据、添加、更新、批量导入和删除。
+服务端使用已验证的服务器 Token 或网页登录身份签发 10 分钟的访问授权，
+授权绑定当前连接和工作区；独立服务端无需桌面弹窗审批。
+
+凭据保存在服务端配置目录的 `credentials.enc` 中，沿用机器绑定的 AES 加密存储。
+列表只返回元数据，不返回已保存的密码或密钥。智能体的 `saved_credentials`
+申请通过客户端安全表单输入，在服务端保存并继续会话，后续程序也在服务端使用凭据。
+更新模型或数据源凭据后会刷新相关运行时。
+
+Linux 独立服务端不执行 Electron 的系统密钥库迁移。若配置目录中的凭据库已经由
+Electron 系统密钥库保护，需要使用独立配置目录；服务端会保留原文件并报告不可读取。
+升级后须重启服务端并重新连接工作区，旧服务端不会自动获得这些接口。
+
 ### 最小 CLI / Agent 服务器
 
 面向小型服务器配置、SSH 终端和远程运维场景，可构建不含 Web UI、消息渠道、
@@ -429,7 +445,7 @@ GitHub Actions 构建并自动发布 Windows、macOS、Linux 安装包到 GitCod
 | 服务器（原生）   | `bun run scripts/build-server.ts --platform=<platform> --arch=<arch> --compress` | `dist/server/` + `tokenbird-server-<ver>-<platform>-<arch>.tar.gz` |
 | 服务器（Docker） | `docker buildx build -f Dockerfile.server -t craft-agent-server .`               | 容器镜像                                                           |
 
-版本号取自 `apps/electron/package.json`（当前 `26.10.11`），产物命名统一为
+版本号取自 `apps/electron/package.json`（当前 `26.10.13`），产物命名统一为
 `TokenBird-<arch>.<ext>` / `tokenbird-server-<version>-<platform>-<arch>.tar.gz`。
 
 ---
