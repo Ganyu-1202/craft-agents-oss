@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { NATIVE_CREDENTIAL_IPC } from '@craft-agent/shared/credentials/native-types'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { NATIVE_CREDENTIAL_IPC } from '@tokenbird/shared/credentials/native-types'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { CHANNEL_MAP } from '../channel-map'
 
 const nativeMethods = {

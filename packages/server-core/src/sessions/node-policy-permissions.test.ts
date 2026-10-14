@@ -6,9 +6,9 @@ import {
   authorizeSessionPolicyTool, checkSessionExecutionPolicy, clearSessionExecutionPolicy, consumeSessionActionGate, claimSessionActionGateDispatch,
   getSessionPolicyGrantTarget, hasSessionPolicyToolGrant, setSessionExecutionPolicy, setSessionProgramExecutor,
   type SessionExecutionPolicy, type SessionPolicyPermissionRequest,
-} from '@craft-agent/shared/agent'
-import type { SessionEvent } from '@craft-agent/shared/protocol'
-import type { ShellExecArgs } from '@craft-agent/session-tools-core'
+} from '@tokenbird/shared/agent'
+import type { SessionEvent } from '@tokenbird/shared/protocol'
+import type { ShellExecArgs } from '@tokenbird/session-tools-core'
 import { CLIENT_RUN_SHELL, type ClientShellResult } from '../transport'
 import { TurnClientContexts } from './turn-client-context'
 import { SessionManager } from './SessionManager'

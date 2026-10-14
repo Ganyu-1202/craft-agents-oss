@@ -1,4 +1,4 @@
-import type { RemoteServerConfig } from '@craft-agent/core/types'
+import type { RemoteServerConfig } from '@tokenbird/core/types'
 import { advanceNativeWindowBinding, type NativeAuthorityEvent } from '../native-window-authority'
 
 export const NATIVE_SWITCH_WORKSPACE = '__workspace:switch'

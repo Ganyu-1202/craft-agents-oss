@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { openLabelLink } from '@/lib/open-label-link'
 import { parseDate } from 'chrono-node'
 import { format, parse } from 'date-fns'
-import type { LabelConfig } from '@craft-agent/shared/labels'
+import type { LabelConfig } from '@tokenbird/shared/labels'
 
 export interface LabelValuePopoverProps {
   /** Label configuration (color, name, valueType) */
@@ -91,7 +91,7 @@ export function LabelValuePopover({
    *  Matches the pattern used in ActiveOptionBadges. */
   const handleCloseAutoFocus = React.useCallback((e: Event) => {
     e.preventDefault()
-    window.dispatchEvent(new CustomEvent('craft:focus-input', {
+    window.dispatchEvent(new CustomEvent('tokenbird:focus-input', {
       detail: { sessionId }
     }))
   }, [sessionId])

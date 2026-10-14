@@ -1,6 +1,6 @@
 {
-  "name": "@craft-agent/ui",
-  "version": "26.10.13",
+  "name": "@tokenbird/ui",
+  "version": "26.10.14",
   "license": "Apache-2.0",
   "description": "Shared React UI components for TokenBird - session viewer, chat display, markdown rendering",
   "type": "module",
@@ -20,8 +20,8 @@
     "./styles": "./src/styles/index.css"
   },
   "dependencies": {
-    "@craft-agent/core": "workspace:*",
-    "@craft-agent/shared": "workspace:*",
+    "@tokenbird/core": "workspace:*",
+    "@tokenbird/shared": "workspace:*",
     "@paper-design/shaders-react": "^0.0.69",
     "beautiful-mermaid": "*",
     "@types/mdast": "^4.0.0",

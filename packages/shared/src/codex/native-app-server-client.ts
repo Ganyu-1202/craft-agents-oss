@@ -59,6 +59,8 @@ export class NativeCodexAppServerClient extends EventEmitter {
   async connect(): Promise<InitializeResponse> {
     if (this.state !== 'disconnected') throw new Error(`Codex app-server is ${this.state}`);
     this.state = 'connecting';
+    this.writeTail = Promise.resolve();
+    this.stderrChunks = [];
 
     try {
       this.child = spawn(this.options.codexPath, ['app-server', '--listen', 'stdio://', ...(this.options.configArgs ?? [])], {
@@ -68,8 +70,10 @@ export class NativeCodexAppServerClient extends EventEmitter {
         detached: process.platform !== 'win32',
         env: { ...process.env, FORCE_COLOR: '0', ...this.options.env },
       });
-      this.child.once('error', error => this.handleExit(error));
-      this.child.once('exit', (code, signal) => {
+      const child = this.child;
+      child.once('error', error => { if (this.child === child) this.handleExit(error); });
+      child.once('exit', (code, signal) => {
+        if (this.child !== child) return;
         const suffix = this.recentStderr ? `\n${this.recentStderr}` : '';
         this.handleExit(new Error(`Codex app-server exited (code=${code}, signal=${signal})${suffix}`));
       });
@@ -80,7 +84,7 @@ export class NativeCodexAppServerClient extends EventEmitter {
       this.child.stderr?.on('data', chunk => this.recordStderr(String(chunk)));
 
       const params: InitializeParams = {
-        clientInfo: { name: 'craft-agents', title: 'Craft Agents', version: APP_VERSION },
+        clientInfo: { name: 'tokenbird', title: 'TokenBird', version: APP_VERSION },
         capabilities: {
           experimentalApi: true,
           requestAttestation: false,
@@ -122,6 +126,8 @@ export class NativeCodexAppServerClient extends EventEmitter {
       if (pending) {
         clearTimeout(pending.timeout);
         this.pending.delete(id);
+        pending.reject(error instanceof Error ? error : new Error(String(error)));
+        return promise;
       }
       throw error;
     }
@@ -204,7 +210,7 @@ export class NativeCodexAppServerClient extends EventEmitter {
 
   private write(message: JsonRpcRequest | JsonRpcResponse | JsonRpcNotification): Promise<void> {
     const line = `${JSON.stringify(message)}\n`;
-    this.writeTail = this.writeTail.then(() => new Promise<void>((resolve, reject) => {
+    this.writeTail = this.writeTail.catch(() => undefined).then(() => new Promise<void>((resolve, reject) => {
       const stdin = this.child?.stdin;
       if (!stdin?.writable) {
         reject(new Error('Codex app-server stdin is closed'));

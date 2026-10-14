@@ -1,6 +1,6 @@
 import { CheckCheck, FileOutput, FolderOpen, MessageSquare, PackageCheck } from 'lucide-react'
-import { usePlatform } from '@craft-agent/ui/context'
-import type { SuperAgentArtifact, SuperAgentDelivery } from '@craft-agent/shared/super-agent'
+import { usePlatform } from '@tokenbird/ui/context'
+import type { SuperAgentArtifact, SuperAgentDelivery } from '@tokenbird/shared/super-agent'
 import { Markdown } from '@/components/markdown'
 import { Button } from '@/components/ui/button'
 import type { SuperAgentText } from './super-agent-ui'

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink, RefreshCw, WalletCards } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getProviderRechargeTarget } from '@craft-agent/shared/utils/billing'
+import { getProviderRechargeTarget } from '@tokenbird/shared/utils/billing'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { ConnectionIcon } from '@/components/icons/ConnectionIcon'
 import { Button } from '@/components/ui/button'

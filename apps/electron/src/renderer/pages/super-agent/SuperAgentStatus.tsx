@@ -1,5 +1,5 @@
 import { Activity, BrainCircuit, CircleAlert, CircleOff, Clock3, Coffee, LoaderCircle, Pause, ShieldCheck } from 'lucide-react'
-import type { SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import type { SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 import type { PermissionRequest } from '../../../shared/types'
 import { cn } from '@/lib/utils'
 import { useSuperAgentText, type SuperAgentTextKey } from './super-agent-ui'

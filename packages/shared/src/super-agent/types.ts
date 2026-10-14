@@ -2,10 +2,10 @@ import type { ThinkingLevel } from '../agent/thinking-levels'
 import type { AgentRuntimeProtocol } from '../config/llm-connections'
 import type { SuperAgentArchive, SuperAgentMemory, SuperAgentLibraryCommand } from './library'
 import type { PermissionMode } from '../agent/mode-types'
-import type { SessionPolicyPermissionScope } from '@craft-agent/core/types'
+import type { SessionPolicyPermissionScope } from '@tokenbird/core/types'
 import type { SuperAgentCheckpoint, SuperAgentWaitCondition, SuperAgentArtifact, SuperAgentOperation, SuperAgentMetrics, SuperAgentStatistics } from './continuity'
 
-export type { SessionPolicyPermissionScope } from '@craft-agent/core/types'
+export type { SessionPolicyPermissionScope } from '@tokenbird/core/types'
 
 /** One persistent model session, with no concurrent turn or delegated subprocess. */
 export interface SuperAgentNode {

@@ -3,9 +3,9 @@ import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { z } from 'zod'
-import { SuperAgentActionsSchema as ActionsSchema, parseSuperAgentToolCall, isSuperAgentToolValidationError, SUPER_AGENT_COLLABORATION_SKILL, type SuperAgentActions } from '@craft-agent/session-tools-core/super-agent-tools'
-import { type ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
-import type { CreateSessionOptions, Session, SessionEvent } from '@craft-agent/shared/protocol'
+import { SuperAgentActionsSchema as ActionsSchema, parseSuperAgentToolCall, isSuperAgentToolValidationError, SUPER_AGENT_COLLABORATION_SKILL, type SuperAgentActions } from '@tokenbird/session-tools-core/super-agent-tools'
+import { type ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
+import type { CreateSessionOptions, Session, SessionEvent } from '@tokenbird/shared/protocol'
 import type { SessionCompletionEvent } from '../sessions/SessionManager'
 import { EMPTY_RESPONSE_ERROR_CODE } from '../sessions/session-turn-completion'
 import { buildSuperAgentNodePrompt } from './SuperAgentPrompt'
@@ -69,7 +69,7 @@ import {
   type SuperAgentSessionPolicy,
   type SuperAgentSnapshot,
   type SuperAgentReadiness,
-} from '@craft-agent/shared/super-agent'
+} from '@tokenbird/shared/super-agent'
 
 export interface SuperAgentSessionHost {
   createSession(workspaceId: string, options: CreateSessionOptions): Promise<{ id: string }>

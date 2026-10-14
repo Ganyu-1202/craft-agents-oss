@@ -14,7 +14,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import type { Subprocess } from 'bun'
 import WebSocket from 'ws'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 
 const SERVER_ENTRY = process.env.TOKENBIRD_SERVER_SMOKE_ENTRY ?? join(import.meta.dir, '..', 'index.ts')
 const SERVER_RUNTIME = process.env.TOKENBIRD_SERVER_SMOKE_RUNTIME ?? process.execPath
@@ -36,7 +36,7 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
   // A force-killed server can leave the process lock behind on Windows. Give
   // every smoke instance its own config root so one test cannot poison the
   // next one (or collide with the user's real headless server).
-  const configDir = mkdtempSync(join(tmpdir(), 'craft-agent-server-smoke-'))
+  const configDir = mkdtempSync(join(tmpdir(), 'tokenbird-server-smoke-'))
   const rootPath = join(configDir, 'workspaces', 'smoke')
   mkdirSync(rootPath, { recursive: true })
   const workspace = { id: 'smoke-workspace', slug: 'smoke', name: 'Smoke', rootPath, createdAt: Date.now() }
@@ -47,12 +47,12 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
     env: {
       ...parentEnv,
       ...extraEnv,
-      CRAFT_SERVER_TOKEN: token,
-      CRAFT_RPC_PORT: '0',
-      CRAFT_RPC_HOST: '127.0.0.1',
-      CRAFT_HEALTH_PORT: '0', // random port
+      TOKENBIRD_SERVER_TOKEN: token,
+      TOKENBIRD_RPC_PORT: '0',
+      TOKENBIRD_RPC_HOST: '127.0.0.1',
+      TOKENBIRD_HEALTH_PORT: '0', // random port
       TOKENBIRD_CONFIG_DIR: configDir,
-      CRAFT_DISABLE_MESSAGING: '1',
+      TOKENBIRD_DISABLE_MESSAGING: '1',
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -72,8 +72,8 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
       for (const line of lines) {
-        if (line.startsWith('CRAFT_SERVER_URL=')) {
-          url = line.slice('CRAFT_SERVER_URL='.length).trim()
+        if (line.startsWith('TOKENBIRD_SERVER_URL=')) {
+          url = line.slice('TOKENBIRD_SERVER_URL='.length).trim()
         }
         if (url) {
           clearTimeout(timer)
@@ -108,7 +108,7 @@ async function spawnTestServer(extraEnv?: Record<string, string>): Promise<Spawn
       }
       clearTimeout(timer)
       if (!url) {
-        reject(new Error('Server exited before printing CRAFT_SERVER_URL'))
+        reject(new Error('Server exited before printing TOKENBIRD_SERVER_URL'))
       }
     })()
   })
@@ -207,13 +207,13 @@ describe('headless server smoke test', () => {
   it('rejects short token at startup', async () => {
     const token = 'short'
     const { CLAUDECODE: _, ...parentEnv } = process.env
-    const configDir = mkdtempSync(join(tmpdir(), 'craft-agent-server-smoke-'))
+    const configDir = mkdtempSync(join(tmpdir(), 'tokenbird-server-smoke-'))
     const proc = Bun.spawn([SERVER_RUNTIME, SERVER_ENTRY], {
       env: {
         ...parentEnv,
-        CRAFT_SERVER_TOKEN: token,
-        CRAFT_RPC_PORT: '0',
-        CRAFT_RPC_HOST: '127.0.0.1',
+        TOKENBIRD_SERVER_TOKEN: token,
+        TOKENBIRD_RPC_PORT: '0',
+        TOKENBIRD_RPC_HOST: '127.0.0.1',
         TOKENBIRD_CONFIG_DIR: configDir,
       },
       stdout: 'pipe',

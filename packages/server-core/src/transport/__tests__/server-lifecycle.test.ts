@@ -9,7 +9,7 @@ import { describe, it, expect, afterEach, mock } from 'bun:test'
 import WebSocket from 'ws'
 import { EventEmitter } from 'node:events'
 import { WsRpcServer } from '../server'
-import { PROTOCOL_VERSION } from '@craft-agent/shared/protocol'
+import { PROTOCOL_VERSION } from '@tokenbird/shared/protocol'
 
 const TEST_TOKEN = 'test-token-with-enough-entropy-to-pass'
 

@@ -26,9 +26,9 @@ import { NativeRemoteClient } from './native-remote-client'
 import { createNativeWorkspaceSwitcher } from './native-workspace-switch'
 import { buildClientApi } from '../transport/build-api'
 import { CHANNEL_MAP } from '../transport/channel-map'
-import { createCallbackServer } from '@craft-agent/shared/auth/callback-server'
-import { CHATGPT_OAUTH_CONFIG } from '@craft-agent/shared/auth/chatgpt-oauth-config'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { createCallbackServer } from '@tokenbird/shared/auth/callback-server'
+import { CHATGPT_OAUTH_CONFIG } from '@tokenbird/shared/auth/chatgpt-oauth-config'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import {
   CLIENT_OPEN_EXTERNAL,
   CLIENT_OPEN_PATH,
@@ -44,15 +44,15 @@ import {
   CLIENT_REQUEST_FILES,
   CLIENT_SFTP_TRANSFER,
   LOCAL_CLIENT_CAPABILITIES,
-} from '@craft-agent/server-core/transport'
-import type { ConfirmDialogSpec, FileDialogSpec, BrowserCapabilityRequest } from '@craft-agent/server-core/transport'
-import type { RpcClient } from '@craft-agent/server-core/transport'
-import type { RemoteServerConfig } from '@craft-agent/core/types'
+} from '@tokenbird/server-core/transport'
+import type { ConfirmDialogSpec, FileDialogSpec, BrowserCapabilityRequest } from '@tokenbird/server-core/transport'
+import type { RpcClient } from '@tokenbird/server-core/transport'
+import type { RemoteServerConfig } from '@tokenbird/core/types'
 import type { ElectronAPI } from '../shared/types'
 import { TOKENNEST_RECHARGE_IPC } from '../shared/tokennest-recharge'
 import { canvasExportInfo } from '../shared/canvas-export'
 import { BIRD_COMPANION_IPC } from '../shared/bird-companion'
-import { NATIVE_CREDENTIAL_IPC } from '@craft-agent/shared/credentials/native-types'
+import { NATIVE_CREDENTIAL_IPC } from '@tokenbird/shared/credentials/native-types'
 
 // ---------------------------------------------------------------------------
 // Client interface — common surface for both RoutedClient and WsRpcClient
@@ -151,7 +151,7 @@ if (isClientOnly) {
     throw new Error(
       `Refusing to connect to remote server over unencrypted ws://. ` +
       `Use wss:// (TLS) for non-localhost connections. ` +
-      `Set CRAFT_RPC_TLS_CERT/KEY on the server to enable TLS.`
+      `Set TOKENBIRD_RPC_TLS_CERT/KEY on the server to enable TLS.`
     )
   }
 
@@ -286,7 +286,7 @@ client.handleCapability(CLIENT_RUN_SHELL, async (req: { command: string; cwd?: s
   return await ipcRenderer.invoke('__shell:run', req)
 })
 
-client.handleCapability(CLIENT_REQUEST_FILES, async (req: import('@craft-agent/core/types').ClientFileRequest) => {
+client.handleCapability(CLIENT_REQUEST_FILES, async (req: import('@tokenbird/core/types').ClientFileRequest) => {
   return await ipcRenderer.invoke('__client:request-files', req)
 })
 
@@ -658,8 +658,8 @@ const remoteCredentials = () => isClientOnly || !!ipcRenderer.sendSync('__get-wo
 // System warnings — expose env-based flags set during main process startup
 // (preload-only: reads env var directly, no IPC round-trip needed)
 ;(api as ElectronAPI).getSystemWarnings = async () => ({
-  vcredistMissing: process.env.CRAFT_VCREDIST_MISSING === '1',
-  downloadUrl: process.env.CRAFT_VCREDIST_URL,
+  vcredistMissing: process.env.TOKENBIRD_VCREDIST_MISSING === '1',
+  downloadUrl: process.env.TOKENBIRD_VCREDIST_URL,
 })
 
 // i18n: sync language changes to main process (for native menus/dialogs)

@@ -2,10 +2,10 @@ import { afterEach } from 'bun:test'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
-import type { CreateSessionOptions, PermissionRequest, Session, SessionEvent } from '@craft-agent/shared/protocol'
+import type { CreateSessionOptions, PermissionRequest, Session, SessionEvent } from '@tokenbird/shared/protocol'
 import type { SessionCompletionEvent } from '../sessions/SessionManager'
-import type { SuperAgentConfig, SuperAgentSessionPolicy } from '@craft-agent/shared/super-agent'
-import type { ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
+import type { SuperAgentConfig, SuperAgentSessionPolicy } from '@tokenbird/shared/super-agent'
+import type { ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
 import { SuperAgentService, type SuperAgentSessionHost, type SuperAgentServiceDeps } from './SuperAgentService'
 
 /** Shared deterministic host for the scheduler reliability regression suites. */

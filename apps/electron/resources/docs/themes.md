@@ -235,7 +235,7 @@ themes/my-skin/
 The loader reads skin metadata, previews, recursively discovers image assets,
 and extracts generated `const css = "..."` stylesheets. Relative CSS URLs are
 inlined, so additional images and font files continue to work after the CSS is
-injected into Craft. Audio/video files and other supported resources remain
+injected into TokenBird. Audio/video files and other supported resources remain
 available through the same pack asset loader.
 
 Harness client JavaScript is retained and can be enabled with **Allow theme
@@ -259,7 +259,7 @@ and inlined. Optional `id` keeps imports stable when the display name changes;
 without it, native imports use the folder name.
 `bodyAttr` is applied while the pack is active and `data-ds-dark-theme` follows
 the current light/dark mode, allowing the packaged Harness CSS to work in the
-Craft renderer. Executable files remain inert unless the user opts into theme
+TokenBird renderer. Executable files remain inert unless the user opts into theme
 scripts in Settings.
 
 ### Manifest (theme-pack.json)
@@ -356,7 +356,7 @@ directly:
 
 **Security note:** only the declarative `skin.json` and image files are read.
 A DSH skin's executable plugin code (`lib/`, `src/`) is copied verbatim but
-never loaded or executed by Craft.
+never loaded or executed by TokenBird.
 
 ## Default Theme
 

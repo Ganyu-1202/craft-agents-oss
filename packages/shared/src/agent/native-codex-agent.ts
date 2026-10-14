@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { AgentEvent, AgentEventUsage } from '@craft-agent/core/types';
+import type { AgentEvent, AgentEventUsage } from '@tokenbird/core/types';
 import type { FileAttachment } from '../utils/files.ts';
 import type { Workspace } from '../config/storage.ts';
 import { getBrowserToolEnabled, getLlmConnection } from '../config/storage.ts';
@@ -7,6 +7,9 @@ import { getModelPromptSettings, resolveAutoCompactionTokenLimit } from '../conf
 import { getCoAuthorPreference } from '../config/preferences.ts';
 import { getCredentialManager, CredentialChangedError } from '../credentials/index.ts';
 import { refreshChatGptTokens } from '../auth/chatgpt-oauth.ts';
+import { getValidTokenNestCredentials } from '../auth/tokennest-oauth.ts';
+import { getBackendRuntime } from './backend/internal/driver-types.ts';
+import { CODEX_CUSTOM_API_KEY_ENV, CODEX_CUSTOM_PROVIDER, customCodexTransport } from '../codex/custom-transport.ts';
 import { getModelById } from '../config/models.ts';
 import { getSessionPlansPath } from '../sessions/storage.ts';
 import { mkdir, rm } from 'node:fs/promises';
@@ -117,6 +120,8 @@ export class NativeCodexAgent extends BaseAgent {
   private threadClient: NativeCodexAppServerClient | null = null;
   private authenticated = false;
   private authenticatedCredentialFingerprint: string | null = null;
+  private clientTransportFingerprint: string | null = null;
+  private clientCredentials = new WeakMap<NativeCodexAppServerClient, string | null>();
   private nativeToolAliases = new Map<string, string>();
   private ignoredTurnIds = new Set<string>();
   private lastUsage?: AgentEventUsage;
@@ -168,12 +173,19 @@ export class NativeCodexAgent extends BaseAgent {
   private async ensureClient(): Promise<NativeCodexAppServerClient> {
     if (this.disposed) throw new Error('Native Codex agent has been disposed');
     if (this.usesHostExecution() && !this.binary.testedProtocol) throw new Error('Policy-enforced native Codex requires the tested 0.154.x protocol; install the supported CLI.');
+    if (this.connecting) return this.connecting;
+    const env = await this.buildCodexEnvironment();
+    const configArgs = this.buildCodexConfigArgs(env);
+    const transportFingerprint = createHash('sha256').update(JSON.stringify([configArgs,
+      env?.[CODEX_CUSTOM_API_KEY_ENV], Object.entries(env ?? {}).filter(([key]) => key.startsWith('TOKENBIRD_CODEX_HEADER_'))])).digest('hex');
+    if (this.disposed) throw new Error('Native Codex agent has been disposed');
+    if (this.connecting) return this.connecting;
+    if (getBackendRuntime(this.config).baseUrl && this.client?.isConnected && this.clientTransportFingerprint !== transportFingerprint) await this.disconnectClient();
     if (this.client?.isConnected && this.clientHostExecution !== this.usesHostExecution()) await this.disconnectClient();
     if (this.client?.isConnected) return this.client;
     if (this.connecting) return this.connecting;
     const generation = ++this.clientGeneration;
     this.connecting = (async () => {
-      const env = await this.buildCodexEnvironment();
       this.clientHostExecution = this.usesHostExecution();
       const client = new NativeCodexAppServerClient({
         codexPath: this.binary.path,
@@ -181,8 +193,10 @@ export class NativeCodexAgent extends BaseAgent {
         requestTimeoutMs: 30_000,
         onDebug: message => this.debug(message),
         env,
-        configArgs: this.clientHostExecution ? codexHostExecutionArgs() : undefined,
+        configArgs,
       });
+      this.clientCredentials.set(client, env?.[CODEX_CUSTOM_API_KEY_ENV]
+        ? createHash('sha256').update(env[CODEX_CUSTOM_API_KEY_ENV]!).digest('hex') : null);
       this.pendingClient = client;
       client.on('notification', (method: string, params: unknown) => {
         if (!this.ownsClient(client)) return;
@@ -195,7 +209,7 @@ export class NativeCodexAgent extends BaseAgent {
         }
         void this.handleServerRequest(client, request).catch(error => {
           this.debug(`Server request ${request.method} failed: ${error instanceof Error ? error.message : String(error)}`);
-          void client.respondError(request.id, 'Craft Agents could not process this request').catch(() => undefined);
+          void client.respondError(request.id, 'TokenBird could not process this request').catch(() => undefined);
         });
       });
       client.on('error', (error: Error) => {
@@ -219,6 +233,7 @@ export class NativeCodexAgent extends BaseAgent {
         }
         this.pendingClient = null;
         this.client = client;
+        this.clientTransportFingerprint = transportFingerprint;
         this.debug(`Connected with codex-cli ${this.binary.version} (${this.binary.source})`);
         return client;
       } catch (error) {
@@ -239,16 +254,32 @@ export class NativeCodexAgent extends BaseAgent {
   }
 
   private async buildCodexEnvironment(): Promise<Record<string, string> | undefined> {
+    const runtime = getBackendRuntime(this.config);
+    let custom: ReturnType<typeof customCodexTransport>;
+    if (runtime.baseUrl) {
+      const slug = this.config.connectionSlug ?? this.config.session?.llmConnection;
+      let credential: string | undefined;
+      if (this.config.authType !== 'none') {
+        if (!slug) throw new Error('A connection is required for Codex Responses credentials.');
+        if (this.config.authType === 'oauth' && runtime.oauthProvider === 'tokennest') {
+          credential = (await getValidTokenNestCredentials(slug, getCredentialManager()))?.accessToken;
+        } else if (['api_key', 'api_key_with_endpoint'].includes(this.config.authType ?? '')) {
+          credential = await getCredentialManager().getLlmApiKey(slug) ?? undefined;
+        }
+        if (!credential) throw new Error('Stored credentials are unavailable. Update Credentials in Settings before the next request.');
+      }
+      custom = customCodexTransport(runtime, credential);
+    }
     if (this.usesHostExecution()) {
-      const managed = ['api_key', 'api_key_with_endpoint', 'oauth'].includes(this.config.authType ?? '');
+      const managed = !!custom || ['api_key', 'api_key_with_endpoint', 'oauth'].includes(this.config.authType ?? '');
       this.hostHome ??= createCodexHostHome(join(getConfigDir(), 'codex', 'controlled'), this.workingDirectory,
         managed ? undefined : process.env.CODEX_HOME || join(homedir(), '.codex'));
-      return { CODEX_HOME: await this.hostHome };
+      return { CODEX_HOME: await this.hostHome, ...custom?.env };
     }
     // Keep connection-owned credentials out of the user's global Codex home.
     // authType=none deliberately keeps the global home so an existing `codex login`
     // can be used by an explicitly unmanaged connection.
-    if (!['api_key', 'api_key_with_endpoint', 'oauth'].includes(this.config.authType ?? '')) return undefined;
+    if (!custom && !['api_key', 'api_key_with_endpoint', 'oauth'].includes(this.config.authType ?? '')) return undefined;
     // Managed credentials and Codex configuration are connection-owned and
     // persistent, but fully isolated from the user's native ~/.codex profile.
     // A stable connection home also avoids creating a fresh auth/config copy
@@ -258,10 +289,20 @@ export class NativeCodexAgent extends BaseAgent {
       .replace(/^-+|-+$/g, '') || 'managed';
     const codexHome = join(getConfigDir(), 'codex', 'connections', connectionKey);
     await mkdir(codexHome, { recursive: true });
-    return { CODEX_HOME: codexHome };
+    return { CODEX_HOME: codexHome, ...custom?.env };
+  }
+
+  private buildCodexConfigArgs(env?: Record<string, string>): string[] {
+    const custom = customCodexTransport(getBackendRuntime(this.config), env?.[CODEX_CUSTOM_API_KEY_ENV]);
+    return [...(this.usesHostExecution() ? codexHostExecutionArgs() : []), ...(custom?.configArgs ?? [])];
   }
 
   private async authenticateClient(client: NativeCodexAppServerClient): Promise<boolean> {
+    if (getBackendRuntime(this.config).baseUrl) {
+      // A custom provider reads its own env_key and must never log into OpenAI.
+      this.authenticatedCredentialFingerprint = this.clientCredentials.get(client) ?? null;
+      return this.config.authType === 'none' || !!this.authenticatedCredentialFingerprint;
+    }
     const slug = this.config.connectionSlug ?? this.config.session?.llmConnection;
     const credentials = getCredentialManager();
     if (slug && (this.config.authType === 'api_key' || this.config.authType === 'api_key_with_endpoint')) {
@@ -299,6 +340,7 @@ export class NativeCodexAgent extends BaseAgent {
       throw new Error('Stored credentials are unavailable. Update Credentials in Settings before the next request.');
     }
     const fingerprint = createHash('sha256').update(snapshot.credential.value).digest('hex');
+    if (getBackendRuntime(this.config).baseUrl && fingerprint !== this.clientCredentials.get(client)) throw new CredentialChangedError();
     if (fingerprint !== this.authenticatedCredentialFingerprint) this.authenticated = await this.authenticateClient(client);
     const current = await getCredentialManager().getSnapshot(id);
     if (!current.credential?.value || createHash('sha256').update(current.credential.value).digest('hex') !== this.authenticatedCredentialFingerprint) {
@@ -317,12 +359,12 @@ export class NativeCodexAgent extends BaseAgent {
     assertSuperAgentTools(visibleTools, role);
     return visibleTools.map(def => {
       // app-server reserves the mcp__ prefix for its own configured MCP servers.
-      const nativeName = def.name.startsWith('mcp__') ? `craft__${def.name.slice('mcp__'.length)}` : `craft__${def.name}`;
+      const nativeName = def.name.startsWith('mcp__') ? `tokenbird__${def.name.slice('mcp__'.length)}` : `tokenbird__${def.name}`;
       this.nativeToolAliases.set(nativeName, def.name);
       return {
         type: 'function' as const,
         name: nativeName,
-        description: def.description || `Craft tool ${def.name}`,
+        description: def.description || `TokenBird tool ${def.name}`,
         inputSchema: def.inputSchema as JsonValue,
       };
     });
@@ -357,7 +399,7 @@ export class NativeCodexAgent extends BaseAgent {
       'codex',
     );
     return [system, ...this.promptBuilder.buildStableContextParts(), this.usesHostExecution()
-      ? 'Run the Codex reasoning loop using TokenBird dynamic tools. File reads, edits, shell commands, sources and browser operations must use the provided craft__ tools; the host applies node permissions and the configured execution environment.' : ''].filter(Boolean).join('\n\n');
+      ? 'Run the Codex reasoning loop using TokenBird dynamic tools. File reads, edits, shell commands, sources and browser operations must use the provided tokenbird__ tools; the host applies node permissions and the configured execution environment.' : ''].filter(Boolean).join('\n\n');
   }
 
   private buildUserInput(message: string, attachments?: FileAttachment[]): UserInput[] {
@@ -391,13 +433,15 @@ export class NativeCodexAgent extends BaseAgent {
       ?? getModelById(this._model)?.contextWindow;
     const compactLimit = resolveAutoCompactionTokenLimit(this.config.modelPromptSettings, contextWindow);
     const hostExecution = this.usesHostExecution();
-    const signature = JSON.stringify({ tools, compactLimit, hostExecution });
+    // Developer instructions are fixed at thread creation. Refresh the thread
+    // (with the existing recovery context) when commit attribution changes.
+    const signature = JSON.stringify({ tools, compactLimit, hostExecution, includeCoAuthoredBy: getCoAuthorPreference() });
     if (this.codexThreadId && this.threadClient === client && !this.toolsChanged && signature === this.toolSignature) {
       return this.codexThreadId;
     }
     if (this.codexThreadId) {
       // thread/resume cannot accept dynamicTools. After a process restart its
-      // restored thread has no Craft tools, even if MCP sources are connected.
+      // restored thread has no TokenBird tools, even if MCP sources are connected.
       this.debug(`Starting a fresh Codex thread with ${tools.length} dynamic tools (${this.threadClient !== client ? 'app-server changed' : 'tool set changed'})`);
       this.codexThreadId = null;
       this.threadClient = null;
@@ -408,6 +452,7 @@ export class NativeCodexAgent extends BaseAgent {
     this.debug(`Registering ${tools.length} Codex dynamic tools, including ${this.config.mcpPool?.getProxyToolDefs().length ?? 0} MCP source tools`);
     const response = await client.request<ThreadResponse>('thread/start', {
       model: bareModelId(this._model),
+      ...(getBackendRuntime(this.config).baseUrl ? { modelProvider: CODEX_CUSTOM_PROVIDER } : {}),
       ...((hostExecution || compactLimit !== undefined) ? { config: {
         ...(hostExecution ? CODEX_HOST_EXECUTION_CONFIG : {}),
         ...(compactLimit !== undefined ? { model_auto_compact_token_limit: compactLimit } : {}),
@@ -881,6 +926,13 @@ export class NativeCodexAgent extends BaseAgent {
     this.forceAbort(AbortReason.UserStop);
   }
 
+  async refreshOAuthCredentials(): Promise<void> {
+    const slug = this.config.connectionSlug ?? this.config.session?.llmConnection;
+    if (slug && this.config.authType === 'oauth' && getBackendRuntime(this.config).oauthProvider === 'tokennest') {
+      await getValidTokenNestCredentials(slug, getCredentialManager(), true);
+    }
+  }
+
   forceAbort(reason: AbortReason): void {
     this.abortReason = reason;
     this.hostTools.cancel();
@@ -994,8 +1046,10 @@ export class NativeCodexAgent extends BaseAgent {
     const env = await this.buildCodexEnvironment();
     const hostExecution = this.usesHostExecution();
     const client = new NativeCodexAppServerClient({ codexPath: this.binary.path, workDir: hostExecution ? env!.CODEX_HOME! : workDir,
-      env, configArgs: hostExecution ? codexHostExecutionArgs() : undefined,
+      env, configArgs: this.buildCodexConfigArgs(env),
       requestTimeoutMs: 30_000, onDebug: message => this.debug(`[utility] ${message}`) });
+    this.clientCredentials.set(client, env?.[CODEX_CUSTOM_API_KEY_ENV]
+      ? createHash('sha256').update(env[CODEX_CUSTOM_API_KEY_ENV]!).digest('hex') : null);
     const completionControl: { cancel?: (error: Error) => void } = {};
     const onServerRequest = (serverRequest: NativeCodexServerRequest) => {
       const task = serverRequest.method === 'account/chatgptAuthTokens/refresh'
@@ -1048,6 +1102,7 @@ export class NativeCodexAgent extends BaseAgent {
       try {
         const thread = await client.request<ThreadResponse>('thread/start', {
           model: bareModelId(request.model ?? this.config.miniModel ?? this._model),
+          ...(getBackendRuntime(this.config).baseUrl ? { modelProvider: CODEX_CUSTOM_PROVIDER } : {}),
           cwd: workDir,
           approvalPolicy: 'never',
           sandbox: 'read-only',

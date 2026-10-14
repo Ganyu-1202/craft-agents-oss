@@ -1,16 +1,16 @@
 import type { ComponentEntry } from './types'
-import { CraftAgentsLogo } from '@/components/icons/CraftAgentsLogo'
-import { CraftAgentsSymbol } from '@/components/icons/CraftAgentsSymbol'
+import { TokenBirdLogo } from '@/components/icons/TokenBirdLogo'
+import { TokenBirdSymbol } from '@/components/icons/TokenBirdSymbol'
 import { PanelLeftRounded } from '@/components/icons/PanelLeftRounded'
 import { SquarePenRounded } from '@/components/icons/SquarePenRounded'
 
 export const iconComponents: ComponentEntry[] = [
   {
-    id: 'craft-agents-logo',
-    name: 'CraftAgentsLogo',
+    id: 'tokenbird-logo',
+    name: 'TokenBirdLogo',
     category: 'Icons',
     description: 'Full TokenBird branding logo with text',
-    component: CraftAgentsLogo,
+    component: TokenBirdLogo,
     props: [
       {
         name: 'className',
@@ -26,11 +26,11 @@ export const iconComponents: ComponentEntry[] = [
     ],
   },
   {
-    id: 'craft-agents-symbol',
-    name: 'CraftAgentsSymbol',
+    id: 'tokenbird-symbol',
+    name: 'TokenBirdSymbol',
     category: 'Icons',
     description: 'TokenBird "E" pixel art symbol icon (brand color: #9570BE)',
-    component: CraftAgentsSymbol,
+    component: TokenBirdSymbol,
     props: [
       {
         name: 'className',

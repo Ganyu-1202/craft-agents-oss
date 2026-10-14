@@ -345,8 +345,8 @@ else
 # TokenBird launcher - handles Linux-specific AppImage issues
 
 APPIMAGE_PATH="$HOME/.tokenbird/app/TokenBird-x64.AppImage"
-ELECTRON_CACHE="$HOME/.config/@craft-agent"
-ELECTRON_CACHE_ALT="$HOME/.cache/@craft-agent"
+ELECTRON_CACHE="$HOME/.config/@tokenbird"
+ELECTRON_CACHE_ALT="$HOME/.cache/@tokenbird"
 
 # Verify AppImage exists
 if [ ! -f "$APPIMAGE_PATH" ]; then
@@ -361,9 +361,9 @@ if [ -z "$DISPLAY" ]; then
 fi
 
 # Clear stale cache referencing AppImage mount paths
-# AppImage creates a new /tmp/.mount_Craft-XXXX each launch, so any cached path is stale
+# AppImage creates a new /tmp/.mount_TokenBird-XXXX each launch, so any cached path is stale
 for cache_dir in "$ELECTRON_CACHE" "$ELECTRON_CACHE_ALT"; do
-    if [ -d "$cache_dir" ] && grep -rq '/tmp/\.mount_Craft' "$cache_dir" 2>/dev/null; then
+    if [ -d "$cache_dir" ] && grep -rq '/tmp/\.mount_TokenBird' "$cache_dir" 2>/dev/null; then
         rm -rf "$cache_dir"
     fi
 done
@@ -378,7 +378,7 @@ WRAPPER_EOF
     chmod +x "$WRAPPER_PATH"
 
     # Migrate old installation
-    OLD_APPIMAGE="$INSTALL_DIR/Craft-Agents-x64.AppImage"
+    OLD_APPIMAGE="$INSTALL_DIR/TokenBird-Agents-x64.AppImage"
     [ -f "$OLD_APPIMAGE" ] && rm -f "$OLD_APPIMAGE"
 
     echo ""

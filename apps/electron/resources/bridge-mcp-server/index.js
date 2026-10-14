@@ -18236,7 +18236,7 @@ async function main() {
     process.exit(1);
   }
   const server = new Server({
-    name: "craft-agent-api-bridge",
+    name: "tokenbird-api-bridge",
     version: "0.3.1"
   }, {
     capabilities: {

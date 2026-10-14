@@ -78,7 +78,7 @@ export async function processUpsertMessage(
 
   if (decision.action === 'skip' && decision.reason !== 'empty') {
     log(`upsert skip: ${decision.reason}`)
-    // Diagnostic (craft-agents-oss#1021): a dropped @lid message while selfLid is unresolved is
+    // Diagnostic (tokenbird#1021): a dropped @lid message while selfLid is unresolved is
     // the signature of WhatsApp's LID rollout without a resolved self-LID — distinct from an
     // ordinary own_outbound / non-self-chat drop. Surface it so it's greppable in the main log.
     if (

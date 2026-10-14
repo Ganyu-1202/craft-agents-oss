@@ -6,11 +6,11 @@
  * satisfy it at runtime.
  */
 
-import type { Workspace, WorkspaceInfo, ActiveSessionInfo } from '@craft-agent/core/types'
-import type { StoredAttachment, AnnotationV1 } from '@craft-agent/core/types'
-import type { PermissionMode } from '@craft-agent/shared/agent/mode-types'
-import type { ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
-import type { AuthResult } from '@craft-agent/shared/agent'
+import type { Workspace, WorkspaceInfo, ActiveSessionInfo } from '@tokenbird/core/types'
+import type { StoredAttachment, AnnotationV1 } from '@tokenbird/core/types'
+import type { PermissionMode } from '@tokenbird/shared/agent/mode-types'
+import type { ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
+import type { AuthResult } from '@tokenbird/shared/agent'
 import type {
   Session,
   SessionStatus,
@@ -22,10 +22,10 @@ import type {
   CredentialResponse,
   PermissionModeState,
   UnreadSummary,
-} from '@craft-agent/shared/protocol'
-import type { SessionBundle, DispatchMode, SessionCollaboration } from '@craft-agent/shared/sessions'
+} from '@tokenbird/shared/protocol'
+import type { SessionBundle, DispatchMode, SessionCollaboration } from '@tokenbird/shared/sessions'
 import type { EventSink } from '../transport'
-import type { McpReloadResult } from '@craft-agent/core/types'
+import type { McpReloadResult } from '@tokenbird/core/types'
 import type { CollaborationManager } from '../collaboration/CollaborationManager'
 
 export interface ISessionManager {
@@ -81,7 +81,7 @@ export interface ISessionManager {
   // ---------------------------------------------------------------------------
 
   setSessionPermissionMode(sessionId: string, mode: PermissionMode): void
-  applySessionPolicy(sessionId: string, policy: import('@craft-agent/shared/super-agent').SuperAgentSessionPolicy): Promise<void>
+  applySessionPolicy(sessionId: string, policy: import('@tokenbird/shared/super-agent').SuperAgentSessionPolicy): Promise<void>
   setSuperAgentSessionFullControl(sessionId: string, fullControl: boolean): Promise<void>
   setSuperAgentFullControl(workspaceId: string, fullControl: boolean): Promise<void>
   clearSuperAgentPermissionGrants(workspaceId: string): void
@@ -117,7 +117,7 @@ export interface ISessionManager {
   /** Shared coordinator used by RPC handlers and agent-facing collaboration tools. */
   getCollaborationManager?(): CollaborationManager
   getCollaborationRelayManager?(): import('../collaboration/RelayParticipantManager').RelayParticipantManager
-  acceptCollaborationRelayMessage?(sessionId: string, delivery: import('@craft-agent/shared/protocol').CollaborationRelayDelivery): Promise<import('@craft-agent/shared/protocol').CollaborationRelayReceipt>
+  acceptCollaborationRelayMessage?(sessionId: string, delivery: import('@tokenbird/shared/protocol').CollaborationRelayDelivery): Promise<import('@tokenbird/shared/protocol').CollaborationRelayReceipt>
 
   // ---------------------------------------------------------------------------
   // Messaging
@@ -213,7 +213,7 @@ export interface ISessionManager {
   exportRemoteSessionTransfer(
     sessionId: string,
     workspaceId: string,
-  ): Promise<import('@craft-agent/shared/protocol').RemoteSessionTransferPayload | null>
+  ): Promise<import('@tokenbird/shared/protocol').RemoteSessionTransferPayload | null>
 
   /**
    * Import a session bundle into a target workspace.
@@ -231,8 +231,8 @@ export interface ISessionManager {
    */
   importRemoteSessionTransfer(
     workspaceId: string,
-    payload: import('@craft-agent/shared/protocol').RemoteSessionTransferPayload,
-  ): Promise<import('@craft-agent/shared/protocol').ImportRemoteSessionTransferResult>
+    payload: import('@tokenbird/shared/protocol').RemoteSessionTransferPayload,
+  ): Promise<import('@tokenbird/shared/protocol').ImportRemoteSessionTransferResult>
 
   // ---------------------------------------------------------------------------
   // Utilities
@@ -282,7 +282,7 @@ export interface ISessionManager {
   // ---------------------------------------------------------------------------
 
   reinitializeAuth(connectionSlug?: string): Promise<void>
-  notifyStoredCredentialChanges?(changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialAppliedChange[]): Promise<{ sessionIdsNeedingRestart: string[] }>
+  notifyStoredCredentialChanges?(changes: import('@tokenbird/shared/credentials/native-types').NativeCredentialAppliedChange[]): Promise<{ sessionIdsNeedingRestart: string[] }>
   resumeAfterAuthentication?(connectionSlug: string): void
   /**
    * Push runtime updates (e.g. capability toggles) to every active session
@@ -311,7 +311,7 @@ export interface ISessionManager {
    * registry at construction time, merged into every session's tool callbacks
    * so list_messaging_channels / send_messaging_media / … work for agents.
    */
-  setMessagingBridge?(bridge: import('@craft-agent/shared/agent').MessagingToolBridge): void
+  setMessagingBridge?(bridge: import('@tokenbird/shared/agent').MessagingToolBridge): void
 }
 
 /**
@@ -342,7 +342,7 @@ export interface ExecutePromptAutomationInput {
    * When `false`, `executePromptAutomation` returns as soon as the session is
    * created and the prompt is dispatched, instead of awaiting the whole turn.
    * Used by the automation **Test** action so a long run (tools / >30s output)
-   * doesn't trip the RPC client timeout (craft-agents-oss#943). The session
+   * doesn't trip the RPC client timeout (tokenbird#943). The session
    * still streams live and run errors are logged. Defaults to awaiting completion.
    */
   waitForCompletion?: boolean

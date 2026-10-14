@@ -30,8 +30,8 @@ describe('readPluginName', () => {
   it('reads plugin name from .claude-plugin/plugin.json', () => {
     const wsDir = join(testDir, 'ws-with-plugin')
     mkdirSync(join(wsDir, '.claude-plugin'), { recursive: true })
-    writeFileSync(join(wsDir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'craft-workspace-default', version: '1.0.0' }))
-    expect(readPluginName(wsDir)).toBe('craft-workspace-default')
+    writeFileSync(join(wsDir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'tokenbird-workspace-default', version: '1.0.0' }))
+    expect(readPluginName(wsDir)).toBe('tokenbird-workspace-default')
   })
 
   it('returns null when .claude-plugin/plugin.json does not exist', () => {
@@ -66,8 +66,8 @@ describe('workspace slug extraction', () => {
     const testDir2 = join(tmpdir(), `slug-plugin-test-${Date.now()}`)
     const wsDir = join(testDir2, 'bd1675ea-4ba1-96e0-3de4-22c803b11e0d')
     mkdirSync(join(wsDir, '.claude-plugin'), { recursive: true })
-    writeFileSync(join(wsDir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'craft-workspace-default', version: '1.0.0' }))
-    expect(extractWorkspaceSlug(wsDir, fallback)).toBe('craft-workspace-default')
+    writeFileSync(join(wsDir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'tokenbird-workspace-default', version: '1.0.0' }))
+    expect(extractWorkspaceSlug(wsDir, fallback)).toBe('tokenbird-workspace-default')
     rmSync(testDir2, { recursive: true, force: true })
   })
 

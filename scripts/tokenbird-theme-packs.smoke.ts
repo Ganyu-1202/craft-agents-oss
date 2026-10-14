@@ -168,7 +168,7 @@ app.whenReady().then(async () => {
     await js('fixture.select(null)');
     await wait('!fixture.snapshot().active && !fixture.snapshot().bg');
     assert.equal(await js("document.body.hasAttribute('data-tokenbird-singer')"),false);
-    assert.equal(await js("document.getElementById('craft-theme-pack-css')===null"),true);
+    assert.equal(await js("document.getElementById('tokenbird-theme-pack-css')===null"),true);
     assert.equal(await js("document.documentElement.hasAttribute('data-theme-pack')"),false);
     win.setSize(1100,1000);
     await js('fixture.gallery()');

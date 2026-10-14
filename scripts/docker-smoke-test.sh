@@ -18,7 +18,7 @@ set -euo pipefail
 IMAGE="${1:?Usage: docker-smoke-test.sh <image:tag>}"
 TIMEOUT="${SMOKE_TEST_TIMEOUT:-30}"
 TOKEN="smoke-test-$(openssl rand -hex 16)"
-CONTAINER_NAME="craft-smoke-$$"
+CONTAINER_NAME="tokenbird-smoke-$$"
 PORT=9100
 
 cleanup() {
@@ -40,9 +40,9 @@ echo "[1/3] Starting container..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   -p "$PORT:9100" \
-  -e "CRAFT_SERVER_TOKEN=$TOKEN" \
-  -e "CRAFT_RPC_HOST=0.0.0.0" \
-  -e "CRAFT_RPC_PORT=9100" \
+  -e "TOKENBIRD_SERVER_TOKEN=$TOKEN" \
+  -e "TOKENBIRD_RPC_HOST=0.0.0.0" \
+  -e "TOKENBIRD_RPC_PORT=9100" \
   "$IMAGE"
 
 # --- Wait for server ready ---
@@ -59,7 +59,7 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
   fi
 
   # Check for the ready indicator in logs
-  if docker logs "$CONTAINER_NAME" 2>&1 | grep -q "CRAFT_SERVER_URL="; then
+  if docker logs "$CONTAINER_NAME" 2>&1 | grep -q "TOKENBIRD_SERVER_URL="; then
     READY=true
     break
   fi
@@ -95,7 +95,7 @@ else
   # Use node/bun to test WebSocket connectivity
   node -e "
     const ws = new (require('ws'))('${SERVER_URL}', {
-      headers: { 'x-craft-token': '${TOKEN}' }
+      headers: { 'x-tokenbird-token': '${TOKEN}' }
     });
     const timer = setTimeout(() => { console.error('WebSocket timeout'); process.exit(1); }, 10000);
     ws.on('open', () => { clearTimeout(timer); console.log('  WebSocket connected successfully'); ws.close(); process.exit(0); });

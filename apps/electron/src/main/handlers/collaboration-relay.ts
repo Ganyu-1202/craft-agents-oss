@@ -1,6 +1,6 @@
 import { CollaborationRelayManager, type CollaborationRelayDependencies } from '../collaboration/CollaborationRelayManager';
 import type { CollaborationIpcRegistrar } from './collaboration-remote';
-import type { CollaborationRelayCreateInput, CollaborationRelayStatusLookup, CollaborationServerRef } from '@craft-agent/shared/protocol';
+import type { CollaborationRelayCreateInput, CollaborationRelayStatusLookup, CollaborationServerRef } from '@tokenbird/shared/protocol';
 export const COLLABORATION_RELAY_IPC = {
     CONTEXT: '__collaboration:setupContext', WORKSPACES: '__collaboration:relayWorkspaces', CANDIDATES: '__collaboration:relayCandidates',
     CREATE: '__collaboration:createMultiServer', LIST: '__collaboration:listMultiServer', FILE: '__collaboration:getRelayFile', STATUS: '__collaboration:relayStatus', END: '__collaboration:endMultiServer',

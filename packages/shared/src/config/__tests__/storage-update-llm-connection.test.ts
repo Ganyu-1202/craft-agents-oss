@@ -11,7 +11,7 @@ const STORAGE_MODULE_PATH = pathToFileURL(join(import.meta.dir, '..', 'storage.t
  * Returns paths needed by tests plus a runner to call updateLlmConnection in a subprocess.
  */
 function setup(llmConnections: any[]) {
-  const configDir = mkdtempSync(join(tmpdir(), 'craft-agent-config-'))
+  const configDir = mkdtempSync(join(tmpdir(), 'tokenbird-config-'))
   const workspaceRoot = join(configDir, 'workspaces', 'my-workspace')
   mkdirSync(workspaceRoot, { recursive: true })
 
@@ -156,7 +156,7 @@ describe('updateLlmConnection – Anthropic OAuth identity (issue #838)', () => 
     oauthAccountUuid: 'acct-uuid-123',
     oauthAccountEmail: 'gyula@craft.do',
     oauthOrganizationUuid: 'org-uuid-456',
-    oauthOrganizationName: 'Craft',
+    oauthOrganizationName: 'TokenBird',
     oauthProfileVerifiedAt: 1_700_000_000_000,
   }
 

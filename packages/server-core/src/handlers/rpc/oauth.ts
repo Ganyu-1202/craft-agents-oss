@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
-import { loadSource, loadWorkspaceSources, getSourceCredentialManager } from '@craft-agent/shared/sources'
-import { createPendingFlow } from '@craft-agent/shared/auth'
-import { pushTyped, type RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
+import { loadSource, loadWorkspaceSources, getSourceCredentialManager } from '@tokenbird/shared/sources'
+import { createPendingFlow } from '@tokenbird/shared/auth'
+import { pushTyped, type RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 export const HANDLED_CHANNELS = [

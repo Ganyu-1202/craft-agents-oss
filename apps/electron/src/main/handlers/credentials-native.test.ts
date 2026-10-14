@@ -1,9 +1,9 @@
 import { afterEach, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import { NATIVE_CREDENTIAL_IPC, NATIVE_CREDENTIAL_TYPES } from '@craft-agent/shared/credentials/native-types';
-import type { CredentialId, CredentialType } from '@craft-agent/shared/credentials';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import { NATIVE_CREDENTIAL_IPC, NATIVE_CREDENTIAL_TYPES } from '@tokenbird/shared/credentials/native-types';
+import type { CredentialId, CredentialType } from '@tokenbird/shared/credentials';
 import { nativeVaultFixture } from '../__tests__/fixtures/native-vault-harness';
 import { advanceNativeWindowBinding, createNativeWindowAuthority, type NativeAuthorityEvent } from '../native-window-authority';
 import { registerNativeCredentialIpcHandlers } from './credentials-native';

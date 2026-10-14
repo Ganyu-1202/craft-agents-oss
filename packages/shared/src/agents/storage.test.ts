@@ -6,7 +6,7 @@ import { listAgents, loadClaudeSubagents, saveAgentsConfig } from './storage.ts'
 
 describe('workspace agents storage', () => {
   it('always exposes compact and merges a workspace override', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'craft-agents-'))
+    const root = mkdtempSync(join(tmpdir(), 'tokenbird-'))
     try {
       await saveAgentsConfig(root, {
         version: 1,
@@ -28,7 +28,7 @@ describe('workspace agents storage', () => {
   })
 
   it('rejects a user agent that claims the built-in marker', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'craft-agents-'))
+    const root = mkdtempSync(join(tmpdir(), 'tokenbird-'))
     try {
       await expect(saveAgentsConfig(root, {
         version: 1,

@@ -3,9 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { createSession, saveSession, loadSession } from '@craft-agent/shared/sessions';
-import { messageToStored, storedToMessage, type Message } from '@craft-agent/core/types';
-import type { CollaborationRelayDelivery } from '@craft-agent/shared/protocol';
+import { createSession, saveSession, loadSession } from '@tokenbird/shared/sessions';
+import { messageToStored, storedToMessage, type Message } from '@tokenbird/core/types';
+import type { CollaborationRelayDelivery } from '@tokenbird/shared/protocol';
 import { SessionManager } from './SessionManager';
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { for (const action of cleanup.splice(0))
@@ -107,7 +107,7 @@ test('a previous turn ending during flush cannot run an unpersisted relay messag
 test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('real production queue write failure prevents relay ACK/start and permits a dirty retry', async () => {
     const { chmod } = await import('node:fs/promises');
     const { dirname } = await import('node:path');
-    const { getSessionFilePath, sessionPersistenceQueue } = await import('@craft-agent/shared/sessions');
+    const { getSessionFilePath, sessionPersistenceQueue } = await import('@tokenbird/shared/sessions');
     const f = await fixture(), i = f.instance();
     delete (i.manager as any).persistSession;
     delete (i.manager as any).flushSession;
@@ -133,7 +133,7 @@ test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('real prod
 });
 
 test('real durable inbox propagates snapshot construction errors rather than acknowledging an empty flush', async () => {
-    const { sessionPersistenceQueue } = await import('@craft-agent/shared/sessions');
+    const { sessionPersistenceQueue } = await import('@tokenbird/shared/sessions');
     const f = await fixture(), i = f.instance();
     delete (i.manager as any).persistSession;
     delete (i.manager as any).flushSession;

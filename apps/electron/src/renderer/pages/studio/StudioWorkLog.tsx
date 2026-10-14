@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Check, LoaderCircle, Wrench, X } from 'lucide-react'
-import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import type { StudioWorkEvent } from '@tokenbird/shared/protocol'
 
 export function StudioWorkLog({ events, busy, answer }: { events: StudioWorkEvent[]; busy?: boolean; answer?: boolean }) {
   const { t } = useTranslation()

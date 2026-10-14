@@ -14,13 +14,13 @@ await writeFile(join(root, 'config.json'), JSON.stringify({
 }))
 // Load shared barrels first to avoid Bun's Windows evaluation-order stall
 // when importing the standalone RPC handler without server bootstrap.
-await import('@craft-agent/shared/utils')
-await import('@craft-agent/shared/sessions')
-await import('@craft-agent/shared/config')
-await import('@craft-agent/server-core/services')
-await import('@craft-agent/server-core/handlers')
+await import('@tokenbird/shared/utils')
+await import('@tokenbird/shared/sessions')
+await import('@tokenbird/shared/config')
+await import('@tokenbird/server-core/services')
+await import('@tokenbird/server-core/handlers')
 const { registerFilesHandlers } = await import('./files')
-const { RPC_CHANNELS } = await import('@craft-agent/shared/protocol')
+const { RPC_CHANNELS } = await import('@tokenbird/shared/protocol')
 const handlers = new Map<string, HandlerFn>()
 registerFilesHandlers({ handle: (channel, handler) => { handlers.set(channel, handler) } } as RpcServer, {
   sessionManager: { getSession: async () => ({ workspaceId: 'workspace' }) },

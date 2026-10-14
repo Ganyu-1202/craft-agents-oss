@@ -38,7 +38,7 @@ import {
 } from '@/contexts/NavigationContext'
 import { useSessionSelection, useIsMultiSelectActive, useSelectedIds, useSelectionCount } from '@/hooks/useSession'
 import { sourceSelection, skillSelection, automationSelection } from '@/hooks/useEntitySelection'
-import { extractLabelId } from '@craft-agent/shared/labels'
+import { extractLabelId } from '@tokenbird/shared/labels'
 import type { SessionStatusId } from '@/config/session-status-config'
 import { SourceInfoPage, ChatPage } from '@/pages'
 import SkillInfoPage from '@/pages/SkillInfoPage'
@@ -289,7 +289,7 @@ export function MainContentPanel({
       return wrapWithStoplight(<AndroidSettingsPage />)
     }
     if (isAndroidEmbedded && navState.subpage === 'messaging' && !window.electronAPI.isChannelAvailable('messaging:getConfig')) {
-      return wrapWithStoplight(<div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center"><h1 className="text-xl font-semibold">消息集成</h1><p className="max-w-sm text-sm text-muted-foreground">本机运行包尚未包含消息网关。连接启用了消息网关的服务器，即可管理 Telegram、飞书和其他消息平台。</p><button className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground" onClick={() => window.CraftAgentAndroid?.configureServer()}>切换服务器</button><button className="min-h-11 px-4 text-sm" onClick={() => navigate(routes.view.settings())}>返回设置</button></div>)
+      return wrapWithStoplight(<div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center"><h1 className="text-xl font-semibold">消息集成</h1><p className="max-w-sm text-sm text-muted-foreground">本机运行包尚未包含消息网关。连接启用了消息网关的服务器，即可管理 Telegram、飞书和其他消息平台。</p><button className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground" onClick={() => window.TokenBirdAgentAndroid?.configureServer()}>切换服务器</button><button className="min-h-11 px-4 text-sm" onClick={() => navigate(routes.view.settings())}>返回设置</button></div>)
     }
     const subpage = navState.subpage ?? 'app'
     const SettingsPageComponent = getSettingsPageComponent(subpage)

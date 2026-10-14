@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from 'bun:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { classifyFile } from '../../../../../../packages/ui/src/lib/file-classification'
-mock.module('@craft-agent/ui', () => ({ classifyFile }))
+mock.module('@tokenbird/ui', () => ({ classifyFile }))
 mock.module('../../../../../../packages/ui/src/components/markdown', () => ({ Markdown: () => null }))
 mock.module('../../../../../../packages/ui/src/components/overlay/AnnotatableMarkdownDocument', () => ({ AnnotatableMarkdownDocument: () => null }))
 mock.module('../../../../../../packages/ui/src/components/overlay/FullscreenOverlayBase', () => ({

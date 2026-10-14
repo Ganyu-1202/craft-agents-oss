@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
-import { getLlmConnection, getLlmConnections } from '@craft-agent/shared/config'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
+import { getLlmConnection, getLlmConnections } from '@tokenbird/shared/config'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
 import { getValidTokenNestCredentials } from '../../../shared/src/auth/tokennest-oauth'
 import { normalizeCloudUrl, type CloudConfig, type CloudStatus, type TunnelFrame } from '../../../shared/src/cloud/types'
 import { loadCloudSettings, saveCloudConfig } from './storage'

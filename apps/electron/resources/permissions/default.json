@@ -102,44 +102,44 @@
       "comment": "CLI tools: bare invocation (prints help)"
     },
     {
-      "pattern": "^craft-agent\\s+label\\s+(list|get|auto-rule-list|auto-rule-validate)\\b",
-      "comment": "craft-agent label read-only operations"
+      "pattern": "^tokenbird\\s+label\\s+(list|get|auto-rule-list|auto-rule-validate)\\b",
+      "comment": "tokenbird label read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+source\\s+(list|get|validate|test|auth-help)\\b",
-      "comment": "craft-agent source read-only operations"
+      "pattern": "^tokenbird\\s+source\\s+(list|get|validate|test|auth-help)\\b",
+      "comment": "tokenbird source read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+skill\\s+(list|get|validate|where)\\b",
-      "comment": "craft-agent skill read-only operations"
+      "pattern": "^tokenbird\\s+skill\\s+(list|get|validate|where)\\b",
+      "comment": "tokenbird skill read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+automation\\s+(list|get|validate|history|last-executed|test|lint)\\b",
-      "comment": "craft-agent automation read-only operations"
+      "pattern": "^tokenbird\\s+automation\\s+(list|get|validate|history|last-executed|test|lint)\\b",
+      "comment": "tokenbird automation read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+permission\\s+(list|get|validate)\\b",
-      "comment": "craft-agent permission read-only operations"
+      "pattern": "^tokenbird\\s+permission\\s+(list|get|validate)\\b",
+      "comment": "tokenbird permission read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+theme\\s+(get|validate|list-presets|get-preset)\\b",
-      "comment": "craft-agent theme read-only operations"
+      "pattern": "^tokenbird\\s+theme\\s+(get|validate|list-presets|get-preset)\\b",
+      "comment": "tokenbird theme read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s*$",
-      "comment": "craft-agent bare invocation (prints help)"
+      "pattern": "^tokenbird\\s*$",
+      "comment": "tokenbird bare invocation (prints help)"
     },
     {
-      "pattern": "^craft-agent\\s+(label|source|skill|automation|permission|theme)\\s*$",
-      "comment": "craft-agent entity help"
+      "pattern": "^tokenbird\\s+(label|source|skill|automation|permission|theme)\\s*$",
+      "comment": "tokenbird entity help"
     },
     {
-      "pattern": "^craft-agent\\s+(label|source|skill|automation|permission|theme)\\s+--help\\b",
-      "comment": "craft-agent entity help flags"
+      "pattern": "^tokenbird\\s+(label|source|skill|automation|permission|theme)\\s+--help\\b",
+      "comment": "tokenbird entity help flags"
     },
     {
-      "pattern": "^craft-agent\\s+--(help|version|discover)\\b",
-      "comment": "craft-agent global flags"
+      "pattern": "^tokenbird\\s+--(help|version|discover)\\b",
+      "comment": "tokenbird global flags"
     },
     {
       "pattern": "^find\\b",

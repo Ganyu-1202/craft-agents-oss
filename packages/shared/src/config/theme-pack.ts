@@ -662,7 +662,7 @@ export function listThemePackResources(packId: string): ThemePackResource[] {
  * folder contains neither skin.json nor theme-pack.json.
  *
  * The whole folder is copied verbatim — including the plugin's JS for DSH
- * skins — but Craft only ever reads the declarative manifest + images and
+ * skins — but TokenBird only ever reads the declarative manifest + images and
  * never executes the copied code.
  */
 export function importThemePackFromFolder(sourceDir: string): ThemePack | null {

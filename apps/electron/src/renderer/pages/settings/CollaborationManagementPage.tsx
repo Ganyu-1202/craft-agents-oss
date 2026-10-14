@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { getSessionTitle } from '@/utils/session'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
-import type { CollaborationGroup } from '@craft-agent/shared/protocol'
+import type { CollaborationGroup } from '@tokenbird/shared/protocol'
 import { RelayGroupManagement } from '@/components/settings/RelayGroupManagement'
 
 export const meta: DetailsPageMeta = { navigator: 'settings', slug: 'collaborations' }

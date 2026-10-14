@@ -1,5 +1,5 @@
 /**
- * @craft-agent/core
+ * @tokenbird/core
  *
  * Core types and utilities for TokenBird.
  *

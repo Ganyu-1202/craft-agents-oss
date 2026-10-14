@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isSuperAgentToolValidationError } from '@craft-agent/session-tools-core/super-agent-tools'
+import { isSuperAgentToolValidationError } from '@tokenbird/session-tools-core/super-agent-tools'
 
 /** Keep rejected field paths and their repair instructions ahead of verbose data. */
 export function superAgentActionErrorMessage(error: unknown): string {

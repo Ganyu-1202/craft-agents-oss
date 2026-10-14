@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { SettingsCard, SettingsSection } from '@/components/settings'
-import type { MemoryLeakCheckResult, PerformanceProcessInfo, PerformanceSnapshot } from '@craft-agent/shared/protocol'
+import type { MemoryLeakCheckResult, PerformanceProcessInfo, PerformanceSnapshot } from '@tokenbird/shared/protocol'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
 
 export const meta: DetailsPageMeta = { navigator: 'settings', slug: 'performance' }

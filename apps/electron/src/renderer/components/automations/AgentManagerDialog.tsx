@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { EditPopover, getEditConfig } from '@/components/ui/EditPopover'
-import type { CustomAgentDefinition } from '@craft-agent/shared/agents'
+import type { CustomAgentDefinition } from '@tokenbird/shared/agents'
 import { BuiltinDocHelpButton } from '@/components/ui/BuiltinDocHelpButton'
 
 const EMPTY_AGENT: CustomAgentDefinition = {

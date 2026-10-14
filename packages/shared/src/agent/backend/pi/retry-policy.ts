@@ -25,7 +25,7 @@ export function isHttp520Error(errorMessage: string): boolean {
   return HTTP_520_PATTERN.test(errorMessage);
 }
 
-export function isCraftRetryableAssistantError(message: AssistantMessage): boolean {
+export function isTokenBirdRetryableAssistantError(message: AssistantMessage): boolean {
   if (message.stopReason !== 'error' || !message.errorMessage) return false;
   if (RISK_CONTROL_PATTERN.test(message.errorMessage) || NON_TRANSIENT_FAILURE_PATTERN.test(message.errorMessage)) return false;
   return isRetryableAssistantError(message) ||
@@ -33,8 +33,8 @@ export function isCraftRetryableAssistantError(message: AssistantMessage): boole
     isHttp520Error(message.errorMessage);
 }
 
-/** Use the same classifier for Pi's retry decision and Craft's error display. */
-export function installCraftPiRetryClassifier(session: object): void {
+/** Use the same classifier for Pi's retry decision and TokenBird's error display. */
+export function installTokenBirdPiRetryClassifier(session: object): void {
   const sdkSession = session as {
     _isRetryableError?: (message: AssistantMessage) => boolean;
     _retryAttempt?: number;
@@ -44,7 +44,7 @@ export function installCraftPiRetryClassifier(session: object): void {
     throw new Error('Pi SDK retry classifier is unavailable');
   }
   sdkSession._isRetryableError = (message) => {
-    if (!isCraftRetryableAssistantError(message)) return false;
+    if (!isTokenBirdRetryableAssistantError(message)) return false;
     const errorMessage = message.errorMessage ?? '';
     // The SDK uses this counter for both agent_end.willRetry and _prepareRetry.
     // Check it here so the third failed reconnect ends normally with the 520.

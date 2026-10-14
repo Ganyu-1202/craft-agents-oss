@@ -14,12 +14,22 @@ import {
   buildPageInitMessage,
   descriptorEquals,
   grantIdsEqual,
+  getPageContentProtocol,
   isMutatingInvocation,
   isSafeExternalUrl,
   parsePageBridgeMessage,
   reconcileGrantSummaries,
   type PageGrantSummary,
 } from '../page-bridge'
+
+test('keeps existing saved pages usable without rewriting their grant-bound content', () => {
+  const content = "<script>parent.postMessage({ protocol: 'craft-pages/v1', type: 'ready' }, '*')</script>"
+  expect(getPageContentProtocol(content)).toBe('craft-pages/v1')
+  expect(parsePageBridgeMessage({ protocol: getPageContentProtocol(content), type: 'ready' })).toEqual({ type: 'ready' })
+  expect(parsePageBridgeMessage({ protocol: getPageContentProtocol(content), type: 'action', nonce: '' })).toBeNull()
+  expect(getPageContentProtocol("protocol: 'tokenbird-pages/v1'")).toBe(PAGE_BRIDGE_PROTOCOL)
+  expect(getPageContentProtocol(content + "protocol: 'tokenbird-pages/v1'")).toBe(PAGE_BRIDGE_PROTOCOL)
+})
 
 const validAction = {
   protocol: PAGE_BRIDGE_PROTOCOL,
@@ -87,7 +97,7 @@ describe('parsePageBridgeMessage', () => {
     expect(parsePageBridgeMessage(null)).toBeNull()
     expect(parsePageBridgeMessage('hi')).toBeNull()
     expect(parsePageBridgeMessage({ type: 'ready' })).toBeNull()
-    expect(parsePageBridgeMessage({ protocol: 'craft-pages/v0', type: 'ready' })).toBeNull()
+    expect(parsePageBridgeMessage({ protocol: 'tokenbird-pages/v0', type: 'ready' })).toBeNull()
     expect(parsePageBridgeMessage({ protocol: PAGE_BRIDGE_PROTOCOL, type: 'eval' })).toBeNull()
   })
 
@@ -129,7 +139,7 @@ describe('parsePageBridgeMessage: grant-request', () => {
   const mcpEntry = {
     key: 'read',
     description: 'Refresh the task list',
-    action: { kind: 'mcp', sourceSlug: 'craft-private', toolName: 'craft_read' },
+    action: { kind: 'mcp', sourceSlug: 'tokenbird-private', toolName: 'tokenbird_read' },
   }
   const apiEntry = {
     key: 'weather',
@@ -142,7 +152,7 @@ describe('parsePageBridgeMessage: grant-request', () => {
       type: 'grant-request',
       nonce: 'n',
       requests: [
-        { key: 'read', description: 'Refresh the task list', action: { kind: 'mcp', sourceSlug: 'craft-private', toolName: 'craft_read' } },
+        { key: 'read', description: 'Refresh the task list', action: { kind: 'mcp', sourceSlug: 'tokenbird-private', toolName: 'tokenbird_read' } },
         { key: 'weather', action: { kind: 'api', sourceSlug: 'openweather', method: 'GET', pathPattern: '/data/2\\.5/weather.*' } },
       ],
     })
@@ -158,7 +168,7 @@ describe('parsePageBridgeMessage: grant-request', () => {
 
   test('rejects malformed descriptors', () => {
     const withAction = (action: unknown) => ({ ...valid, requests: [{ key: 'k', action }] })
-    expect(parsePageBridgeMessage(withAction({ kind: 'mcp', toolName: 'craft_read' }))).toBeNull() // no sourceSlug
+    expect(parsePageBridgeMessage(withAction({ kind: 'mcp', toolName: 'tokenbird_read' }))).toBeNull() // no sourceSlug
     expect(parsePageBridgeMessage(withAction({ kind: 'mcp', sourceSlug: 's' }))).toBeNull() // no toolName
     expect(parsePageBridgeMessage(withAction({ kind: 'api', sourceSlug: 's', method: 'FETCH', pathPattern: '/x' }))).toBeNull()
     expect(parsePageBridgeMessage(withAction({ kind: 'api', sourceSlug: 's', method: 'GET' }))).toBeNull() // no pathPattern

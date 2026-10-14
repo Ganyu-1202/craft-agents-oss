@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { Message } from '@craft-agent/core'
+import type { Message } from '@tokenbird/core'
 import { groupMessagesByTurn, getAssistantTurnUiKey, type AssistantTurn } from '../turn-utils'
 
 const before: Message = { id: 'before', role: 'assistant', content: 'Working', isIntermediate: true, timestamp: 1 }

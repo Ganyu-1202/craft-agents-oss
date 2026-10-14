@@ -4,22 +4,22 @@
  * Handles workspace resource export/import (sources, skills, automations).
  */
 
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
-import { getCredentialManager, SOURCE_CREDENTIAL_TYPES } from '@craft-agent/shared/credentials'
-import { RESOURCE_BUNDLE_FILE_EXTENSION } from '@craft-agent/shared/resources'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
+import { getCredentialManager, SOURCE_CREDENTIAL_TYPES } from '@tokenbird/shared/credentials'
+import { RESOURCE_BUNDLE_FILE_EXTENSION } from '@tokenbird/shared/resources'
 import {
   requestClientOpenFileDialog,
   requestClientSaveFileDialog,
-} from '@craft-agent/server-core/transport'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+} from '@tokenbird/server-core/transport'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import type {
   ResourceBundle,
   ResourceImportMode,
   ExportResourcesOptions,
   ResourceImportResult,
-} from '@craft-agent/shared/resources'
+} from '@tokenbird/shared/resources'
 
 type WorkspaceInfo = NonNullable<ReturnType<typeof getWorkspaceByNameOrId>>
 
@@ -38,7 +38,7 @@ export function registerResourcesHandlers(server: RpcServer, deps: HandlerDeps):
       const workspace = getWorkspaceByNameOrId(workspaceId)
       if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`)
 
-      const { exportResources } = await import('@craft-agent/shared/resources')
+      const { exportResources } = await import('@tokenbird/shared/resources')
       const result = exportResources(workspace.rootPath, options)
 
       deps.platform.logger?.info(
@@ -75,9 +75,9 @@ export function registerResourcesHandlers(server: RpcServer, deps: HandlerDeps):
       let targetPath = filePath ?? ''
       if (!targetPath) {
         const dialog = await requestClientSaveFileDialog(server, ctx.clientId, {
-          title: 'Export Craft resources',
+          title: 'Export TokenBird resources',
           defaultPath: `${workspace.name.replace(/[\/\\:*?"<>|]/g, '-')}${RESOURCE_BUNDLE_FILE_EXTENSION}`,
-          filters: [{ name: 'Craft resource bundle', extensions: ['json'] }],
+          filters: [{ name: 'TokenBird resource bundle', extensions: ['json'] }],
         })
         if (dialog.canceled || !dialog.filePath) {
           return { canceled: true }
@@ -85,7 +85,7 @@ export function registerResourcesHandlers(server: RpcServer, deps: HandlerDeps):
         targetPath = dialog.filePath
       }
 
-      const { exportResources, writeResourceBundleFile } = await import('@craft-agent/shared/resources')
+      const { exportResources, writeResourceBundleFile } = await import('@tokenbird/shared/resources')
       const { bundle, warnings } = exportResources(workspace.rootPath, options)
       writeResourceBundleFile(targetPath, bundle)
 
@@ -117,9 +117,9 @@ export function registerResourcesHandlers(server: RpcServer, deps: HandlerDeps):
       let sourcePath = filePath ?? ''
       if (!sourcePath) {
         const dialog = await requestClientOpenFileDialog(server, ctx.clientId, {
-          title: 'Import Craft resources',
+          title: 'Import TokenBird resources',
           properties: ['openFile'],
-          filters: [{ name: 'Craft resource bundle', extensions: ['json'] }],
+          filters: [{ name: 'TokenBird resource bundle', extensions: ['json'] }],
         })
         if (dialog.canceled || dialog.filePaths.length === 0) {
           return { canceled: true }
@@ -127,7 +127,7 @@ export function registerResourcesHandlers(server: RpcServer, deps: HandlerDeps):
         sourcePath = dialog.filePaths[0]!
       }
 
-      const { readResourceBundleFile } = await import('@craft-agent/shared/resources')
+      const { readResourceBundleFile } = await import('@tokenbird/shared/resources')
       const bundle = readResourceBundleFile(sourcePath)
       return applyResourceImport(deps, workspace, bundle, mode ?? 'skip')
     },
@@ -141,7 +141,7 @@ async function applyResourceImport(
   bundle: ResourceBundle,
   mode: ResourceImportMode,
 ): Promise<ResourceImportResult> {
-  const { importResources } = await import('@craft-agent/shared/resources')
+  const { importResources } = await import('@tokenbird/shared/resources')
   const credManager = getCredentialManager()
 
   const result = await importResources(workspace.rootPath, bundle, mode, {

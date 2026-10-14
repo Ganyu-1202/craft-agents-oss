@@ -22,7 +22,7 @@ import {
   loadPageContent,
   readPageDataSnapshot,
   recordPageThumbnail,
-} from '@craft-agent/shared/pages'
+} from '@tokenbird/shared/pages'
 import {
   THUMB_JPEG_QUALITY,
   THUMB_LOGICAL_HEIGHT,

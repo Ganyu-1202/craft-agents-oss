@@ -6,6 +6,7 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setSessionExecutionPolicy, clearSessionExecutionPolicy } from './core/session-execution-policy.ts';
+import * as preferences from '../config/preferences.ts';
 
 function createAgent(overrides: Partial<BackendConfig> = {}): NativeCodexAgent {
   const now = Date.now();
@@ -43,6 +44,35 @@ describe('extractChatGptAccountId', () => {
 });
 
 describe('NativeCodexAgent protocol adaptation', () => {
+  it('refreshes commit attribution on the next turn and reuses an unchanged thread', async () => {
+    let enabled = false;
+    const preference = spyOn(preferences, 'getCoAuthorPreference').mockImplementation(() => enabled);
+    const calls: Array<{ params: Record<string, unknown> }> = [];
+    const agent = createAgent();
+    const client = {
+      request: async (_method: string, params: Record<string, unknown>) => {
+        calls.push({ params });
+        return { thread: { id: `thread-${calls.length}` } };
+      },
+    } as never;
+    try {
+      expect(await agent['ensureThread'](client)).toBe('thread-1');
+      expect(String(calls[0]!.params.developerInstructions)).not.toContain('Co-Authored-By:');
+      expect(await agent['ensureThread'](client)).toBe('thread-1');
+      enabled = true;
+      expect(await agent['ensureThread'](client)).toBe('thread-2');
+      expect(String(calls[1]!.params.developerInstructions)).toContain('Co-Authored-By: TokenBird');
+      enabled = false;
+      expect(await agent['ensureThread'](client)).toBe('thread-3');
+      expect(String(calls[2]!.params.developerInstructions)).not.toContain('Co-Authored-By:');
+      expect(await agent['ensureThread'](client)).toBe('thread-3');
+      expect(calls).toHaveLength(3);
+    } finally {
+      preference.mockRestore();
+      agent.destroy();
+    }
+  }, 60000);
+
   it('returns desktop screenshot images to the native model with their tool result', async () => {
     const agent = createAgent()
     const replies: unknown[] = []
@@ -51,11 +81,11 @@ describe('NativeCodexAgent protocol adaptation', () => {
     agent['processing'] = true
     agent['codexThreadId'] = 'thread-image'
     agent['currentTurnId'] = 'turn-image'
-    agent['nativeToolAliases'].set('craft__session__computer_use', 'mcp__session__computer_use')
+    agent['nativeToolAliases'].set('tokenbird__session__computer_use', 'mcp__session__computer_use')
     agent['hostTools'].execute = async () => ({ content: '{"scale":0.5}', isError: false, images: [{ type: 'image', mimeType: 'image/png', data: 'c2NyZWVu' }] })
     try {
       await agent['handleDynamicToolCall'](client, { id: 'image-call', method: 'item/tool/call', params: {} }, {
-        threadId: 'thread-image', turnId: 'turn-image', callId: 'screenshot', namespace: null, tool: 'craft__session__computer_use', arguments: { action: 'screenshot' },
+        threadId: 'thread-image', turnId: 'turn-image', callId: 'screenshot', namespace: null, tool: 'tokenbird__session__computer_use', arguments: { action: 'screenshot' },
       })
       expect(replies).toEqual([{ success: true, contentItems: [{ type: 'inputText', text: '{"scale":0.5}' }, { type: 'inputImage', imageUrl: 'data:image/png;base64,c2NyZWVu' }] }])
     } finally { agent.destroy() }
@@ -95,13 +125,13 @@ describe('NativeCodexAgent protocol adaptation', () => {
     }
   });
 
-  it('uses non-reserved transport aliases for Craft dynamic tools', () => {
+  it('uses non-reserved transport aliases for TokenBird dynamic tools', () => {
     const agent = createAgent();
     const tools = agent['buildDynamicTools']();
     expect(tools.length).toBeGreaterThan(0);
-    expect(tools.every(tool => tool.name.startsWith('craft__'))).toBe(true);
+    expect(tools.every(tool => tool.name.startsWith('tokenbird__'))).toBe(true);
     expect(tools.some(tool => tool.name.startsWith('mcp__'))).toBe(false);
-    expect(agent['nativeToolAliases'].get('craft__session__call_llm')).toBe('mcp__session__call_llm');
+    expect(agent['nativeToolAliases'].get('tokenbird__session__call_llm')).toBe('mcp__session__call_llm');
     agent.destroy();
   });
 
@@ -137,7 +167,7 @@ describe('NativeCodexAgent protocol adaptation', () => {
 
     expect(await agent['ensureThread'](client)).toBe('new-thread');
     expect(calls.map(call => call.method)).toEqual(['thread/start']);
-    expect((calls[0]!.params.dynamicTools as Array<{ name: string }>).some(tool => tool.name === 'craft__beecount__List_Ledgers')).toBe(true);
+    expect((calls[0]!.params.dynamicTools as Array<{ name: string }>).some(tool => tool.name === 'tokenbird__beecount__List_Ledgers')).toBe(true);
     expect(cleared).toBe(1);
 
     expect(await agent['ensureThread'](client)).toBe('new-thread');
@@ -162,7 +192,7 @@ describe('NativeCodexAgent protocol adaptation', () => {
     sourceTools = [{ name: 'mcp__beecount__List_Ledgers', description: 'List ledgers', inputSchema: { type: 'object', properties: {} } }];
     expect(await agent['ensureThread'](client)).toBe('thread-2');
     expect(calls.map(call => call.method)).toEqual(['thread/start', 'thread/start']);
-    expect((calls[1]!.params.dynamicTools as Array<{ name: string }>).some(tool => tool.name === 'craft__beecount__List_Ledgers')).toBe(true);
+    expect((calls[1]!.params.dynamicTools as Array<{ name: string }>).some(tool => tool.name === 'tokenbird__beecount__List_Ledgers')).toBe(true);
     agent.destroy();
   });
 
@@ -194,7 +224,7 @@ describe('NativeCodexAgent protocol adaptation', () => {
     agent.destroy();
   });
 
-  it('preserves the full Craft thinking-level range in Codex effort values', () => {
+  it('preserves the full TokenBird thinking-level range in Codex effort values', () => {
     const agent = createAgent();
     expect(agent['reasoningEffort']('off')).toBe('minimal');
     expect(agent['reasoningEffort']('low')).toBe('low');
@@ -205,7 +235,7 @@ describe('NativeCodexAgent protocol adaptation', () => {
     agent.destroy();
   });
 
-  it('maps streamed text, usage, and completion into Craft events', async () => {
+  it('maps streamed text, usage, and completion into TokenBird events', async () => {
     const agent = createAgent();
     agent['queue'].reset();
     agent['processing'] = true;

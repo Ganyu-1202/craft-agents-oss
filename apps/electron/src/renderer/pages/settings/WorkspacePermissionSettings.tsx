@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import type { PermissionMode } from '../../../shared/types'
 import { SettingsCard, SettingsMenuSelectRow, SettingsSection, SettingsToggle } from '@/components/settings'
 

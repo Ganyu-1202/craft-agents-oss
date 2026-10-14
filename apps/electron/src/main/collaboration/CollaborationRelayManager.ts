@@ -2,9 +2,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, writeFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { WsRpcClient } from '@craft-agent/server-core/transport';
-import { createNodeCloudPeer } from '@craft-agent/server-core/cloud/peer-node';
-import { COLLABORATION_RELAY_CAPABILITY, COLLABORATION_RELAY_RPC as C, RPC_CHANNELS, type CollaborationServerRef as ServerRef, type CollaborationSetupContext as SetupContext, type CollaborationRelaySelection as Selection, type CollaborationRelayCandidate as Candidate, type CollaborationRelayCreateInput as CreateInput, type CollaborationRelayCreateResult as CreateResult, type CollaborationRelayStatus as Status, type CollaborationRelayStatusLookup as Lookup, type CollaborationRelayInfo as Info, type CollaborationRelayMember as Member, type CollaborationRelayGroup as Group, type CollaborationRelayForward as Forward, type CollaborationRelayOperation as Operation, type CollaborationRelayDelivery as Delivery } from '@craft-agent/shared/protocol';
+import { WsRpcClient } from '@tokenbird/server-core/transport';
+import { createNodeCloudPeer } from '@tokenbird/server-core/cloud/peer-node';
+import { COLLABORATION_RELAY_CAPABILITY, COLLABORATION_RELAY_RPC as C, RPC_CHANNELS, type CollaborationServerRef as ServerRef, type CollaborationSetupContext as SetupContext, type CollaborationRelaySelection as Selection, type CollaborationRelayCandidate as Candidate, type CollaborationRelayCreateInput as CreateInput, type CollaborationRelayCreateResult as CreateResult, type CollaborationRelayStatus as Status, type CollaborationRelayStatusLookup as Lookup, type CollaborationRelayInfo as Info, type CollaborationRelayMember as Member, type CollaborationRelayGroup as Group, type CollaborationRelayForward as Forward, type CollaborationRelayOperation as Operation, type CollaborationRelayDelivery as Delivery } from '@tokenbird/shared/protocol';
 export interface RelayClient {
     invoke(channel: string, ...args: unknown[]): Promise<unknown>;
     handleCapability(channel: string, handler: (...args: any[]) => Promise<unknown>): void;
@@ -685,7 +685,7 @@ export class CollaborationRelayManager {
     async status(event: unknown, lookup: Lookup): Promise<Status> { await this.initialized; const b = await this.binding(event); return this.statusValue(this.journal(b, lookup), b); }
     async list(event: unknown): Promise<Status[]> { await this.initialized; const b = await this.binding(event); return [...this.journals.values()].filter(j => this.visible(j, b)).map(j => this.statusValue(j, b)); }
     async file(event: unknown, lookup: Lookup, fileId: string): Promise<{
-        file: import('@craft-agent/shared/protocol').CollaborationRelayFile;
+        file: import('@tokenbird/shared/protocol').CollaborationRelayFile;
         dataBase64: string;
     }> {
         await this.initialized;
@@ -695,7 +695,7 @@ export class CollaborationRelayManager {
         const coordinator = this.coordinator(j);
         await this.bind(j, coordinator);
         const result = await this.call(coordinator, C.GROUP, { ...this.scope(j), action: 'file', fileId }) as {
-            file: import('@craft-agent/shared/protocol').CollaborationRelayFile;
+            file: import('@tokenbird/shared/protocol').CollaborationRelayFile;
             dataBase64: string;
         };
         if (typeof result.dataBase64 !== 'string' || result.dataBase64.length > Math.ceil(8 * 1024 * 1024 / 3) * 4 || result.file.id !== fileId)

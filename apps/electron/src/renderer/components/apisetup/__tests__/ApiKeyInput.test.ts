@@ -100,6 +100,11 @@ describe('resolvePresetStateForBaseUrlChange', () => {
 })
 
 describe('resolveCustomEndpointPayload', () => {
+  it('preserves the Responses protocol for a custom native Codex connection', () => {
+    expect(resolveCustomEndpointPayload({ activePreset: 'custom', baseUrl: 'https://gateway.example/v1',
+      customApi: 'openai-responses', brandedOpenAiCompatPresets: new Set(), fallbackPiAuthProvider: undefined,
+    })).toEqual({ customEndpoint: { api: 'openai-responses' }, piAuthProvider: 'openai' });
+  });
   const BRANDED = new Set(['manifest'])
 
   it('routes branded openai-compat presets through openai-completions regardless of toggle', () => {

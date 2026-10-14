@@ -14,7 +14,7 @@
 import { homedir } from 'os';
 import { join } from 'path';
 
-/** TokenBird-owned data must never fall back to Craft Agents' legacy directory. */
+/** TokenBird owns its configuration directory. */
 export const CONFIG_DIR_ENV = 'TOKENBIRD_CONFIG_DIR';
 export const CONFIG_DIR_NAME = '.tokenbird';
 

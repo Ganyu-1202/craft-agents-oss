@@ -888,7 +888,7 @@ export class WeComAdapter implements PlatformAdapter {
       const plain = aeskey ? decryptMediaBlob(buffer, aeskey) : buffer
       const localPath = join(
         tmpdir(),
-        `craft-wecom-${randomUUID()}${aeskey ? '' : '.bin'}`,
+        `tokenbird-wecom-${randomUUID()}${aeskey ? '' : '.bin'}`,
       )
       writeFileSync(localPath, plain)
       return { type: 'photo', fileId: url, localPath }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
-import { canShareSuperAgentPermission, superAgentPermissionEnvironmentKey, type SuperAgentCommand, type SuperAgentConfig, type SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import { canShareSuperAgentPermission, superAgentPermissionEnvironmentKey, type SuperAgentCommand, type SuperAgentConfig, type SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

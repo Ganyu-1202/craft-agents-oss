@@ -17,7 +17,7 @@ import { claudeFrameworkPlugins } from '../agent-plugins/frameworks.ts';
 import { BaseAgent, type MiniAgentConfig, MINI_AGENT_TOOLS, MINI_AGENT_MCP_KEYS } from './base-agent.ts';
 import { getModelPromptSettings, resolveAutoCompactionTokenLimit } from '../config/llm-connections.ts';
 import type { BackendConfig, PostInitResult, PermissionRequestType, SdkMcpServerConfig } from './backend/types.ts';
-// Plan types are used by UI components; not needed in craft-agent.ts since Safe Mode is user-controlled
+// Plan types are used by UI components; not needed in tokenbird.ts since Safe Mode is user-controlled
 import { parseError, buildAndroidClaudeUnsupportedError, type AgentError } from './errors.ts';
 import { mapClaudeSdkAssistantError, type ClaudeSdkApiError } from './claude-sdk-error-mapper.ts';
 import { runErrorDiagnostics } from './diagnostics.ts';
@@ -124,7 +124,7 @@ export {
 // Documentation is served via local files at ~/.tokenbird/docs/
 
 // Import and re-export AgentEvent from core (single source of truth)
-import type { AgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent } from '@tokenbird/core/types';
 export type { AgentEvent };
 
 // Stateless tool matching — pure functions for SDK message → AgentEvent conversion
@@ -585,8 +585,8 @@ export class ClaudeAgent extends BaseAgent {
    * WS2 keep-alive: when true, use one long-lived streaming-input `query()` per
    * session so background sub-agents survive across turns (instead of a fresh
    * per-turn subprocess that tears them down at turn end). Resolved once from
-   * `CRAFT_KEEP_BG_AGENTS_ALIVE` via the shared resolver. Default is ON (opt-out);
-   * set `CRAFT_KEEP_BG_AGENTS_ALIVE=0` to force the per-turn kill-switch path.
+   * `TOKENBIRD_KEEP_BG_AGENTS_ALIVE` via the shared resolver. Default is ON (opt-out);
+   * set `TOKENBIRD_KEEP_BG_AGENTS_ALIVE=0` to force the per-turn kill-switch path.
    */
   private readonly keepBackgroundTasksAlive: boolean = resolveKeepBackgroundTasksAlive();
 
@@ -1140,7 +1140,6 @@ export class ClaudeAgent extends BaseAgent {
       if (this.pinnedPreferencesPrompt === null) {
         // First chat in this session - pin current values
         this.pinnedPreferencesPrompt = currentPreferencesPrompt;
-        this.pinnedIncludeCoAuthoredBy = currentCoAuthorPref;
         this.pinnedProjectContext = this.resolveProjectContext();
         debug('[chat] Pinned system prompt components for session consistency');
       } else {
@@ -1156,6 +1155,10 @@ export class ClaudeAgent extends BaseAgent {
           debug(`[chat] Detected drift in: preferences`);
         }
       }
+
+      // Commit attribution is a live user control, refreshed at each turn even
+      // when the rest of the preference context remains pinned for resume.
+      this.pinnedIncludeCoAuthoredBy = currentCoAuthorPref;
 
       // Check if we have binary attachments that need the AsyncIterable interface
       const hasBinaryAttachments = attachments?.some(a => a.type === 'image' || a.type === 'pdf');
@@ -1426,7 +1429,7 @@ export class ClaudeAgent extends BaseAgent {
           // Build user-defined hooks from automations.json using the workspace-level AutomationSystem
           const userHooks: Partial<Record<string, SdkAutomationCallbackMatcher[]>> = hasSessionExecutionPolicy(sessionId) ? {} : (this.automationSystem?.buildSdkHooks() ?? {});
           if (Object.keys(userHooks).length > 0) {
-            debug('[CraftAgent] User SDK hooks loaded:', Object.keys(userHooks).join(', '));
+            debug('[TokenBirdAgent] User SDK hooks loaded:', Object.keys(userHooks).join(', '));
           }
 
           // Internal hooks for permission handling and logging
@@ -3371,11 +3374,11 @@ This is a branched conversation. All prior messages in this conversation are par
 // ============================================================
 // Backward Compatibility Exports
 // ============================================================
-// These aliases allow gradual migration from CraftAgent to ClaudeAgent.
+// These aliases allow gradual migration from TokenBirdAgent to ClaudeAgent.
 // Once all consumers are updated, these can be removed.
 
 /** @deprecated Use ClaudeAgent instead */
-export { ClaudeAgent as CraftAgent };
+export { ClaudeAgent as TokenBirdAgent };
 
 /** @deprecated Use ClaudeAgentConfig instead */
-export type { ClaudeAgentConfig as CraftAgentConfig };
+export type { ClaudeAgentConfig as TokenBirdAgentConfig };

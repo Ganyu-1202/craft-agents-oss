@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { CraftMcpClient } from '../client.ts';
+import { TokenBirdMcpClient } from '../client.ts';
 import { validateMcpConnection } from '../validation.ts';
 
 test('SSE transport sends dummy authentication on event stream and POST messages', async () => {
@@ -31,7 +31,7 @@ test('SSE transport sends dummy authentication on event stream and POST messages
   await new Promise<void>(resolve => http.listen(0, '127.0.0.1', resolve));
   const address = http.address();
   if (!address || typeof address === 'string') throw new Error('Missing local test address');
-  const client = new CraftMcpClient({ transport: 'sse', url: `http://127.0.0.1:${address.port}/sse`, headers: { Authorization: 'Bearer dummy-token', Accept: 'application/json' } });
+  const client = new TokenBirdMcpClient({ transport: 'sse', url: `http://127.0.0.1:${address.port}/sse`, headers: { Authorization: 'Bearer dummy-token', Accept: 'application/json' } });
   try {
     const validated = await validateMcpConnection({ mcpUrl: `http://127.0.0.1:${address.port}/sse`, mcpTransport: 'sse', mcpAccessToken: 'dummy-token' });
     expect(validated.success).toBe(true);

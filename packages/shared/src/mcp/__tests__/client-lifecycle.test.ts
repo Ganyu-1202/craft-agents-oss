@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { CraftMcpClient } from '../client.ts';
+import { TokenBirdMcpClient } from '../client.ts';
 
 describe('MCP client lifecycle', () => {
   test('failed initialization closes the transport even before connected becomes true', async () => {
-    const client = new CraftMcpClient({ transport: 'sse', url: 'http://127.0.0.1:1/sse' });
+    const client = new TokenBirdMcpClient({ transport: 'sse', url: 'http://127.0.0.1:1/sse' });
     let closes = 0;
     (client as any).transport = { close: async () => { closes++; } };
     (client as any).client = { connect: async () => { throw new Error('dummy initialization failure'); }, close: async () => {} };
@@ -14,7 +14,7 @@ describe('MCP client lifecycle', () => {
     expect(client.isConnected()).toBe(false);
   });
   test('simultaneous callers share one handshake and closing during initialization stays closed', async () => {
-    const client = new CraftMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
+    const client = new TokenBirdMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
     let connects = 0;
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
@@ -32,7 +32,7 @@ describe('MCP client lifecycle', () => {
   });
 
   test('SDK close notification makes the wrapper terminal without repeating transport cleanup', async () => {
-    const client = new CraftMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
+    const client = new TokenBirdMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
     const sdk = (client as any).client;
     let closes = 0;
     let notifications = 0;
@@ -53,7 +53,7 @@ describe('MCP client lifecycle', () => {
   });
 
   test('SDK close during initialization cannot publish a connected client', async () => {
-    const client = new CraftMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
+    const client = new TokenBirdMcpClient({ transport: 'http', url: 'http://127.0.0.1:1/mcp' });
     const sdk = (client as any).client;
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
@@ -73,7 +73,7 @@ describe('MCP client lifecycle', () => {
 });
 
 test('silent transport startup is bounded and closed without waiting for SDK initialize', async () => {
-  const client = new CraftMcpClient({ transport: 'sse', url: 'http://127.0.0.1:1/sse', connectTimeoutMs: 20 });
+  const client = new TokenBirdMcpClient({ transport: 'sse', url: 'http://127.0.0.1:1/sse', connectTimeoutMs: 20 });
   let closes = 0;
   (client as any).transport = { close: async () => { closes++; } };
   (client as any).client = { connect: async () => new Promise(() => {}), close: async () => {} };

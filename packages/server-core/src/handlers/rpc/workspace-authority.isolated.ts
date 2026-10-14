@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import type { HandlerFn, RpcServer } from '../../transport'
 
 const workspaces = [
@@ -7,7 +7,7 @@ const workspaces = [
   { id: 'beta', rootPath: '/tmp/beta' },
   { id: 'remote', rootPath: '/tmp/remote', remoteServer: { url: 'wss://fixture.invalid', token: 'synthetic-must-not-leak', remoteWorkspaceId: 'hosted' } },
 ]
-mock.module('@craft-agent/shared/config', () => ({
+mock.module('@tokenbird/shared/config', () => ({
   getWorkspaceByNameOrId: (id: string) => workspaces.find(workspace => workspace.id === id),
   addWorkspace: () => { throw new Error('Not used') },
   setActiveWorkspace: () => {},

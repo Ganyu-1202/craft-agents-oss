@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { createRemoteCredentialService, type RemoteCredentialDependencies } from './remote-credentials'
-import { toProfileInfo, type RemoteServerProfile } from '@craft-agent/shared/config/remote-servers'
-import { credentialIdToAccount, type StoredCredential } from '@craft-agent/shared/credentials'
-import type { RemoteServerConfig } from '@craft-agent/core/types'
+import { toProfileInfo, type RemoteServerProfile } from '@tokenbird/shared/config/remote-servers'
+import { credentialIdToAccount, type StoredCredential } from '@tokenbird/shared/credentials'
+import type { RemoteServerConfig } from '@tokenbird/core/types'
 
 function fixture() {
   const profiles: RemoteServerProfile[] = [{ id: 'profile-one', name: 'Dummy', url: 'wss://example.invalid', token: 'dummy-token', createdAt: 1, updatedAt: 1,

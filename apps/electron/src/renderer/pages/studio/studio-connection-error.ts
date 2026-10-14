@@ -1,4 +1,4 @@
-import { STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE, STUDIO_TOKENNEST_REAUTH_REQUIRED } from '@craft-agent/shared/protocol'
+import { STUDIO_TOKENNEST_CHANNEL_UNAVAILABLE, STUDIO_TOKENNEST_REAUTH_REQUIRED } from '@tokenbird/shared/protocol'
 
 export type StudioConnectionIssue = 'reauth' | 'channel'
 

@@ -59,8 +59,8 @@ npm --version
 
 ```bash
 # 1. 克隆仓库
-git clone <repo-url> craft-agents-oss
-cd craft-agents-oss
+git clone <repo-url> tokenbird
+cd tokenbird
 
 # 2. 首次安装依赖。如果 Bun 提示阻止了原生安装脚本，先执行第 3 步。
 bun install
@@ -195,8 +195,8 @@ WSL 内需预先安装 Bun、Node.js/npm、curl、unzip 等工具；`--check` �
 
 ```bash
 # 在仓库根目录执行
-git clone <repo-url> craft-agents-oss
-cd craft-agents-oss
+git clone <repo-url> tokenbird
+cd tokenbird
 
 # 安装系统依赖（Ubuntu/Debian；其他发行版安装同名工具）
 sudo apt update
@@ -292,17 +292,17 @@ bun run server:build:darwin-x64
 ### 产物
 
 ```
-dist/server/                                # 服务器完整目录（含 bin/craft-server、vendor/bun、resources）
+dist/server/                                # 服务器完整目录（含 bin/tokenbird-server、vendor/bun、resources）
 tokenbird-server-<version>-linux-x64.tar.gz     # 压缩产物（与 dist/server 同级）
 ```
 
 部署到目标机后：
 
 ```bash
-tar -xzf tokenbird-server-<version>-linux-x64.tar.gz -C /opt/craft-server
-cd /opt/craft-server && bash install.sh     # 会生成 systemd 服务 craft-server
+tar -xzf tokenbird-server-<version>-linux-x64.tar.gz -C /opt/tokenbird-server
+cd /opt/tokenbird-server && bash install.sh     # 会生成 systemd 服务 tokenbird-server
 # 或直接前台运行：
-./bin/craft-server
+./bin/tokenbird-server
 ```
 
 ### 远程服务器凭据库
@@ -334,19 +334,19 @@ bun run cli:build:linux-arm64
 
 产物位于 `dist/cli/`，包含：
 
-- `bin/craft-cli`：连接现有远程服务器，或通过 `run` 自动启动内置服务器；
-- `bin/craft-server`：最小 headless WebSocket RPC 服务；
+- `bin/tokenbird-cli`：连接现有远程服务器，或通过 `run` 自动启动内置服务器；
+- `bin/tokenbird-server`：最小 headless WebSocket RPC 服务；
 - Pi/Codex compatibility 子进程、Codex app-server 原生优先运行时、Claude Code 原生运行时以及必要 MCP/权限资源。Codex CLI 未打包时由运行时发现；托管 API Key/OAuth 连接在 CLI 缺失或协议版本未经验证时回退到 Pi compatibility，显式复用 `codex login` 的无凭据模式则会直接报错。
 
 ```bash
 # 连接远程服务器
-CRAFT_SERVER_URL=wss://server.example.com \
-CRAFT_SERVER_TOKEN=<token> \
-./dist/cli/bin/craft-cli ping
+TOKENBIRD_SERVER_URL=wss://server.example.com \
+TOKENBIRD_SERVER_TOKEN=<token> \
+./dist/cli/bin/tokenbird-cli ping
 
 # 在本机临时启动 Agent，完成服务器配置任务后退出
 ANTHROPIC_API_KEY=<key> \
-./dist/cli/bin/craft-cli run --workspace-dir /etc/nginx "检查并解释当前 Nginx 配置"
+./dist/cli/bin/tokenbird-cli run --workspace-dir /etc/nginx "检查并解释当前 Nginx 配置"
 ```
 
 最小版有意不提供 Web UI、Telegram/WhatsApp/QQ 等消息渠道和 PDF/Office
@@ -356,25 +356,25 @@ ANTHROPIC_API_KEY=<key> \
 
 ```bash
 # 构建镜像
-docker buildx build -f Dockerfile.server -t craft-agent-server .
+docker buildx build -f Dockerfile.server -t tokenbird-server .
 
 # 运行
 docker run --rm -p 9100:9100 \
   --user $(id -u):$(id -g) \
-  -e HOME=/home/craftagents \
-  -e CRAFT_SERVER_TOKEN=<secret> \
-  craft-agent-server
+  -e HOME=/home/tokenbird \
+  -e TOKENBIRD_SERVER_TOKEN=<secret> \
+  tokenbird-server
 
 # 带 TLS + 挂载配置运行
 docker run --rm -p 9100:9100 \
   --user $(id -u):$(id -g) \
-  -e HOME=/home/craftagents \
-  -e CRAFT_SERVER_TOKEN=<secret> \
-  -e CRAFT_RPC_TLS_CERT=/certs/cert.pem \
-  -e CRAFT_RPC_TLS_KEY=/certs/key.pem \
+  -e HOME=/home/tokenbird \
+  -e TOKENBIRD_SERVER_TOKEN=<secret> \
+  -e TOKENBIRD_RPC_TLS_CERT=/certs/cert.pem \
+  -e TOKENBIRD_RPC_TLS_KEY=/certs/key.pem \
   -v /path/to/certs:/certs:ro \
-  -v ~/.tokenbird:/home/craftagents/.tokenbird \
-  craft-agent-server
+  -v ~/.tokenbird:/home/tokenbird/.tokenbird \
+  tokenbird-server
 ```
 
 > `Dockerfile.server` 内部要求 `bunfig.toml` 存在（hoisted linker），镜像构建已自动处理。
@@ -401,10 +401,10 @@ bun run server:build:linux-x64
 
 **2. GitHub 镜像（无需代理）**
 
-脚本已支持镜像前缀环境变量 `CRAFT_GITHUB_MIRROR`（规则：前缀 + 原始 URL）：
+脚本已支持镜像前缀环境变量 `TOKENBIRD_GITHUB_MIRROR`（规则：前缀 + 原始 URL）：
 
 ```bash
-export CRAFT_GITHUB_MIRROR=https://ghproxy.net/
+export TOKENBIRD_GITHUB_MIRROR=https://ghproxy.net/
 bun run server:build:linux-x64
 ```
 
@@ -443,9 +443,9 @@ GitHub Actions 构建并自动发布 Windows、macOS、Linux 安装包到 GitCod
 | iOS 签名归档     | `bun run ios:archive`（需要 Apple 团队签名）                                      | `dist/ios/TokenBird-<ver>-ios-archive.xcarchive.zip`                 |
 | 最小 CLI/Agent   | `bun run cli:build:<platform>-<arch>`                                             | `dist/cli/` + `tokenbird-cli-<ver>-<platform>-<arch>.tar.gz`       |
 | 服务器（原生）   | `bun run scripts/build-server.ts --platform=<platform> --arch=<arch> --compress` | `dist/server/` + `tokenbird-server-<ver>-<platform>-<arch>.tar.gz` |
-| 服务器（Docker） | `docker buildx build -f Dockerfile.server -t craft-agent-server .`               | 容器镜像                                                           |
+| 服务器（Docker） | `docker buildx build -f Dockerfile.server -t tokenbird-server .`               | 容器镜像                                                           |
 
-版本号取自 `apps/electron/package.json`（当前 `26.10.13`），产物命名统一为
+版本号取自 `apps/electron/package.json`（当前 `26.10.14`），产物命名统一为
 `TokenBird-<arch>.<ext>` / `tokenbird-server-<version>-<platform>-<arch>.tar.gz`。
 
 ---

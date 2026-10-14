@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { getEventListeners } from 'node:events'
-import { CraftMcpClient, type PoolCallToolOptions } from '../client.ts'
+import { TokenBirdMcpClient, type PoolCallToolOptions } from '../client.ts'
 import { ApiSourcePoolClient } from '../api-source-pool-client.ts'
 import { McpClientPool } from '../mcp-pool.ts'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -46,7 +46,7 @@ function fixture() {
     }
     return Response.json({ jsonrpc: '2.0', id: body.id, result })
   } })
-  const client = new CraftMcpClient({ transport: 'http', url: `http://127.0.0.1:${server.port}/mcp` })
+  const client = new TokenBirdMcpClient({ transport: 'http', url: `http://127.0.0.1:${server.port}/mcp` })
   const sdk = (client as any).client
   const errors: unknown[] = []
   const pending: Promise<unknown>[] = []

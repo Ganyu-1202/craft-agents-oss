@@ -113,7 +113,7 @@ describe('exportAllData', () => {
       appVersion: string;
       workspaces: unknown[];
     };
-    expect(manifest.format).toBe('craft-agent-data-export');
+    expect(manifest.format).toBe('tokenbird-data-export');
     expect(manifest.formatVersion).toBe(2);
     expect(typeof manifest.appVersion).toBe('string');
     expect(manifest.workspaces).toHaveLength(1);

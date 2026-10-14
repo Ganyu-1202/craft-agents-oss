@@ -69,36 +69,36 @@ describe('McpClientPool.sync — config change detection', () => {
   });
 
   it('reconnects when Authorization header changes (token refresh)', async () => {
-    await pool.sync({ craft: httpConfig('old-token') });
-    expect(pool.isConnected('craft')).toBe(true);
+    await pool.sync({ tokenbird: httpConfig('old-token') });
+    expect(pool.isConnected('tokenbird')).toBe(true);
     pool.resetTracking();
 
-    await pool.sync({ craft: httpConfig('new-token') });
+    await pool.sync({ tokenbird: httpConfig('new-token') });
 
-    expect(pool.disconnectCalls).toEqual(['craft']);
+    expect(pool.disconnectCalls).toEqual(['tokenbird']);
     expect(pool.connectCalls).toHaveLength(1);
     expect(pool.connectCalls[0].config.headers?.Authorization).toBe('Bearer new-token');
-    expect(pool.isConnected('craft')).toBe(true);
+    expect(pool.isConnected('tokenbird')).toBe(true);
   });
 
   it('does not reconnect when config is unchanged', async () => {
     const config = httpConfig('token-1');
-    await pool.sync({ craft: config });
+    await pool.sync({ tokenbird: config });
     pool.resetTracking();
 
-    await pool.sync({ craft: config });
+    await pool.sync({ tokenbird: config });
 
     expect(pool.connectCalls).toHaveLength(0);
     expect(pool.disconnectCalls).toHaveLength(0);
   });
 
   it('reconnects when URL changes', async () => {
-    await pool.sync({ craft: httpConfig('token', 'https://old.example.com') });
+    await pool.sync({ tokenbird: httpConfig('token', 'https://old.example.com') });
     pool.resetTracking();
 
-    await pool.sync({ craft: httpConfig('token', 'https://new.example.com') });
+    await pool.sync({ tokenbird: httpConfig('token', 'https://new.example.com') });
 
-    expect(pool.disconnectCalls).toEqual(['craft']);
+    expect(pool.disconnectCalls).toEqual(['tokenbird']);
     expect(pool.connectCalls).toHaveLength(1);
   });
 
@@ -116,10 +116,10 @@ describe('McpClientPool.sync — config change detection', () => {
       headers: { Authorization: 'Bearer same', 'X-Request-Id': 'bbb' },
     };
 
-    await pool.sync({ craft: config1 });
+    await pool.sync({ tokenbird: config1 });
     pool.resetTracking();
 
-    await pool.sync({ craft: config2 });
+    await pool.sync({ tokenbird: config2 });
 
     expect(pool.connectCalls).toHaveLength(1);
     expect(pool.disconnectCalls).toHaveLength(1);
@@ -127,34 +127,34 @@ describe('McpClientPool.sync — config change detection', () => {
 
   it('disconnects sources removed from config', async () => {
     const config = httpConfig('token');
-    await pool.sync({ craft: config, linear: config });
+    await pool.sync({ tokenbird: config, linear: config });
     pool.resetTracking();
 
-    await pool.sync({ craft: config });
+    await pool.sync({ tokenbird: config });
 
     expect(pool.disconnectCalls).toEqual(['linear']);
-    expect(pool.isConnected('craft')).toBe(true);
+    expect(pool.isConnected('tokenbird')).toBe(true);
     expect(pool.isConnected('linear')).toBe(false);
   });
 
   it('handles add + remove + refresh in a single sync', async () => {
     await pool.sync({
-      craft: httpConfig('old-craft-token'),
+      tokenbird: httpConfig('old-tokenbird-token'),
       linear: httpConfig('linear-token', 'https://linear.example.com'),
     });
     pool.resetTracking();
 
-    // craft: token refreshed, linear: removed, github: added
+    // tokenbird: token refreshed, linear: removed, github: added
     await pool.sync({
-      craft: httpConfig('new-craft-token'),
+      tokenbird: httpConfig('new-tokenbird-token'),
       github: httpConfig('gh-token', 'https://github.example.com'),
     });
 
     expect(pool.disconnectCalls).toContain('linear');
-    expect(pool.disconnectCalls).toContain('craft');
-    expect(pool.connectCalls.find(c => c.slug === 'craft')?.config.headers?.Authorization).toBe('Bearer new-craft-token');
+    expect(pool.disconnectCalls).toContain('tokenbird');
+    expect(pool.connectCalls.find(c => c.slug === 'tokenbird')?.config.headers?.Authorization).toBe('Bearer new-tokenbird-token');
     expect(pool.connectCalls.find(c => c.slug === 'github')).toBeDefined();
-    expect(pool.isConnected('craft')).toBe(true);
+    expect(pool.isConnected('tokenbird')).toBe(true);
     expect(pool.isConnected('linear')).toBe(false);
     expect(pool.isConnected('github')).toBe(true);
   });
@@ -162,14 +162,14 @@ describe('McpClientPool.sync — config change detection', () => {
   it('reports failure when reconnect fails after token refresh', async () => {
     const failPool = new TestablePool();
 
-    await failPool.sync({ craft: httpConfig('old-token') });
-    expect(failPool.isConnected('craft')).toBe(true);
+    await failPool.sync({ tokenbird: httpConfig('old-token') });
+    expect(failPool.isConnected('tokenbird')).toBe(true);
 
     // Token refresh — disconnect succeeds but the new handshake fails
     failPool.failNext = true;
-    const failures = await failPool.sync({ craft: httpConfig('new-token') });
+    const failures = await failPool.sync({ tokenbird: httpConfig('new-token') });
 
-    expect(failures).toContain('craft');
-    expect(failPool.isConnected('craft')).toBe(false);
+    expect(failures).toContain('tokenbird');
+    expect(failPool.isConnected('tokenbird')).toBe(false);
   });
 });

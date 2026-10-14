@@ -1,4 +1,4 @@
-import type { McpSourceConfig } from '@craft-agent/shared/sources'
+import type { McpSourceConfig } from '@tokenbird/shared/sources'
 
 export interface McpImportEntry {
   name: string

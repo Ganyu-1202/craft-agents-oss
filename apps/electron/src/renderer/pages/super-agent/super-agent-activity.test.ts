@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { SuperAgentMessage, SuperAgentSnapshot, SuperAgentTask } from '@craft-agent/shared/super-agent'
+import type { SuperAgentMessage, SuperAgentSnapshot, SuperAgentTask } from '@tokenbird/shared/super-agent'
 import type { PermissionRequest } from '../../../shared/types'
 import { conversationMessages, ordinaryPermissionHeads, recentActivityEntries, recentPermissionResolutions, taskActivity, tasklessWorkerActivities, visibleActivityEntries, visibleActivityText, type SuperAgentActivity, type SuperAgentApproval } from './super-agent-activity'
 

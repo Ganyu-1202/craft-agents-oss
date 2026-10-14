@@ -472,14 +472,14 @@ export function setWorkspaceColorTheme(rootPath: string, themeId: string | undef
 
 /**
  * Check if local (stdio) MCP servers are enabled for a workspace.
- * Resolution order: ENV (CRAFT_LOCAL_MCP_ENABLED) > workspace config > default (true)
+ * Resolution order: ENV (TOKENBIRD_LOCAL_MCP_ENABLED) > workspace config > default (true)
  *
  * @param rootPath - Absolute path to workspace root folder
  * @returns true if local MCP servers should be enabled
  */
 export function isLocalMcpEnabled(rootPath: string): boolean {
   // 1. Environment variable override (highest priority)
-  const envValue = process.env.CRAFT_LOCAL_MCP_ENABLED;
+  const envValue = process.env.TOKENBIRD_LOCAL_MCP_ENABLED;
   if (envValue !== undefined) {
     return envValue.toLowerCase() === 'true';
   }
@@ -530,7 +530,7 @@ export function ensurePluginManifest(rootPath: string, workspaceName: string): v
     ? workspaceSlug
     : `workspace-${Buffer.from(workspaceName, 'utf8').toString('hex').slice(0, 24)}`
   const manifest = {
-    name: `craft-workspace-${pluginSlug}`,
+    name: `tokenbird-workspace-${pluginSlug}`,
     version: '1.0.0',
   };
 

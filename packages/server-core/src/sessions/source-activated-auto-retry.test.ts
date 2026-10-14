@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { SessionManager, createManagedSession, claimAutoRetryPending } from './SessionManager.ts'
 
-// Regression test for craft-agents-oss#804.
+// Regression test for tokenbird#804.
 //
 // Before: the "[<slug> activated]" auto-retry only lived in the Electron renderer's
 // event processor. Headless deployments (WebUI, docker server) stalled after a

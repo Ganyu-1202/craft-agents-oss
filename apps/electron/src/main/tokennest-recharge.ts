@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { createHash } from 'node:crypto'
-import { validateTokenNestRechargeUrl } from '@craft-agent/shared/utils/billing'
+import { validateTokenNestRechargeUrl } from '@tokenbird/shared/utils/billing'
 
 const windows = new Map<string, { window: BrowserWindow; closed: Promise<void> }>()
 

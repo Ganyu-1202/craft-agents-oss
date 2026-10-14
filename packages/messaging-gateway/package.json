@@ -1,6 +1,6 @@
 {
-  "name": "@craft-agent/messaging-gateway",
-  "version": "26.10.13",
+  "name": "@tokenbird/messaging-gateway",
+  "version": "26.10.14",
   "license": "Apache-2.0",
   "description": "Messaging gateway for TokenBird — Telegram & WhatsApp",
   "type": "module",
@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@craft-agent/core": "workspace:*",
-    "@craft-agent/messaging-whatsapp-worker": "workspace:*",
-    "@craft-agent/server-core": "workspace:*",
-    "@craft-agent/shared": "workspace:*",
+    "@tokenbird/core": "workspace:*",
+    "@tokenbird/messaging-whatsapp-worker": "workspace:*",
+    "@tokenbird/server-core": "workspace:*",
+    "@tokenbird/shared": "workspace:*",
     "@larksuiteoapi/node-sdk": "^1.62.1",
     "grammy": "^1.35.0"
   },

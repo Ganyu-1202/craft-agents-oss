@@ -19,7 +19,7 @@ apps/electron/
 │   │   ├── index.ts       # Window creation, app lifecycle
 │   │   ├── ipc.ts         # IPC handler registration
 │   │   ├── menu.ts        # Application menu (File, Edit, View, Help)
-│   │   ├── sessions.ts    # Session management, CraftAgent integration
+│   │   ├── sessions.ts    # Session management, TokenBirdAgent integration
 │   │   ├── deep-link.ts   # Deep link URL parsing and handling
 │   │   ├── agent-service.ts # Agent listing, caching, auth checking
 │   │   └── sources-service.ts # Source and authentication service
@@ -80,7 +80,7 @@ if (billing.type === 'oauth_token' && billing.claudeOAuthToken) {
 
 ### 3. AgentEvent Type Mismatches
 
-The `AgentEvent` types from `CraftAgent` use different property names than you might expect:
+The `AgentEvent` types from `TokenBirdAgent` use different property names than you might expect:
 
 | Event Type | Wrong | Correct |
 |------------|-------|---------|
@@ -103,16 +103,16 @@ const toolName = managed.pendingTools.get(event.toolUseId) || 'unknown'
 managed.pendingTools.delete(event.toolUseId)
 ```
 
-### 4. CraftAgent Constructor
+### 4. TokenBirdAgent Constructor
 
-`CraftAgent` expects the full `Workspace` object, not just the ID:
+`TokenBirdAgent` expects the full `Workspace` object, not just the ID:
 
 ```typescript
 // Wrong:
-new CraftAgent({ workspaceId: workspace.id, model })
+new TokenBirdAgent({ workspaceId: workspace.id, model })
 
 // Correct:
-new CraftAgent({ workspace, model })
+new TokenBirdAgent({ workspace, model })
 ```
 
 ### 5. esbuild Configuration
@@ -148,7 +148,7 @@ bun run sync-secrets
 **That's it!** Now `bun run electron:dev` and `bun run electron:start` work without prompts.
 
 **How it works:**
-- `.env.1password` contains `op://` references to the `Dev_Craft_Agents` vault
+- `.env.1password` contains `op://` references to the `Dev_TokenBird_Agents` vault
 - `bun run sync-secrets` resolves references → writes `.env` (gitignored)
 - Secrets are baked into the build at compile time via esbuild `--define` flags
 
@@ -171,7 +171,7 @@ bun run electron:build           # All of the above
 
 ### Windows updates through GitCode
 
-Packaged Windows clients check `Goldgom/craft-agents-oss` on GitCode at startup and every six hours. The repository can be overridden with `TOKENBIRD_GITCODE_REPO=owner/repository` in the desktop process environment. A newer stable Release opens an update dialog, downloads the installer in the background, and installs it when the user clicks **Restart and update**. Closing the dialog remembers that version. **Check for updates** in Settings still checks the channel manually.
+Packaged Windows clients check `Goldgom/tokenbird` on GitCode at startup and every six hours. The repository can be overridden with `TOKENBIRD_GITCODE_REPO=owner/repository` in the desktop process environment. A newer stable Release opens an update dialog, downloads the installer in the background, and installs it when the user clicks **Restart and update**. Closing the dialog remembers that version. **Check for updates** in Settings still checks the channel manually.
 
 For each Windows Release, build with `bun run dist:win` from `apps/electron`, then attach **both** `release/TokenBird-x64.exe` and `release/latest.yml` to the same GitCode Release. Its tag must match `apps/electron/package.json`'s version (for example `26.9.25`). Keep the names unchanged. `latest.yml` contains the installer checksum that `electron-updater` verifies before installing. Do not publish the Release as latest until both attachments are available.
 
@@ -196,7 +196,7 @@ DevTools opens automatically (configured in `index.ts`). Remove `mainWindow.webC
 - **Session persistence** - Sessions, messages, and names are saved to disk
 - **File attachments** - Attach images, PDFs, and code files to messages
 - **AI-generated titles** - Sessions get automatic titles after first exchange
-- **Subagent support** - Load and apply agent definitions from Craft documents
+- **Subagent support** - Load and apply agent definitions from TokenBird documents
 - **Shell integration** - Open URLs in browser, open files in default apps
 - **Permission modes** - Three-level permission system (Explore, Ask to Edit, Auto)
 - **Background tasks** - Run long-running tasks in background with progress tracking
@@ -250,7 +250,7 @@ See `CLAUDE.md` for complete route reference.
 | File | Purpose |
 |------|---------|
 | `main/index.ts` | App entry, window creation |
-| `main/sessions.ts` | CraftAgent wrapper, event processing, source integration |
+| `main/sessions.ts` | TokenBirdAgent wrapper, event processing, source integration |
 | `main/ipc.ts` | IPC channel handlers (sessions, files, shell) |
 | `main/menu.ts` | Application menu (File, Edit, View, Help) |
 | `main/deep-link.ts` | Deep link URL parsing and handling |

@@ -1,5 +1,5 @@
 /** Shared host tools for every agent backend. */
-import { getToolDefsAsJsonSchema, SESSION_TOOL_NAMES, type JsonSchemaToolDef } from '@craft-agent/session-tools-core';
+import { getToolDefsAsJsonSchema, SESSION_TOOL_NAMES, type JsonSchemaToolDef } from '@tokenbird/session-tools-core';
 import { FEATURE_FLAGS } from '../../feature-flags.ts';
 
 export type SessionToolProxyDef = JsonSchemaToolDef;

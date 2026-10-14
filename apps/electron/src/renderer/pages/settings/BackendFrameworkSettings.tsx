@@ -3,11 +3,11 @@ import { CheckCircle2, ChevronDown, Download, Loader2, XCircle } from 'lucide-re
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { SettingsCard, SettingsSection } from '@/components/settings';
-import { getAgentPluginDescriptor, setAgentPluginCatalog } from '@craft-agent/shared/agent-plugins/catalog';
-import type { AgentPluginRuntime } from '@craft-agent/shared/agent-plugins/types';
+import { getAgentPluginDescriptor, setAgentPluginCatalog } from '@tokenbird/shared/agent-plugins/catalog';
+import type { AgentPluginRuntime } from '@tokenbird/shared/agent-plugins/types';
 import { defaultFrameworkConfiguration, defaultNativeOptions, FRAMEWORK_FEATURES, frameworkFeatureOptions, getAgentFrameworkProfile, nativeCodexTransportCompatible,
   type BackendFrameworkCatalog, type BackendFrameworkConfiguration, type BackendFrameworkEntry,
-  type BackendFrameworkTestResult, type FrameworkInstallProgress } from '@craft-agent/shared/agent-plugins/frameworks';
+  type BackendFrameworkTestResult, type FrameworkInstallProgress } from '@tokenbird/shared/agent-plugins/frameworks';
 import type { LlmConnection } from '@config/llm-connections';
 import { AgentPluginInstaller } from './AgentPluginInstaller';
 

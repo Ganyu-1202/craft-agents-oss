@@ -12,9 +12,9 @@ function input(overrides: Partial<SdkAutomationInput> = {}): SdkAutomationInput 
 
 describe('sdk-bridge', () => {
   describe('buildEnvFromSdkInput', () => {
-    it('should always include CRAFT_EVENT', () => {
+    it('should always include TOKENBIRD_EVENT', () => {
       const env = buildEnvFromSdkInput('PreToolUse', input());
-      expect(env.CRAFT_EVENT).toBe('PreToolUse');
+      expect(env.TOKENBIRD_EVENT).toBe('PreToolUse');
     });
 
     it('should include process.env variables', () => {
@@ -34,9 +34,9 @@ describe('sdk-bridge', () => {
     });
 
     describe('PreToolUse / PostToolUse', () => {
-      it('should map tool_name to CRAFT_TOOL_NAME', () => {
+      it('should map tool_name to TOKENBIRD_TOOL_NAME', () => {
         const env = buildEnvFromSdkInput('PreToolUse', input({ tool_name: 'Bash' }));
-        expect(env.CRAFT_TOOL_NAME).toBe('Bash');
+        expect(env.TOKENBIRD_TOOL_NAME).toBe('Bash');
       });
 
       it('should map tool_input as sanitized JSON', () => {
@@ -44,8 +44,8 @@ describe('sdk-bridge', () => {
           tool_name: 'Bash',
           tool_input: { command: 'ls -la' },
         }));
-        expect(env.CRAFT_TOOL_INPUT).toBeDefined();
-        expect(env.CRAFT_TOOL_INPUT).not.toContain('`');
+        expect(env.TOKENBIRD_TOOL_INPUT).toBeDefined();
+        expect(env.TOKENBIRD_TOOL_INPUT).not.toContain('`');
       });
 
       it('should map tool_response for PostToolUse', () => {
@@ -53,18 +53,18 @@ describe('sdk-bridge', () => {
           tool_name: 'Bash',
           tool_response: 'file1.txt\nfile2.txt',
         }));
-        expect(env.CRAFT_TOOL_RESPONSE).toBeDefined();
+        expect(env.TOKENBIRD_TOOL_RESPONSE).toBeDefined();
       });
     });
 
     describe('PostToolUseFailure', () => {
-      it('should map error to CRAFT_ERROR', () => {
+      it('should map error to TOKENBIRD_ERROR', () => {
         const env = buildEnvFromSdkInput('PostToolUseFailure', input({
           tool_name: 'Bash',
           error: 'Command failed',
         }));
-        expect(env.CRAFT_TOOL_NAME).toBe('Bash');
-        expect(env.CRAFT_ERROR).toBeDefined();
+        expect(env.TOKENBIRD_TOOL_NAME).toBe('Bash');
+        expect(env.TOKENBIRD_ERROR).toBeDefined();
       });
     });
 
@@ -73,9 +73,9 @@ describe('sdk-bridge', () => {
         const env = buildEnvFromSdkInput('UserPromptSubmit', input({
           prompt: 'Hello `world`',
         }));
-        expect(env.CRAFT_PROMPT).toBeDefined();
+        expect(env.TOKENBIRD_PROMPT).toBeDefined();
         // Backticks should be escaped with backslash
-        expect(env.CRAFT_PROMPT).toContain('\\`');
+        expect(env.TOKENBIRD_PROMPT).toContain('\\`');
       });
     });
 
@@ -85,8 +85,8 @@ describe('sdk-bridge', () => {
           source: 'manual',
           model: 'claude-opus-4-7',
         }));
-        expect(env.CRAFT_SOURCE).toBe('manual');
-        expect(env.CRAFT_MODEL).toBe('claude-opus-4-7');
+        expect(env.TOKENBIRD_SOURCE).toBe('manual');
+        expect(env.TOKENBIRD_MODEL).toBe('claude-opus-4-7');
       });
     });
 
@@ -96,8 +96,8 @@ describe('sdk-bridge', () => {
           agent_id: 'agent-123',
           agent_type: 'research',
         }));
-        expect(env.CRAFT_AGENT_ID).toBe('agent-123');
-        expect(env.CRAFT_AGENT_TYPE).toBe('research');
+        expect(env.TOKENBIRD_ID).toBe('agent-123');
+        expect(env.TOKENBIRD_TYPE).toBe('research');
       });
     });
 
@@ -107,18 +107,18 @@ describe('sdk-bridge', () => {
           message: 'Test `message`',
           title: 'Test `title`',
         }));
-        expect(env.CRAFT_MESSAGE).toBeDefined();
-        expect(env.CRAFT_TITLE).toBeDefined();
+        expect(env.TOKENBIRD_MESSAGE).toBeDefined();
+        expect(env.TOKENBIRD_TITLE).toBeDefined();
         // Backticks should be escaped
-        expect(env.CRAFT_MESSAGE).toContain('\\`');
-        expect(env.CRAFT_TITLE).toContain('\\`');
+        expect(env.TOKENBIRD_MESSAGE).toContain('\\`');
+        expect(env.TOKENBIRD_TITLE).toContain('\\`');
       });
     });
 
     describe('unknown/default events', () => {
       it('should return minimal env for events with no specific mappings', () => {
         const env = buildEnvFromSdkInput('Stop' as any, input());
-        expect(env.CRAFT_EVENT).toBe('Stop');
+        expect(env.TOKENBIRD_EVENT).toBe('Stop');
         // Should still have process.env vars (Windows exposes PATH as `Path`)
         const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path');
         expect(pathKey).toBeDefined();
@@ -131,7 +131,7 @@ describe('sdk-bridge', () => {
           prompt: '$(rm -rf /)',
         }));
         // $ should be escaped with backslash to prevent command substitution
-        expect(env.CRAFT_PROMPT).toContain('\\$');
+        expect(env.TOKENBIRD_PROMPT).toContain('\\$');
       });
 
       it('should not sanitize internal fields like tool_name', () => {
@@ -139,7 +139,7 @@ describe('sdk-bridge', () => {
           tool_name: 'Bash',
         }));
         // tool_name is internal, should be passed through as-is
-        expect(env.CRAFT_TOOL_NAME).toBe('Bash');
+        expect(env.TOKENBIRD_TOOL_NAME).toBe('Bash');
       });
     });
   });

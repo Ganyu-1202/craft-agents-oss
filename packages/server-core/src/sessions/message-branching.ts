@@ -1,4 +1,4 @@
-import type { StoredMessage } from '@craft-agent/core/types'
+import type { StoredMessage } from '@tokenbird/core/types'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 

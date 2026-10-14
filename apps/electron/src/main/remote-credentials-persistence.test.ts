@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage'
-import { loadRemoteServerProfiles, publishRemoteServerProfiles, upsertRemoteServerProfile, getRemoteServersPath } from '@craft-agent/shared/config/remote-servers'
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage'
+import { loadRemoteServerProfiles, publishRemoteServerProfiles, upsertRemoteServerProfile, getRemoteServersPath } from '@tokenbird/shared/config/remote-servers'
 import { createRemoteCredentialService } from './remote-credentials'
 import { nativeVaultFixture } from './__tests__/fixtures/native-vault-harness'
 

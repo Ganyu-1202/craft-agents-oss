@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { SessionManager } from './SessionManager.ts'
 
-// Regression test for craft-agents-oss#943:
+// Regression test for tokenbird#943:
 //
 //   The automation "Test" action awaited executePromptAutomation → sendMessage
 //   to *full* completion. A prompt that used tools or produced >30s of output

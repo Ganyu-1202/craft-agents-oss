@@ -536,7 +536,7 @@ export function SessionFilesSection({ sessionId, className, sessionFolderPath, h
   // Handle file click — preview in-app if possible, open directory in file manager
   const handleFileClick = useCallback((file: SessionFile) => {
     if (file.type === 'directory') {
-      // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
+      // eslint-disable-next-line tokenbird-links/no-direct-file-open -- directories can't be previewed in-app
       window.electronAPI.openFile(file.path)
     } else {
       onOpenFile(file.path)
@@ -546,7 +546,7 @@ export function SessionFilesSection({ sessionId, className, sessionFolderPath, h
   // Handle double-click — same as single click (interceptor decides preview vs external)
   const handleFileDoubleClick = useCallback((file: SessionFile) => {
     if (file.type === 'directory') {
-      // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
+      // eslint-disable-next-line tokenbird-links/no-direct-file-open -- directories can't be previewed in-app
       window.electronAPI.openFile(file.path)
     } else {
       onOpenFile(file.path)

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test'
-import type { LlmConnection } from '@craft-agent/shared/config/llm-connections'
+import type { LlmConnection } from '@tokenbird/shared/config/llm-connections'
 import {
   getPeakValleyPeriod, getPricingSnapshot, parsePeakValleyPricing, subscribePricing, getModelPricingSource,
 } from '../tokennest-pricing'

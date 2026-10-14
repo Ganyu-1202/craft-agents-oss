@@ -1,7 +1,7 @@
 import { app, Menu, nativeImage, Tray } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { i18n } from '@craft-agent/shared/i18n'
+import { i18n } from '@tokenbird/shared/i18n'
 import { mainLog } from './logger'
 
 /** Owns the native tray and keeps its callbacks alive until explicit quit. */
@@ -40,7 +40,7 @@ export class SystemTray {
     this.tray!.setContextMenu(Menu.buildFromTemplate([
       { label: i18n.t('menu.showMainWindow'), click: this.showWindow },
       { type: 'separator' },
-      { label: i18n.t('menu.quitCraftAgents'), click: () => app.quit() },
+      { label: i18n.t('menu.quitTokenBird'), click: () => app.quit() },
     ]))
   }
 

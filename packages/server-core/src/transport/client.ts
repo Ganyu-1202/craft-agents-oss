@@ -23,7 +23,7 @@ import {
   isErrorCode,
   type ErrorCode,
   type MessageEnvelope,
-} from '@craft-agent/shared/protocol'
+} from '@tokenbird/shared/protocol'
 import type { RpcClient } from './types'
 import { serializeEnvelope, deserializeEnvelope } from './codec'
 import { CloudSocket, isCloudConnectUrl } from '../cloud/socket'

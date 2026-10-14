@@ -2,9 +2,9 @@
 
 This guide explains how to configure custom permission rules for Explore mode.
 
-> **CLI-first workflow (recommended):** Use `craft-agent permission ...` commands instead of editing JSON directly.
-> - `craft-agent permission --help`
-> - Canonical command reference: [craft-cli.md](./craft-cli.md)
+> **CLI-first workflow (recommended):** Use `tokenbird permission ...` commands instead of editing JSON directly.
+> - `tokenbird permission --help`
+> - Canonical command reference: [tokenbird-cli.md](./tokenbird-cli.md)
 
 ## Overview
 

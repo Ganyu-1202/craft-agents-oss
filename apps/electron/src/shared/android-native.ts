@@ -69,7 +69,7 @@ export interface AndroidBridge {
 
 declare global {
   interface Window {
-    CraftAgentAndroid?: AndroidBridge
+    TokenBirdAgentAndroid?: AndroidBridge
   }
 }
 
@@ -82,7 +82,7 @@ export function parseAndroidJson<T>(value: string, fallback: T): T {
 }
 
 export function invokeAndroidNative<T>(
-  eventName: 'craft-agent:android-permission-result' | 'craft-agent:android-adb-result' | 'craft-agent:android-file-result',
+  eventName: 'tokenbird:android-permission-result' | 'tokenbird:android-adb-result' | 'tokenbird:android-file-result',
   invoke: (requestId: string) => void,
   timeoutMs = 130_000,
 ): Promise<T> {

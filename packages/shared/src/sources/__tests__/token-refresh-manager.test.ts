@@ -389,16 +389,16 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: false,
       });
 
       const result = await manager.getSourcesNeedingRefresh([source]);
       expect(result.length).toBe(1);
-      expect(result[0]!.config.slug).toBe('craft-mcp');
+      expect(result[0]!.config.slug).toBe('tokenbird-mcp');
     });
 
     test('excludes source without refresh token', async () => {
@@ -413,9 +413,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: false,
       });
@@ -439,9 +439,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: false,
         connectionStatus: 'needs_auth',
@@ -455,7 +455,7 @@ describe('TokenRefreshManager', () => {
       expect(isSourceUsable(source)).toBe(true);
       expect(source.config.connectionStatus).toBe('connected');
       expect(source.config.connectionError).toBeUndefined();
-      expect(mockMarkSourceAuthenticated).toHaveBeenCalledWith('/mock/workspace', 'craft-mcp');
+      expect(mockMarkSourceAuthenticated).toHaveBeenCalledWith('/mock/workspace', 'tokenbird-mcp');
     });
 
     test('does NOT restore auth on failed refresh', async () => {
@@ -471,9 +471,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: false,
         connectionStatus: 'needs_auth',
@@ -502,9 +502,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: true,
         connectionStatus: 'connected',
@@ -514,7 +514,7 @@ describe('TokenRefreshManager', () => {
 
       await manager.ensureFreshToken(source);
 
-      // eslint-disable-next-line craft-shared/no-inline-source-auth-check -- Assert the stored status mutation, not effective authorization.
+      // eslint-disable-next-line tokenbird-shared/no-inline-source-auth-check -- Assert the stored status mutation, not effective authorization.
       expect(source.config.isAuthenticated).toBe(false);
       expect(source.config.connectionStatus).toBe('needs_auth');
       expect(source.config.connectionError).toBe('Token refresh failed');
@@ -534,9 +534,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: true,
         connectionStatus: 'connected',
@@ -546,7 +546,7 @@ describe('TokenRefreshManager', () => {
 
       await manager.ensureFreshToken(source);
 
-      // eslint-disable-next-line craft-shared/no-inline-source-auth-check -- Assert the stored status mutation, not effective authorization.
+      // eslint-disable-next-line tokenbird-shared/no-inline-source-auth-check -- Assert the stored status mutation, not effective authorization.
       expect(source.config.isAuthenticated).toBe(false);
       expect(source.config.connectionStatus).toBe('needs_auth');
       expect(source.config.connectionError).toBe('Token refresh failed. Check the connection or sign in again.');
@@ -569,9 +569,9 @@ describe('TokenRefreshManager', () => {
 
       const manager = new TokenRefreshManager(credManager);
       const source = createMockSource({
-        slug: 'craft-mcp',
+        slug: 'tokenbird-mcp',
         type: 'mcp',
-        provider: 'craft',
+        provider: 'tokenbird',
         mcp: { url: 'https://mcp.craft.do/my/mcp', authType: 'oauth' },
         isAuthenticated: false,
         connectionStatus: 'needs_auth',
@@ -591,7 +591,7 @@ describe('TokenRefreshManager', () => {
       expect(isSourceUsable(source)).toBe(true);
       expect(source.config.connectionStatus).toBe('connected');
       expect(source.config.connectionError).toBeUndefined();
-      expect(mockMarkSourceAuthenticated).toHaveBeenCalledWith('/mock/workspace', 'craft-mcp');
+      expect(mockMarkSourceAuthenticated).toHaveBeenCalledWith('/mock/workspace', 'tokenbird-mcp');
     });
   });
 

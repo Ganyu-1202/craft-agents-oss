@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
 import {
   RPC_CHANNELS,
   type CollaborationCreateResult,
@@ -7,9 +7,9 @@ import {
   type CollaborationGroup,
   type CollaborationMember,
   type CollaborationSessionSelection,
-} from '@craft-agent/shared/protocol'
+} from '@tokenbird/shared/protocol'
 import { CollaborationManager } from '../../collaboration/CollaborationManager'
-import { pushTyped, type RequestContext, type RpcServer } from '@craft-agent/server-core/transport'
+import { pushTyped, type RequestContext, type RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 const managers = new WeakMap<object, CollaborationManager>()

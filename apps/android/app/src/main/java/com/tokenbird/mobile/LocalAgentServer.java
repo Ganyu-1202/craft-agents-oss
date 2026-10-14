@@ -1,4 +1,4 @@
-package com.craftagents.mobile;
+package com.tokenbird.mobile;
 
 import android.content.Context;
 import android.content.res.AssetManager;
@@ -29,7 +29,7 @@ import java.util.Map;
  * resources are copied from APK assets into the app-private files directory.
  */
 final class LocalAgentServer {
-    private static final String TAG = "CraftAgentServer";
+    private static final String TAG = "TokenBirdAgentServer";
     // Bun's official Android binary currently declares API 28 in its
     // .note.android.ident section and imports libc symbols introduced in P.
     // API 26/27 can still use TokenBird in remote mode, but cannot execute this
@@ -89,7 +89,7 @@ final class LocalAgentServer {
             port = 0;
             recentOutput.setLength(0);
 
-            serverRoot = new File(context.getFilesDir(), "craft-agent-server");
+            serverRoot = new File(context.getFilesDir(), "tokenbird-server");
             prepareAssets(serverRoot);
 
             File bun = new File(context.getApplicationInfo().nativeLibraryDir, "libbun.so");
@@ -118,17 +118,17 @@ final class LocalAgentServer {
             builder.directory(serverRoot);
             builder.redirectErrorStream(true);
             Map<String, String> environment = builder.environment();
-            environment.put("CRAFT_SERVER_TOKEN", token);
-            environment.put("CRAFT_RPC_HOST", "127.0.0.1");
-            environment.put("CRAFT_RPC_PORT", Integer.toString(port));
-            environment.put("CRAFT_APP_ROOT", serverRoot.getAbsolutePath());
-            environment.put("CRAFT_BUNDLED_ASSETS_ROOT", serverRoot.getAbsolutePath());
-            environment.put("CRAFT_RESOURCES_PATH", new File(serverRoot, "resources").getAbsolutePath());
-            environment.put("CRAFT_IS_PACKAGED", "true");
-            environment.put("CRAFT_ANDROID", "true");
-            environment.put("CRAFT_MINIMAL_SERVER", "true");
-            environment.put("CRAFT_DISABLE_MESSAGING", "true");
-            environment.put("CRAFT_VERSION", BuildConfig.VERSION_NAME);
+            environment.put("TOKENBIRD_SERVER_TOKEN", token);
+            environment.put("TOKENBIRD_RPC_HOST", "127.0.0.1");
+            environment.put("TOKENBIRD_RPC_PORT", Integer.toString(port));
+            environment.put("TOKENBIRD_APP_ROOT", serverRoot.getAbsolutePath());
+            environment.put("TOKENBIRD_BUNDLED_ASSETS_ROOT", serverRoot.getAbsolutePath());
+            environment.put("TOKENBIRD_RESOURCES_PATH", new File(serverRoot, "resources").getAbsolutePath());
+            environment.put("TOKENBIRD_IS_PACKAGED", "true");
+            environment.put("TOKENBIRD_ANDROID", "true");
+            environment.put("TOKENBIRD_MINIMAL_SERVER", "true");
+            environment.put("TOKENBIRD_DISABLE_MESSAGING", "true");
+            environment.put("TOKENBIRD_VERSION", BuildConfig.VERSION_NAME);
             environment.put("HOME", context.getFilesDir().getAbsolutePath());
             environment.put("TMPDIR", context.getCacheDir().getAbsolutePath());
             environment.put("XDG_CACHE_HOME", new File(context.getCacheDir(), "xdg").getAbsolutePath());
@@ -225,7 +225,7 @@ final class LocalAgentServer {
             } catch (IOException error) {
                 Log.d(TAG, "Server log reader stopped: " + error.getMessage());
             }
-        }, "craft-agent-server-log");
+        }, "tokenbird-server-log");
         reader.setDaemon(true);
         reader.start();
     }

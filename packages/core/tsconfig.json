@@ -23,8 +23,8 @@
     "noPropertyAccessFromIndexSignature": false,
     "baseUrl": ".",
     "paths": {
-      "@craft-agent/core": ["./src/index.ts"],
-      "@craft-agent/core/*": ["./src/*"]
+      "@tokenbird/core": ["./src/index.ts"],
+      "@tokenbird/core/*": ["./src/*"]
     },
     "rootDir": "src",
     "outDir": "dist",

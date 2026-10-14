@@ -123,7 +123,7 @@ function driveBundle(
 
 describe('pi-agent-server bundle', () => {
   it.each(['coordinator', 'orchestrator', 'worker'] as const)('exposes and executes real role tools at the model endpoint (%s)', async role => {
-    const { getToolDefsAsJsonSchema } = await import('@craft-agent/session-tools-core')
+    const { getToolDefsAsJsonSchema } = await import('@tokenbird/session-tools-core')
     let dispatches = 0
     const tools = getToolDefsAsJsonSchema({ prefix: 'mcp__session__' })
     if (!tools.some(tool => tool.name === 'mcp__session__computer_use')) tools.push({ name: 'mcp__session__computer_use', description: 'Observe the desktop', inputSchema: { type: 'object', properties: { action: { type: 'string' } } } })

@@ -1,15 +1,14 @@
 import { useTranslation } from 'react-i18next'
-import { getLocalizedProductName } from '@craft-agent/shared/branding'
+import { getLocalizedProductName } from '@tokenbird/shared/branding'
 
-interface CraftAgentsLogoProps {
+interface TokenBirdLogoProps {
   className?: string
 }
 
 /**
- * TokenBird wordmark. The legacy component name is kept to avoid breaking
- * imports and persisted playground references.
+ * Localized TokenBird wordmark.
  */
-export function CraftAgentsLogo({ className }: CraftAgentsLogoProps) {
+export function TokenBirdLogo({ className }: TokenBirdLogoProps) {
   const { i18n } = useTranslation()
   const productName = getLocalizedProductName(i18n.resolvedLanguage ?? i18n.language)
 

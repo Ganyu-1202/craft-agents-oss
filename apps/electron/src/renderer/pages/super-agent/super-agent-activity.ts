@@ -1,4 +1,4 @@
-import type { SuperAgentMessage, SuperAgentSnapshot, SuperAgentTask } from '@craft-agent/shared/super-agent'
+import type { SuperAgentMessage, SuperAgentSnapshot, SuperAgentTask } from '@tokenbird/shared/super-agent'
 import type { PermissionRequest } from '../../../shared/types'
 
 export type SuperAgentActivity = NonNullable<SuperAgentSnapshot['activity']>[number]

@@ -547,14 +547,14 @@ export const SendMessagingTemplateCardSchema = z.object({
 });
 
 export const ExportResourcesSchema = z.object({
-  filePath: z.string().describe('Absolute path of the archive file to write (e.g. /path/to/my-sources.craft-resources.json)'),
+  filePath: z.string().describe('Absolute path of the archive file to write (e.g. /path/to/my-sources.tokenbird-resources.json)'),
   sources: z.union([z.array(z.string()), z.literal('all')]).optional().describe("Source slugs to export, or 'all' (default) for every MCP/API source"),
   skills: z.union([z.array(z.string()), z.literal('all')]).optional().describe("Skill slugs to export, or 'all' for every skill"),
   automations: z.union([z.boolean(), z.array(z.string()), z.literal('all')]).optional().describe("Automation IDs to export, true (= 'all'), or omit"),
 });
 
 export const ImportResourcesSchema = z.object({
-  filePath: z.string().describe('Absolute path of the resource archive file to import (e.g. /path/to/my-sources.craft-resources.json)'),
+  filePath: z.string().describe('Absolute path of the resource archive file to import (e.g. /path/to/my-sources.tokenbird-resources.json)'),
   mode: z.enum(['skip', 'overwrite']).optional().describe("Conflict handling: 'skip' (default) keeps existing resources, 'overwrite' replaces them"),
 });
 
@@ -862,7 +862,7 @@ The response includes absolute paths (contentPath, data.snapshotPath) — Read t
 
   create_page: `Create a new Page: a persistent, self-contained HTML document stored at pages/{slug}/ in the workspace, shown as a tile in the app's Pages section, and rendered in a sandboxed iframe.
 
-IMPORTANT — read ~/.tokenbird/docs/pages.md BEFORE authoring page HTML. Key rules: provide a FULL standalone HTML document with ALL CSS/JS inline (no external requests — shared copies get network egress blocked); to display data from the page's data store, listen for the 'craft-pages/v1' bridge messages (init/data) documented there; kind 'live' pages receive replacement data snapshots automatically while open.
+IMPORTANT — read ~/.tokenbird/docs/pages.md BEFORE authoring page HTML. Key rules: provide a FULL standalone HTML document with ALL CSS/JS inline (no external requests — shared copies get network egress blocked); to display data from the page's data store, listen for the 'tokenbird-pages/v1' bridge messages (init/data) documented there; kind 'live' pages receive replacement data snapshots automatically while open.
 
 Use Pages (instead of chat previews) when the user wants something persistent: a dashboard that an automation refreshes, a report they'll revisit or share, a tracker fed by write_page_data. Returns the created page details including the slug.`,
 
@@ -955,7 +955,7 @@ The written file can be imported later with the import_resources tool or via the
 
   import_resources: `Import a portable resource archive file into the current workspace (one-click transfer of MCP servers, API connections, skills, and automations).
 
-Use this when the user provides a *.craft-resources.json archive, or asks to move integrations from another workspace.
+Use this when the user provides a *.tokenbird-resources.json archive, or asks to move integrations from another workspace.
 
 By default existing resources are kept ('skip'); pass mode: 'overwrite' to replace them. The archive must be the file written by export_resources or exported from the Sources panel.`,
 } as const;

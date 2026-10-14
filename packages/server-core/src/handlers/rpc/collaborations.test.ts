@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import type { HandlerFn, RequestContext, RpcServer } from '../../transport/types'
 import { CollaborationManager } from '../../collaboration/CollaborationManager'
 import type { HandlerDeps } from '../handler-deps'
@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function fixture(options?: { failSecondaryDelivery?: boolean; failMetadataSessionId?: string; failCreateNumber?: number }) {
-  const mainRoot = await mkdtemp(join(tmpdir(), 'craft-collaboration-rpc-'))
+  const mainRoot = await mkdtemp(join(tmpdir(), 'tokenbird-collaboration-rpc-'))
   const otherRoot = `${mainRoot}-other`
   roots.push(mainRoot, otherRoot)
   const manager = new CollaborationManager(workspaceId => workspaceId === 'main' ? mainRoot : otherRoot)

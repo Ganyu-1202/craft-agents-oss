@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { realpath, stat } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
-import type { SuperAgentDocument, SuperAgentTask } from '@craft-agent/shared/super-agent'
+import type { SuperAgentDocument, SuperAgentTask } from '@tokenbird/shared/super-agent'
 
 /** Bounded streaming, realpath confinement, and a second stat avoid accepting a moving file. */
 export async function fingerprintArtifact(root: string, path: string): Promise<{ path: string; sha256: string }> {

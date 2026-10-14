@@ -163,7 +163,7 @@ export function getModelPromptSettings(
  * Protocol for custom API endpoints.
  * Determines which streaming adapter the Pi SDK uses for requests.
  */
-export type CustomEndpointApi = 'openai-completions' | 'anthropic-messages';
+export type CustomEndpointApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
 
 /**
  * Custom endpoint protocol config.
@@ -319,7 +319,7 @@ export function getCompatibleAgentRuntimes(
   const isCodexTransport = connection.providerType === 'pi'
     ? ['openai', 'openai-codex', 'deepseek', 'pi'].includes(connection.piAuthProvider ?? '')
     : connection.providerType === 'pi_compat'
-      && (connection.oauthProvider === 'tokennest' || connection.customEndpoint?.api === 'openai-completions');
+      && (connection.oauthProvider === 'tokennest' || ['openai-completions', 'openai-responses'].includes(connection.customEndpoint?.api ?? ''));
 
   if (isCodexTransport) {
     compatible.push('codex');

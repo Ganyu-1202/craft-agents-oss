@@ -1,4 +1,4 @@
-/* eslint-disable craft-shared/no-inline-source-auth-check -- Verify persisted failure state. */
+/* eslint-disable tokenbird-shared/no-inline-source-auth-check -- Verify persisted failure state. */
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

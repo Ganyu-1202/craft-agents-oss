@@ -1,14 +1,14 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol';
-import { getLlmConnections, getWorkspaceByNameOrId } from '@craft-agent/shared/config';
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol';
+import { getLlmConnections, getWorkspaceByNameOrId } from '@tokenbird/shared/config';
 import { refreshAgentPluginCatalog, saveAgentPluginManifest, deleteAgentPluginManifest, setAgentPluginEnabled,
   exportPortableAgentProfile, importPortableAgentProfile, getBackendFrameworkCatalog, saveBackendFrameworkConfiguration,
-  testBackendFrameworkConfiguration, type AgentPluginRuntime } from '@craft-agent/shared/agent-plugins';
-import { clearNativeCodexBinaryCache } from '@craft-agent/shared/codex/binary-resolver';
-import { refreshBackendFrameworkLocations } from '@craft-agent/shared/agent/backend';
+  testBackendFrameworkConfiguration, type AgentPluginRuntime } from '@tokenbird/shared/agent-plugins';
+import { clearNativeCodexBinaryCache } from '@tokenbird/shared/codex/binary-resolver';
+import { refreshBackendFrameworkLocations } from '@tokenbird/shared/agent/backend';
 import { buildBackendHostRuntimeContext } from '../utils';
-import type { RpcServer } from '@craft-agent/server-core/transport';
+import type { RpcServer } from '@tokenbird/server-core/transport';
 import type { HandlerDeps } from '../handler-deps';
-import { describeFrameworkInstallation, installBackendFramework, cancelBackendFrameworkInstall } from '@craft-agent/shared/agent-plugins/framework-installer';
+import { describeFrameworkInstallation, installBackendFramework, cancelBackendFrameworkInstall } from '@tokenbird/shared/agent-plugins/framework-installer';
 
 export const HANDLED_CHANNELS = [RPC_CHANNELS.agentPlugins.LIST, RPC_CHANNELS.agentPlugins.LIST_FRAMEWORKS,
   RPC_CHANNELS.agentPlugins.SAVE_FRAMEWORK, RPC_CHANNELS.agentPlugins.TEST_FRAMEWORK, RPC_CHANNELS.agentPlugins.INSTALL_FRAMEWORK,
@@ -49,7 +49,7 @@ export function registerAgentPluginHandlers(server: RpcServer, deps: HandlerDeps
   server.handle(RPC_CHANNELS.agentPlugins.SET_ENABLED, async (_ctx, id: AgentPluginRuntime, enabled: boolean) => {
     setAgentPluginEnabled(id, enabled); await changed(id);
   });
-  server.handle(RPC_CHANNELS.agentPlugins.INSTALL_FRAMEWORK, async (_ctx, id: AgentPluginRuntime, source?: import('@craft-agent/shared/agent-plugins/frameworks').FrameworkDownloadSource) => {
+  server.handle(RPC_CHANNELS.agentPlugins.INSTALL_FRAMEWORK, async (_ctx, id: AgentPluginRuntime, source?: import('@tokenbird/shared/agent-plugins/frameworks').FrameworkDownloadSource) => {
     refreshBackendFrameworkLocations(buildBackendHostRuntimeContext(deps.platform));
     const result = await installBackendFramework(id, buildBackendHostRuntimeContext(deps.platform), progress => {
       server.push(RPC_CHANNELS.agentPlugins.INSTALL_PROGRESS, { to: 'all' }, progress);

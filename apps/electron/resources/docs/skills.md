@@ -2,9 +2,9 @@
 
 This guide explains how to create and configure skills in TokenBird.
 
-> **CLI-first workflow (recommended):** Use `craft-agent skill ...` commands instead of editing `SKILL.md` files directly.
-> - `craft-agent skill --help`
-> - Canonical command reference: [craft-cli.md](./craft-cli.md)
+> **CLI-first workflow (recommended):** Use `tokenbird skill ...` commands instead of editing `SKILL.md` files directly.
+> - `tokenbird skill --help`
+> - Canonical command reference: [tokenbird-cli.md](./tokenbird-cli.md)
 
 ## What Are Skills?
 

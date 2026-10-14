@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
-import type { Session } from '@craft-agent/shared/protocol'
-import type { SuperAgentOperation } from '@craft-agent/shared/super-agent'
+import type { Session } from '@tokenbird/shared/protocol'
+import type { SuperAgentOperation } from '@tokenbird/shared/super-agent'
 
 /** The shell bridge marks a dispatched process and its terminal exit explicitly.
  * This proves the invocation finished, never that its requested business work succeeded. */

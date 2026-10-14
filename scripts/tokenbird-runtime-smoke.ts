@@ -149,12 +149,12 @@ async function startServer(): Promise<void> {
     HOME: home,
     PATH: `${resolve(process.execPath, '..')}:/usr/local/bin:/usr/bin:/bin`,
     TOKENBIRD_CONFIG_DIR: configDir,
-    CRAFT_SERVER_TOKEN: token,
-    CRAFT_MINIMAL_SERVER: webui ? 'false' : 'true',
-    CRAFT_RPC_HOST: '127.0.0.1', CRAFT_RPC_PORT: String(rpcPort),
-    CRAFT_HEALTH_PORT: String(rpcPort + 1),
-    CRAFT_BUNDLED_ASSETS_ROOT: join(repo, 'apps/electron'),
-    ...(webui ? { CRAFT_WEBUI_DIR: join(repo, 'apps/webui/dist'), CRAFT_WEBUI_SECURE_COOKIE: 'false' } : {}),
+    TOKENBIRD_SERVER_TOKEN: token,
+    TOKENBIRD_MINIMAL_SERVER: webui ? 'false' : 'true',
+    TOKENBIRD_RPC_HOST: '127.0.0.1', TOKENBIRD_RPC_PORT: String(rpcPort),
+    TOKENBIRD_HEALTH_PORT: String(rpcPort + 1),
+    TOKENBIRD_BUNDLED_ASSETS_ROOT: join(repo, 'apps/electron'),
+    ...(webui ? { TOKENBIRD_WEBUI_DIR: join(repo, 'apps/webui/dist'), TOKENBIRD_WEBUI_SECURE_COOKIE: 'false' } : {}),
   }
   child = Bun.spawn([process.execPath, 'run', serverEntry], {
     cwd: repo, env, stdout: 'pipe', stderr: 'pipe',
@@ -313,7 +313,7 @@ try {
     const code = `
       import assert from 'node:assert/strict';
       import { McpClientPool } from './packages/shared/src/mcp/mcp-pool.ts';
-      import { CraftMcpClient } from './packages/shared/src/mcp/client.ts';
+      import { TokenBirdMcpClient } from './packages/shared/src/mcp/client.ts';
       const pool = new McpClientPool();
       const config = (key, path = '/pool') => ({ type: 'http', url: 'http://127.0.0.1:${mcpPort}' + path, headers: { 'X-Smoke-Key': key } });
       try {
@@ -329,7 +329,7 @@ try {
         assert.deepEqual(await pool.sync({ smoke: config('dummy-pool-one', '/pool') }), []);
         assert.equal(pool.getTools('smoke')[0].name, 'smoke_echo');
         assert.deepEqual(await pool.sync({}), []); assert.deepEqual(pool.getConnectedSlugs(), []);
-        const silent = new CraftMcpClient({ transport: 'sse', url: 'http://127.0.0.1:${mcpPort}/sse-silent', headers: { Authorization: 'Bearer ${expectedBearer}' }, connectTimeoutMs: 100 });
+        const silent = new TokenBirdMcpClient({ transport: 'sse', url: 'http://127.0.0.1:${mcpPort}/sse-silent', headers: { Authorization: 'Bearer ${expectedBearer}' }, connectTimeoutMs: 100 });
         await assert.rejects(() => silent.listTools(), /timed out/);
         await silent.close();
         console.log('PASS live MCP pool rotation and dispatch');

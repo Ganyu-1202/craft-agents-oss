@@ -155,14 +155,31 @@ describe('createBackend / createAgent', () => {
       }), null)).toThrow('Native Codex is required when using an existing `codex login`');
     });
 
-    it('keeps custom endpoints on the compatibility runtime', () => {
+    it('uses native Codex for custom Responses endpoints', () => {
       const agent = createCodexBackend(createTestConfig({
         provider: 'pi',
         agentRuntime: 'codex',
         authType: 'api_key_with_endpoint',
-        runtime: { baseUrl: 'https://gateway.example.test/v1' },
+        runtime: { baseUrl: 'https://gateway.example.test/v1', customEndpoint: { api: 'openai-responses' } },
+      }), { path: 'codex', source: 'PATH', version: '0.154.0', testedProtocol: true });
+      expect(agent).toBeInstanceOf(NativeCodexAgent);
+      agent.destroy();
+    });
+
+    it('keeps custom Chat Completions endpoints on the compatibility runtime', () => {
+      const agent = createCodexBackend(createTestConfig({ provider: 'pi', agentRuntime: 'codex', authType: 'api_key_with_endpoint',
+        runtime: { baseUrl: 'https://gateway.example.test/v1', customEndpoint: { api: 'openai-completions' } },
       }), { path: 'codex', source: 'PATH', version: '0.154.0', testedProtocol: true });
       expect(agent).toBeInstanceOf(CodexCompatibilityAgent);
+      agent.destroy();
+    });
+
+    it('uses native Codex for TokenNest OAuth without treating it as ChatGPT authentication', () => {
+      const agent = createCodexBackend(createTestConfig({ provider: 'pi', agentRuntime: 'codex', authType: 'oauth',
+        runtime: { oauthProvider: 'tokennest', baseUrl: 'https://gateway.example.test/v1', customEndpoint: { api: 'openai-completions' } },
+      }), { path: 'codex', source: 'PATH', version: '0.154.0', testedProtocol: true });
+      expect(agent).toBeInstanceOf(NativeCodexAgent);
+      agent.destroy();
     });
 
     it('keeps DeepSeek and TokenBird transports on the Codex compatibility runtime', () => {

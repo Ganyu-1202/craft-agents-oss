@@ -16,7 +16,7 @@ We expect all participants to:
 
 ## Enforcement
 
-Instances of unacceptable behavior may be reported to: conduct@craft.do
+Instances of unacceptable behavior may be reported privately to the TokenBird maintainer using the contact information on the [maintainer's profile](https://github.com/Goldgom).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

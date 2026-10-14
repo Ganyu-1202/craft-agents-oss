@@ -1,4 +1,4 @@
-import { parseError } from '@craft-agent/shared/agent'
+import { parseError } from '@tokenbird/shared/agent'
 import type { SessionCompletionEvent } from '../sessions/SessionManager'
 import { EMPTY_RESPONSE_ERROR_CODE } from '../sessions/session-turn-completion'
 

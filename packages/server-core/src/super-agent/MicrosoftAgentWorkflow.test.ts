@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { MicrosoftAgentWorkflow, type SuperAgentWorkflowEvent } from './MicrosoftAgentWorkflow'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
-import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@tokenbird/shared/super-agent'
 import { join } from 'node:path'
 
 const workflows: MicrosoftAgentWorkflow[] = []

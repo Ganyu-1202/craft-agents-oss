@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { SuperAgentService } from './SuperAgentService'
 import { SuperAgentTestHost, superAgentFixture, until } from './SuperAgentTestSupport'
-import { loadSuperAgentDocument, saveSuperAgentDocument, superAgentDependencySatisfied, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, saveSuperAgentDocument, superAgentDependencySatisfied, withSuperAgentOrchestrator } from '@tokenbird/shared/super-agent'
 
 async function running(f: Awaited<ReturnType<typeof superAgentFixture>>, id = 'job') {
   await f.service.save('alpha', f.config)

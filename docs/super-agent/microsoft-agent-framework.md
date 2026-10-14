@@ -65,7 +65,7 @@ python -m venv .toolchains/agent-framework
 $env:TOKENBIRD_AGENT_FRAMEWORK_PYTHON=(Resolve-Path .toolchains/agent-framework/Scripts/python.exe).Path
 ```
 
-在同一终端启动应用，或在执行宿主环境中配置解释器绝对路径。Windows 资源打包会安装到实际发布的 Python。解释器选择顺序是 `TOKENBIRD_AGENT_FRAMEWORK_PYTHON`、运行时设置提供的 `CRAFT_PYTHON`、PATH 中的 Python。自定义 Python 也需要安装固定依赖。
+在同一终端启动应用，或在执行宿主环境中配置解释器绝对路径。Windows 资源打包会安装到实际发布的 Python。解释器选择顺序是 `TOKENBIRD_AGENT_FRAMEWORK_PYTHON`、运行时设置提供的 `TOKENBIRD_PYTHON`、PATH 中的 Python。自定义 Python 也需要安装固定依赖。
 
 ### Linux / macOS
 

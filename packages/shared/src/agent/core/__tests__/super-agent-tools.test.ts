@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test'
-import { SUPER_AGENT_ACTION_TOOLS } from '@craft-agent/session-tools-core/super-agent-tools'
+import { SUPER_AGENT_ACTION_TOOLS } from '@tokenbird/session-tools-core/super-agent-tools'
 import { classifyActionGate } from '../action-gates'
 import { checkSessionExecutionPolicy, clearSessionExecutionPolicy, setSessionExecutionPolicy } from '../session-execution-policy'
 

@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LANGUAGES, type LanguageCode } from '@craft-agent/shared/i18n'
+import { LANGUAGES, type LanguageCode } from '@tokenbird/shared/i18n'
 import { Download, Upload, HardDrive, Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
@@ -38,7 +38,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { routes } from '@/lib/navigate'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import { useAppShellContext } from '@/context/AppShellContext'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
 import type { NetworkProxySettings, ImportAllDataResponse } from '../../../shared/types'

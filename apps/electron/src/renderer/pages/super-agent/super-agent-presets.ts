@@ -1,5 +1,5 @@
-import type { SuperAgentConfig, SuperAgentNode } from '@craft-agent/shared/super-agent'
-import type { SuperAgentPresetProfile } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentNode } from '@tokenbird/shared/super-agent'
+import type { SuperAgentPresetProfile } from '@tokenbird/shared/super-agent'
 
 export const SUPER_AGENT_PRESETS = ['daily', 'coding', 'research', 'work', 'operations'] as const
 export type SuperAgentPreset = 'custom' | typeof SUPER_AGENT_PRESETS[number]

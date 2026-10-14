@@ -52,7 +52,7 @@ function getOpenAiCodexAccessToken(piAuth?: SearchProviderAuthConfig): string | 
 /**
  * @param activeModel Bare (no `pi/` prefix) model ID of the active session/connection. Used
  *   by the ChatGPT backend provider to search with a model the account actually supports,
- *   instead of a hardcoded one that may have been retired (craft-agents-oss#1023).
+ *   instead of a hardcoded one that may have been retired (tokenbird#1023).
  */
 export function resolveSearchProvider(piAuth?: SearchProviderAuthConfig, activeModel?: string): WebSearchProvider {
   const provider = piAuth?.provider;

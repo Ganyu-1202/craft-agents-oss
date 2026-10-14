@@ -6,8 +6,8 @@ import {
   type NativeCredentialChange,
   type NativeCredentialMetadata,
   type NativeCredentialScope,
-} from '@craft-agent/shared/credentials/native-types'
-import type { CredentialId } from '@craft-agent/shared/credentials/types'
+} from '@tokenbird/shared/credentials/native-types'
+import type { CredentialId } from '@tokenbird/shared/credentials/types'
 
 export type CredentialDomain = 'saved' | 'global' | 'llm' | 'workspace' | 'sources' | 'messaging' | 'pages' | 'connections'
 

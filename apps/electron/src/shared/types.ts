@@ -1,8 +1,8 @@
 // =============================================================================
 // Protocol re-exports (channels, DTOs, events, wire types)
 // =============================================================================
-export * from '@craft-agent/shared/protocol'
-import type { FileReadOptions, StudioWorkEvent } from '@craft-agent/shared/protocol'
+export * from '@tokenbird/shared/protocol'
+import type { FileReadOptions, StudioWorkEvent } from '@tokenbird/shared/protocol'
 
 // =============================================================================
 // Package re-exports (convenience for renderer imports)
@@ -21,20 +21,20 @@ import type {
   ContentBadge,
   ToolDisplayMeta,
   AnnotationV1,
-} from '@craft-agent/core/types';
+} from '@tokenbird/core/types';
 
 // Mode types from dedicated subpath export (avoids pulling in SDK)
-import type { PermissionMode } from '@craft-agent/shared/agent/modes';
+import type { PermissionMode } from '@tokenbird/shared/agent/modes';
 export type { PermissionMode };
-export { PERMISSION_MODE_CONFIG } from '@craft-agent/shared/agent/modes';
+export { PERMISSION_MODE_CONFIG } from '@tokenbird/shared/agent/modes';
 
 // Thinking level types
-import type { ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels';
+import type { ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels';
 export type { ThinkingLevel };
-export { THINKING_LEVELS, DEFAULT_THINKING_LEVEL } from '@craft-agent/shared/agent/thinking-levels';
+export { THINKING_LEVELS, DEFAULT_THINKING_LEVEL } from '@tokenbird/shared/agent/thinking-levels';
 
 // Workspace preference prompts (全局提示词)
-import type { WorkspacePrompt } from '@craft-agent/shared/workspaces';
+import type { WorkspacePrompt } from '@tokenbird/shared/workspaces';
 export type { WorkspacePrompt };
 
 /** Payload for creating/updating a workspace preference prompt. */
@@ -47,7 +47,7 @@ export interface WorkspacePromptInput {
 }
 
 // Remote server management (远程服务器管理)
-import type { RemoteServerProfileInfo, RemoteServerSftpInput } from '@craft-agent/shared/config';
+import type { RemoteServerProfileInfo, RemoteServerSftpInput } from '@tokenbird/shared/config';
 export type { RemoteServerProfileInfo, RemoteServerSftpInput };
 
 /** Remote workspace DTO returned by server:getWorkspaces. */
@@ -116,33 +116,33 @@ export type {
 };
 
 // Auth types for onboarding
-import type { AuthState, SetupNeeds } from '@craft-agent/shared/auth/types';
-import type { AuthType } from '@craft-agent/shared/config/types';
+import type { AuthState, SetupNeeds } from '@tokenbird/shared/auth/types';
+import type { AuthType } from '@tokenbird/shared/config/types';
 export type { AuthState, SetupNeeds, AuthType };
 
 // Credential health types
-import type { CredentialHealthStatus, CredentialHealthIssue, CredentialHealthIssueType } from '@craft-agent/shared/credentials/types';
+import type { CredentialHealthStatus, CredentialHealthIssue, CredentialHealthIssueType } from '@tokenbird/shared/credentials/types';
 import type {
   NativeCredentialResult, NativeCredentialStatusResponse, NativeCredentialListResponse,
   NativeCredentialApplyRequest, NativeCredentialApplyResponse,
   NativeCredentialMigrateRequest, NativeCredentialMigrateResponse,
-} from '@craft-agent/shared/credentials/native-types';
+} from '@tokenbird/shared/credentials/native-types';
 export type { CredentialHealthStatus, CredentialHealthIssue, CredentialHealthIssueType };
 
 // Source types for session source selection
-import type { LoadedSource, FolderSourceConfig, SourceConnectionStatus } from '@craft-agent/shared/sources/types';
+import type { LoadedSource, FolderSourceConfig, SourceConnectionStatus } from '@tokenbird/shared/sources/types';
 export type { LoadedSource, FolderSourceConfig, SourceConnectionStatus };
 
 // Skill types
-import type { LoadedSkill, SkillMetadata } from '@craft-agent/shared/skills/types';
+import type { LoadedSkill, SkillMetadata } from '@tokenbird/shared/skills/types';
 export type { LoadedSkill, SkillMetadata };
 
 // Resource bundle types (cross-workspace export/import)
-import type { ExportResourcesOptions, ExportResult, ResourceImportMode, ResourceBundle, ResourceImportResult } from '@craft-agent/shared/resources';
+import type { ExportResourcesOptions, ExportResult, ResourceImportMode, ResourceBundle, ResourceImportResult } from '@tokenbird/shared/resources';
 export type { ExportResourcesOptions, ExportResult, ResourceImportMode, ResourceBundle, ResourceImportResult };
 
 // LLM connection types
-import type { LlmConnection, LlmConnectionWithStatus, LlmAuthType, LlmProviderType, NetworkProxySettings } from '@craft-agent/shared/config';
+import type { LlmConnection, LlmConnectionWithStatus, LlmAuthType, LlmProviderType, NetworkProxySettings } from '@tokenbird/shared/config';
 export type { LlmConnection, LlmConnectionWithStatus, LlmAuthType, LlmProviderType, NetworkProxySettings };
 
 // =============================================================================
@@ -250,7 +250,7 @@ export interface TransportConnectionState {
 // =============================================================================
 
 // Re-import types for ElectronAPI
-import type { WorkspaceInfo, Workspace, SessionMetadata, StoredAttachment as StoredAttachmentType } from '@craft-agent/core/types';
+import type { WorkspaceInfo, Workspace, SessionMetadata, StoredAttachment as StoredAttachmentType } from '@tokenbird/core/types';
 
 // Import protocol types used by ElectronAPI (they come through the `export *` above,
 // but we need them in scope for the interface definition)
@@ -299,12 +299,12 @@ import type {
   DirectoryListingResult,
   RemoteSessionTransferPayload,
   ImportRemoteSessionTransferResult,
-} from '@craft-agent/shared/protocol'
+} from '@tokenbird/shared/protocol'
 
 export interface ElectronAPI {
-  getSuperAgent(workspaceId: string): Promise<import('@craft-agent/shared/super-agent').SuperAgentSnapshot>
-  saveSuperAgent(workspaceId: string, config: import('@craft-agent/shared/super-agent').SuperAgentConfig): Promise<import('@craft-agent/shared/super-agent').SuperAgentSnapshot>
-  superAgentCommand(workspaceId: string, command: import('@craft-agent/shared/super-agent').SuperAgentCommand): Promise<import('@craft-agent/shared/super-agent').SuperAgentSnapshot>
+  getSuperAgent(workspaceId: string): Promise<import('@tokenbird/shared/super-agent').SuperAgentSnapshot>
+  saveSuperAgent(workspaceId: string, config: import('@tokenbird/shared/super-agent').SuperAgentConfig): Promise<import('@tokenbird/shared/super-agent').SuperAgentSnapshot>
+  superAgentCommand(workspaceId: string, command: import('@tokenbird/shared/super-agent').SuperAgentCommand): Promise<import('@tokenbird/shared/super-agent').SuperAgentSnapshot>
   // Session management
   getSessions(): Promise<Session[]>
   getUnreadSummary(): Promise<UnreadSummary>
@@ -343,7 +343,7 @@ export interface ElectronAPI {
   // Server info (REMOTE_ELIGIBLE — returns data from whichever server owns the workspace)
   getServerHomeDir(): Promise<string>
   /** Runtime status from the server that owns the active workspace. */
-  getRuntimeServerStatus(): Promise<import('@craft-agent/core/types').ServerStatus>
+  getRuntimeServerStatus(): Promise<import('@tokenbird/core/types').ServerStatus>
 
   // Server mode configuration
   getCloudConfig(): Promise<import('../../../../packages/shared/src/cloud/types').CloudConfig>
@@ -354,9 +354,9 @@ export interface ElectronAPI {
   shareCloudChat(sessionId: string): Promise<import('../../../../packages/shared/src/cloud/types').CloudShare>
   listCloudShares(): Promise<import('../../../../packages/shared/src/cloud/types').CloudShare[]>
   revokeCloudShare(id: string): Promise<{ ok: boolean }>
-  getServerConfig(): Promise<import('@craft-agent/shared/config/server-config').ServerConfig>
-  setServerConfig(config: import('@craft-agent/shared/config/server-config').ServerConfig): Promise<void>
-  getServerStatus(): Promise<import('@craft-agent/shared/config/server-config').ServerStatus>
+  getServerConfig(): Promise<import('@tokenbird/shared/config/server-config').ServerConfig>
+  setServerConfig(config: import('@tokenbird/shared/config/server-config').ServerConfig): Promise<void>
+  getServerStatus(): Promise<import('@tokenbird/shared/config/server-config').ServerStatus>
 
   // App lifecycle
   relaunchApp(): Promise<void>
@@ -561,7 +561,7 @@ export interface ElectronAPI {
   /** Open the wallet in an isolated app window; resolves when the window closes. */
   openTokenNestRecharge(url: string, connectionSlug?: string): Promise<void>
   getTokenNestRechargeUrl(connectionSlug: string): Promise<{ url: string; requiresWebsiteLogin: boolean }>
-  checkTokenNestAuth(): Promise<import('@craft-agent/shared/auth').TokenNestAuthorizationIssue[]>
+  checkTokenNestAuth(): Promise<import('@tokenbird/shared/auth').TokenNestAuthorizationIssue[]>
 
   // GitHub Copilot OAuth
   startCopilotOAuth(connectionSlug: string): Promise<{ success: boolean; error?: string }>
@@ -594,15 +594,15 @@ export interface ElectronAPI {
   saveWorkspacePrompt(workspaceId: string, prompt: WorkspacePromptInput): Promise<WorkspacePrompt>
   deleteWorkspacePrompt(workspaceId: string, promptId: string): Promise<{ success: boolean }>
   generateWorkspacePrompt(workspaceId: string, description: string): Promise<{ title: string; content: string }>
-  getSystemPromptSources(workspaceId: string): Promise<import('@craft-agent/shared/protocol').SystemPromptSource[]>
-  getSystemPromptSettings(): Promise<import('@craft-agent/shared/config').SystemPromptSettings & { capabilities: Record<import('@craft-agent/shared/config').SystemPromptCapabilityId, boolean> }>
-  setSystemPromptSettings(settings: import('@craft-agent/shared/config').SystemPromptSettings): Promise<{ success: boolean }>
+  getSystemPromptSources(workspaceId: string): Promise<import('@tokenbird/shared/protocol').SystemPromptSource[]>
+  getSystemPromptSettings(): Promise<import('@tokenbird/shared/config').SystemPromptSettings & { capabilities: Record<import('@tokenbird/shared/config').SystemPromptCapabilityId, boolean> }>
+  setSystemPromptSettings(settings: import('@tokenbird/shared/config').SystemPromptSettings): Promise<{ success: boolean }>
 
   // Workspace tool and feature guide catalogs
-  listWorkspaceTools(workspaceId: string): Promise<import('@craft-agent/shared/protocol').WorkspaceToolCatalogResult>
-  listFeatureGuides(workspaceId: string): Promise<import('@craft-agent/shared/protocol').FeatureGuideCatalogItem[]>
-  getRuntimeTools(): Promise<import('@craft-agent/shared/config/types').RuntimeToolStatus[]>
-  setRuntimeToolPath(tool: import('@craft-agent/shared/config/types').RuntimeToolId, path?: string): Promise<import('@craft-agent/shared/config/types').RuntimeToolStatus[]>
+  listWorkspaceTools(workspaceId: string): Promise<import('@tokenbird/shared/protocol').WorkspaceToolCatalogResult>
+  listFeatureGuides(workspaceId: string): Promise<import('@tokenbird/shared/protocol').FeatureGuideCatalogItem[]>
+  getRuntimeTools(): Promise<import('@tokenbird/shared/config/types').RuntimeToolStatus[]>
+  setRuntimeToolPath(tool: import('@tokenbird/shared/config/types').RuntimeToolId, path?: string): Promise<import('@tokenbird/shared/config/types').RuntimeToolStatus[]>
 
   // Data migration (跨系统迁移数据)
   exportAllData(): Promise<ExportAllDataResponse>
@@ -633,10 +633,10 @@ export interface ElectronAPI {
   writePreferences(content: string): Promise<{ success: boolean; error?: string }>
 
   // Session Drafts (persisted composer state — text + attachment refs)
-  getDraft(sessionId: string): Promise<import('@craft-agent/shared/config').SessionDraft | null>
-  setDraft(sessionId: string, draft: import('@craft-agent/shared/config').SessionDraft): Promise<void>
+  getDraft(sessionId: string): Promise<import('@tokenbird/shared/config').SessionDraft | null>
+  setDraft(sessionId: string, draft: import('@tokenbird/shared/config').SessionDraft): Promise<void>
   deleteDraft(sessionId: string): Promise<void>
-  getAllDrafts(): Promise<Record<string, import('@craft-agent/shared/config').SessionDraft>>
+  getAllDrafts(): Promise<Record<string, import('@tokenbird/shared/config').SessionDraft>>
 
   // Session Info Panel
   getSessionFiles(sessionId: string): Promise<SessionFile[]>
@@ -652,10 +652,10 @@ export interface ElectronAPI {
   deleteSource(workspaceId: string, sourceSlug: string): Promise<void>
   startSourceOAuth(workspaceId: string, sourceSlug: string): Promise<{ success: boolean; error?: string }>
   saveSourceCredentials(workspaceId: string, sourceSlug: string, credential: string): Promise<void>
-  saveSourceCredentialsBatch(workspaceId: string, entries: import('@craft-agent/shared/sources').SourceCredentialUpdate[]): Promise<import('@craft-agent/shared/sources').SourceCredentialBatchResult>
-  getSourcePermissionsConfig(workspaceId: string, sourceSlug: string): Promise<import('@craft-agent/shared/agent').PermissionsConfigFile | null>
-  getWorkspacePermissionsConfig(workspaceId: string): Promise<import('@craft-agent/shared/agent').PermissionsConfigFile | null>
-  getDefaultPermissionsConfig(): Promise<{ config: import('@craft-agent/shared/agent').PermissionsConfigFile | null; path: string }>
+  saveSourceCredentialsBatch(workspaceId: string, entries: import('@tokenbird/shared/sources').SourceCredentialUpdate[]): Promise<import('@tokenbird/shared/sources').SourceCredentialBatchResult>
+  getSourcePermissionsConfig(workspaceId: string, sourceSlug: string): Promise<import('@tokenbird/shared/agent').PermissionsConfigFile | null>
+  getWorkspacePermissionsConfig(workspaceId: string): Promise<import('@tokenbird/shared/agent').PermissionsConfigFile | null>
+  getDefaultPermissionsConfig(): Promise<{ config: import('@tokenbird/shared/agent').PermissionsConfigFile | null; path: string }>
   getMcpTools(workspaceId: string, sourceSlug: string, forceRefresh?: boolean): Promise<McpToolsResult>
 
   // OAuth (server-owned credentials, client-orchestrated flow)
@@ -682,13 +682,13 @@ export interface ElectronAPI {
   onSkillsChanged(callback: (workspaceId: string, skills: LoadedSkill[]) => void): () => void
 
   // Statuses (workspace-scoped)
-  listStatuses(workspaceId: string): Promise<import('@craft-agent/shared/statuses').StatusConfig[]>
+  listStatuses(workspaceId: string): Promise<import('@tokenbird/shared/statuses').StatusConfig[]>
   reorderStatuses(workspaceId: string, orderedIds: string[]): Promise<void>
   onStatusesChanged(callback: (workspaceId: string) => void): () => void
 
   // Labels (workspace-scoped)
-  listLabels(workspaceId: string): Promise<import('@craft-agent/shared/labels').LabelConfig[]>
-  createLabel(workspaceId: string, input: import('@craft-agent/shared/labels').CreateLabelInput): Promise<import('@craft-agent/shared/labels').LabelConfig>
+  listLabels(workspaceId: string): Promise<import('@tokenbird/shared/labels').LabelConfig[]>
+  createLabel(workspaceId: string, input: import('@tokenbird/shared/labels').CreateLabelInput): Promise<import('@tokenbird/shared/labels').LabelConfig>
   deleteLabel(workspaceId: string, labelId: string): Promise<{ stripped: number }>
   onLabelsChanged(callback: (workspaceId: string) => void): () => void
 
@@ -696,8 +696,8 @@ export interface ElectronAPI {
   onLlmConnectionsChanged(callback: () => void): () => void
 
   // Views (workspace-scoped, stored in views.json)
-  listViews(workspaceId: string): Promise<import('@craft-agent/shared/views').ViewConfig[]>
-  saveViews(workspaceId: string, views: import('@craft-agent/shared/views').ViewConfig[]): Promise<void>
+  listViews(workspaceId: string): Promise<import('@tokenbird/shared/views').ViewConfig[]>
+  saveViews(workspaceId: string, views: import('@tokenbird/shared/views').ViewConfig[]): Promise<void>
 
   // Generic workspace image loading/saving
   readWorkspaceImage(workspaceId: string, relativePath: string): Promise<string>
@@ -723,6 +723,7 @@ export interface ElectronAPI {
   getSelectedThemePack(): Promise<import('@config/theme-pack').ThemePack | null>
   setSelectedThemePack(packId: string | null): Promise<void>
   getThemePackAsset(packId: string, asset: string): Promise<import('@config/theme-pack').ThemePackAsset | null>
+  importThemePack(): Promise<import('@config/theme-pack').ThemePack | null>
   importThemePackFolder(): Promise<import('@config/theme-pack').ThemePack | null>
   deleteThemePack(packId: string): Promise<boolean>
   onThemePackChange(callback: (payload: { packId: string | null; imported?: boolean; deleted?: boolean }) => void): () => void
@@ -779,7 +780,7 @@ export interface ElectronAPI {
     installed: boolean
     path: string | null
     version: string | null
-    source: 'CRAFT_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | null
+    source: 'TOKENBIRD_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | null
     testedProtocol: boolean
   }>
   installNativeCodex(): Promise<{
@@ -787,7 +788,7 @@ export interface ElectronAPI {
     installed: boolean
     path: string | null
     version: string | null
-    source: 'CRAFT_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | null
+    source: 'TOKENBIRD_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | null
     testedProtocol: boolean
     error?: string
   }>
@@ -797,8 +798,8 @@ export interface ElectronAPI {
   setNetworkProxySettings(settings: NetworkProxySettings): Promise<void>
   getPerformanceSettings(): Promise<{ maxWarmRuntimes: number; mcpHardLimit: number; mcpSoftLimit: number; mcpMemoryHardLimitGb: number }>
   setPerformanceSettings(settings: { maxWarmRuntimes?: number; mcpHardLimit?: number; mcpSoftLimit?: number; mcpMemoryHardLimitGb?: number }): Promise<{ success: boolean }>
-  getPerformanceSnapshot(): Promise<import('@craft-agent/shared/protocol').PerformanceSnapshot>
-  runMemoryLeakCheck(options?: { durationMs?: number; intervalMs?: number }): Promise<import('@craft-agent/shared/protocol').MemoryLeakCheckResult>
+  getPerformanceSnapshot(): Promise<import('@tokenbird/shared/protocol').PerformanceSnapshot>
+  runMemoryLeakCheck(options?: { durationMs?: number; intervalMs?: number }): Promise<import('@tokenbird/shared/protocol').MemoryLeakCheckResult>
   clearIdleMcpRuntimes(): Promise<{ cleared: number }>
 
   refreshBadge(): Promise<void>
@@ -860,16 +861,16 @@ export interface ElectronAPI {
 
   // LLM Connections (provider configurations)
   listLlmConnections(): Promise<LlmConnection[]>
-  listAgentPlugins(): Promise<import('@craft-agent/shared/agent-plugins/types').AgentPluginCatalog>
-  listBackendFrameworks(): Promise<import('@craft-agent/shared/agent-plugins/frameworks').BackendFrameworkCatalog>
-  saveBackendFramework(configuration: import('@craft-agent/shared/agent-plugins/frameworks').BackendFrameworkConfiguration): Promise<void>
-  testBackendFramework(configuration: import('@craft-agent/shared/agent-plugins/frameworks').BackendFrameworkConfiguration): Promise<import('@craft-agent/shared/agent-plugins/frameworks').BackendFrameworkTestResult>
-  installBackendFramework(id: import('@craft-agent/shared/agent-plugins/types').AgentPluginRuntime, source?: import('@craft-agent/shared/agent-plugins/frameworks').FrameworkDownloadSource): Promise<import('@craft-agent/shared/agent-plugins/frameworks').BackendFrameworkInstallResult>
-  cancelBackendFrameworkInstall(id: import('@craft-agent/shared/agent-plugins/types').AgentPluginRuntime): Promise<void>
-  onBackendFrameworkInstallProgress(callback: (progress: import('@craft-agent/shared/agent-plugins/frameworks').FrameworkInstallProgress) => void): () => void
-  setAgentPluginEnabled(id: import('@craft-agent/shared/agent-plugins/types').AgentPluginRuntime, enabled: boolean): Promise<void>
-  saveAgentPlugin(manifest: import('@craft-agent/shared/agent-plugins/types').AgentPluginManifest): Promise<void>
-  deleteAgentPlugin(id: import('@craft-agent/shared/agent-plugins/types').AgentPluginRuntime): Promise<void>
+  listAgentPlugins(): Promise<import('@tokenbird/shared/agent-plugins/types').AgentPluginCatalog>
+  listBackendFrameworks(): Promise<import('@tokenbird/shared/agent-plugins/frameworks').BackendFrameworkCatalog>
+  saveBackendFramework(configuration: import('@tokenbird/shared/agent-plugins/frameworks').BackendFrameworkConfiguration): Promise<void>
+  testBackendFramework(configuration: import('@tokenbird/shared/agent-plugins/frameworks').BackendFrameworkConfiguration): Promise<import('@tokenbird/shared/agent-plugins/frameworks').BackendFrameworkTestResult>
+  installBackendFramework(id: import('@tokenbird/shared/agent-plugins/types').AgentPluginRuntime, source?: import('@tokenbird/shared/agent-plugins/frameworks').FrameworkDownloadSource): Promise<import('@tokenbird/shared/agent-plugins/frameworks').BackendFrameworkInstallResult>
+  cancelBackendFrameworkInstall(id: import('@tokenbird/shared/agent-plugins/types').AgentPluginRuntime): Promise<void>
+  onBackendFrameworkInstallProgress(callback: (progress: import('@tokenbird/shared/agent-plugins/frameworks').FrameworkInstallProgress) => void): () => void
+  setAgentPluginEnabled(id: import('@tokenbird/shared/agent-plugins/types').AgentPluginRuntime, enabled: boolean): Promise<void>
+  saveAgentPlugin(manifest: import('@tokenbird/shared/agent-plugins/types').AgentPluginManifest): Promise<void>
+  deleteAgentPlugin(id: import('@tokenbird/shared/agent-plugins/types').AgentPluginRuntime): Promise<void>
   exportAgentProfile(workspaceId?: string): Promise<unknown>
   importAgentProfile(input: string, workspaceId?: string): Promise<unknown>
   onAgentPluginsChanged(callback: () => void): () => void
@@ -893,51 +894,51 @@ export interface ElectronAPI {
   setDefaultThinkingLevel(level: ThinkingLevel): Promise<{ success: boolean; error?: string }>
   setWorkspaceDefaultLlmConnection(workspaceId: string, slug: string | null): Promise<{ success: boolean; error?: string }>
   refreshLlmConnectionModels(slug: string): Promise<{ success: boolean; error?: string }>
-  getLlmConnectionBalances(options?: { forceRefresh?: boolean }): Promise<Array<import('@craft-agent/shared/protocol').LlmConnectionBalance>>
+  getLlmConnectionBalances(options?: { forceRefresh?: boolean }): Promise<Array<import('@tokenbird/shared/protocol').LlmConnectionBalance>>
   getShowApiBalances(): Promise<boolean>
   setShowApiBalances(enabled: boolean): Promise<void>
-  getTokenNestUsage(args: { connectionSlug: string; days?: number }): Promise<import('@craft-agent/shared/protocol').TokenNestUsageSnapshot>
+  getTokenNestUsage(args: { connectionSlug: string; days?: number }): Promise<import('@tokenbird/shared/protocol').TokenNestUsageSnapshot>
   getModelPeakValleyPricing(source: 'tokennest' | 'deepseek'): Promise<unknown>
 
   // Projects (workspace-scoped)
   getProjects(workspaceId: string): Promise<unknown>
   getProject(workspaceId: string, projectIdOrSlug: string): Promise<unknown | null>
-  createProject(workspaceId: string, input: import('@craft-agent/shared/projects/types').CreateProjectInput): Promise<import('@craft-agent/shared/projects/types').ProjectConfig>
-  updateProject(workspaceId: string, projectSlug: string, patch: Partial<Omit<import('@craft-agent/shared/projects/types').ProjectConfig, 'id' | 'slug' | 'createdAt'>>): Promise<import('@craft-agent/shared/projects/types').ProjectConfig>
+  createProject(workspaceId: string, input: import('@tokenbird/shared/projects/types').CreateProjectInput): Promise<import('@tokenbird/shared/projects/types').ProjectConfig>
+  updateProject(workspaceId: string, projectSlug: string, patch: Partial<Omit<import('@tokenbird/shared/projects/types').ProjectConfig, 'id' | 'slug' | 'createdAt'>>): Promise<import('@tokenbird/shared/projects/types').ProjectConfig>
   deleteProject(workspaceId: string, projectSlug: string): Promise<void>
   listProjectAssets(workspaceId: string, projectSlug: string): Promise<unknown>
-  uploadProjectAsset(workspaceId: string, projectSlug: string, input: { filename: string; base64?: string; text?: string; sourcePath?: string }): Promise<import('@craft-agent/shared/projects/types').ProjectAsset>
+  uploadProjectAsset(workspaceId: string, projectSlug: string, input: { filename: string; base64?: string; text?: string; sourcePath?: string }): Promise<import('@tokenbird/shared/projects/types').ProjectAsset>
   deleteProjectAsset(workspaceId: string, projectSlug: string, filename: string): Promise<void>
   onProjectsChanged(callback: (workspaceId: string, projects: unknown) => void): () => void
 
   // Pages (workspace-scoped mini dashboards)
-  getPages(workspaceId: string): Promise<import('@craft-agent/shared/pages/types').LoadedPage[]>
-  getPage(workspaceId: string, pageIdOrSlug: string): Promise<import('@craft-agent/shared/pages/types').LoadedPage | null>
-  createPage(workspaceId: string, input: import('@craft-agent/shared/pages/types').CreatePageInput): Promise<import('@craft-agent/shared/pages/types').PageConfig>
+  getPages(workspaceId: string): Promise<import('@tokenbird/shared/pages/types').LoadedPage[]>
+  getPage(workspaceId: string, pageIdOrSlug: string): Promise<import('@tokenbird/shared/pages/types').LoadedPage | null>
+  createPage(workspaceId: string, input: import('@tokenbird/shared/pages/types').CreatePageInput): Promise<import('@tokenbird/shared/pages/types').PageConfig>
   /** Optional fields (projectId, description, refresh) accept explicit null = clear (undefined is dropped by the JSON transport). */
-  updatePage(workspaceId: string, pageSlug: string, patch: Partial<Omit<import('@craft-agent/shared/pages/types').PageConfig, 'id' | 'slug' | 'createdAt' | 'contentDigest' | 'lastRefresh' | 'grants' | 'share' | 'projectId' | 'description' | 'refresh'>> & { projectId?: string | null; description?: string | null; refresh?: import('@craft-agent/shared/pages/types').PageRefreshSpec | null }): Promise<import('@craft-agent/shared/pages/types').PageConfig>
+  updatePage(workspaceId: string, pageSlug: string, patch: Partial<Omit<import('@tokenbird/shared/pages/types').PageConfig, 'id' | 'slug' | 'createdAt' | 'contentDigest' | 'lastRefresh' | 'grants' | 'share' | 'projectId' | 'description' | 'refresh'>> & { projectId?: string | null; description?: string | null; refresh?: import('@tokenbird/shared/pages/types').PageRefreshSpec | null }): Promise<import('@tokenbird/shared/pages/types').PageConfig>
   deletePage(workspaceId: string, pageSlug: string): Promise<{ publicCopyMayRemain: boolean }>
   getPageContent(workspaceId: string, pageSlug: string): Promise<{ content: string | null; contentDigest?: string }>
-  setPageContent(workspaceId: string, pageSlug: string, content: string): Promise<import('@craft-agent/shared/pages/types').PageConfig>
-  getPageData(workspaceId: string, pageSlug: string): Promise<import('@craft-agent/shared/pages/types').PageDataSnapshot | null>
-  listPageGrants(workspaceId: string, pageSlug: string): Promise<import('@craft-agent/shared/pages/types').PageActionGrant[]>
-  issuePageGrant(workspaceId: string, pageSlug: string, input: { action: import('@craft-agent/shared/pages/types').PageActionDescriptor; description?: string; ttlMs?: number }): Promise<import('@craft-agent/shared/pages/types').PageActionGrant>
+  setPageContent(workspaceId: string, pageSlug: string, content: string): Promise<import('@tokenbird/shared/pages/types').PageConfig>
+  getPageData(workspaceId: string, pageSlug: string): Promise<import('@tokenbird/shared/pages/types').PageDataSnapshot | null>
+  listPageGrants(workspaceId: string, pageSlug: string): Promise<import('@tokenbird/shared/pages/types').PageActionGrant[]>
+  issuePageGrant(workspaceId: string, pageSlug: string, input: { action: import('@tokenbird/shared/pages/types').PageActionDescriptor; description?: string; ttlMs?: number }): Promise<import('@tokenbird/shared/pages/types').PageActionGrant>
   revokePageGrant(workspaceId: string, pageSlug: string, grantId: string): Promise<boolean>
-  createPageLease(workspaceId: string, pageSlug: string): Promise<{ lease: import('@craft-agent/shared/pages/types').PageRenderLease; content: string }>
+  createPageLease(workspaceId: string, pageSlug: string): Promise<{ lease: import('@tokenbird/shared/pages/types').PageRenderLease; content: string }>
   releasePageLease(workspaceId: string, leaseId: string): Promise<void>
-  executePageAction(workspaceId: string, request: import('@craft-agent/shared/pages/types').PageActionRequest): Promise<import('@craft-agent/shared/pages/types').PageActionResult>
+  executePageAction(workspaceId: string, request: import('@tokenbird/shared/pages/types').PageActionRequest): Promise<import('@tokenbird/shared/pages/types').PageActionResult>
   cancelPageAction(workspaceId: string, requestId: string): Promise<boolean>
   getPageShareCapabilities(): Promise<{ sharingEnabled: boolean }>
   /** What `includeData` would publish + key paths that look credential-bearing (warn-only). */
   getPageShareDataScan(workspaceId: string, pageSlug: string): Promise<{ snapshotBytes: number | null; secretCandidates: string[] }>
-  publishPage(workspaceId: string, pageSlug: string, options: { includeData: boolean; password?: string; viewOnlyAcknowledged?: boolean }): Promise<import('@craft-agent/shared/pages/types').PageConfig>
-  setPagePublicationPassword(workspaceId: string, pageSlug: string, password: string | null): Promise<import('@craft-agent/shared/pages/types').PageConfig>
-  unpublishPage(workspaceId: string, pageSlug: string): Promise<{ config: import('@craft-agent/shared/pages/types').PageConfig; warning?: 'remote-copy-may-remain' }>
+  publishPage(workspaceId: string, pageSlug: string, options: { includeData: boolean; password?: string; viewOnlyAcknowledged?: boolean }): Promise<import('@tokenbird/shared/pages/types').PageConfig>
+  setPagePublicationPassword(workspaceId: string, pageSlug: string, password: string | null): Promise<import('@tokenbird/shared/pages/types').PageConfig>
+  unpublishPage(workspaceId: string, pageSlug: string): Promise<{ config: import('@tokenbird/shared/pages/types').PageConfig; warning?: 'remote-copy-may-remain' }>
   /** Read a page's cached poster as a data URL — only returns when fresh (digest matches current content). */
   getPageThumbnail(workspaceId: string, pageSlug: string): Promise<{ dataUrl: string; digest: string } | null>
   /** Request a (re)capture of a page's poster (no-op on hosts without a capturer). */
   regeneratePageThumbnail(workspaceId: string, pageSlug: string): Promise<boolean>
-  onPagesChanged(callback: (workspaceId: string, pages: import('@craft-agent/shared/pages/types').LoadedPage[]) => void): () => void
+  onPagesChanged(callback: (workspaceId: string, pages: import('@tokenbird/shared/pages/types').LoadedPage[]) => void): () => void
 
   // Automations
   getAutomations(workspaceId: string): Promise<unknown>
@@ -958,32 +959,32 @@ export interface ElectronAPI {
   onAutomationsChanged(callback: (workspaceId: string) => void): () => void
 
   // Reusable workspace agents (includes the built-in compact agent)
-  listAgents(workspaceId: string): Promise<import('@craft-agent/shared/agents').CustomAgentDefinition[]>
-  saveAgent(workspaceId: string, agent: import('@craft-agent/shared/agents').CustomAgentDefinition): Promise<unknown>
+  listAgents(workspaceId: string): Promise<import('@tokenbird/shared/agents').CustomAgentDefinition[]>
+  saveAgent(workspaceId: string, agent: import('@tokenbird/shared/agents').CustomAgentDefinition): Promise<unknown>
   deleteAgent(workspaceId: string, agentId: string): Promise<unknown>
-  generateAgent(workspaceId: string, request: { name?: string; goal: string }): Promise<import('@craft-agent/shared/agents').CustomAgentDefinition>
+  generateAgent(workspaceId: string, request: { name?: string; goal: string }): Promise<import('@tokenbird/shared/agents').CustomAgentDefinition>
 
   // Session collaboration
-  getCollaborationSetupContext(primarySessionId: string): Promise<import('@craft-agent/shared/protocol').CollaborationSetupContext>
-  listCollaborationRelayWorkspaces(server: import('@craft-agent/shared/protocol').CollaborationServerRef): Promise<import('@craft-agent/shared/protocol').CollaborationWorkspace[]>
-  listCollaborationRelayCandidates(server: import('@craft-agent/shared/protocol').CollaborationServerRef, workspaceId: string): Promise<import('@craft-agent/shared/protocol').CollaborationRelayCandidate[]>
-  createMultiServerCollaboration(input: import('@craft-agent/shared/protocol').CollaborationRelayCreateInput): Promise<import('@craft-agent/shared/protocol').CollaborationRelayCreateResult>
-  getCollaborationRelayStatus(lookup: import('@craft-agent/shared/protocol').CollaborationRelayStatusLookup): Promise<import('@craft-agent/shared/protocol').CollaborationRelayStatus>
-  endMultiServerCollaboration(lookup: import('@craft-agent/shared/protocol').CollaborationRelayStatusLookup): Promise<import('@craft-agent/shared/protocol').CollaborationRelayStatus>
-  listMultiServerCollaborations(): Promise<import('@craft-agent/shared/protocol').CollaborationRelayStatus[]>
-  getCollaborationRelayFile(lookup: import('@craft-agent/shared/protocol').CollaborationRelayStatusLookup, fileId: string): Promise<{ file: import('@craft-agent/shared/protocol').CollaborationRelayFile; dataBase64: string }>
-  createCollaboration(primarySessionId: string, secondarySessions: import('@craft-agent/shared/protocol').CollaborationSessionSelection[]): Promise<import('@craft-agent/shared/protocol').CollaborationCreateResult>
-  getCollaboration(groupId: string, coordinatorWorkspaceId: string): Promise<import('@craft-agent/shared/protocol').CollaborationGroup>
-  listCollaborations(workspaceId: string): Promise<import('@craft-agent/shared/protocol').CollaborationGroup[]>
+  getCollaborationSetupContext(primarySessionId: string): Promise<import('@tokenbird/shared/protocol').CollaborationSetupContext>
+  listCollaborationRelayWorkspaces(server: import('@tokenbird/shared/protocol').CollaborationServerRef): Promise<import('@tokenbird/shared/protocol').CollaborationWorkspace[]>
+  listCollaborationRelayCandidates(server: import('@tokenbird/shared/protocol').CollaborationServerRef, workspaceId: string): Promise<import('@tokenbird/shared/protocol').CollaborationRelayCandidate[]>
+  createMultiServerCollaboration(input: import('@tokenbird/shared/protocol').CollaborationRelayCreateInput): Promise<import('@tokenbird/shared/protocol').CollaborationRelayCreateResult>
+  getCollaborationRelayStatus(lookup: import('@tokenbird/shared/protocol').CollaborationRelayStatusLookup): Promise<import('@tokenbird/shared/protocol').CollaborationRelayStatus>
+  endMultiServerCollaboration(lookup: import('@tokenbird/shared/protocol').CollaborationRelayStatusLookup): Promise<import('@tokenbird/shared/protocol').CollaborationRelayStatus>
+  listMultiServerCollaborations(): Promise<import('@tokenbird/shared/protocol').CollaborationRelayStatus[]>
+  getCollaborationRelayFile(lookup: import('@tokenbird/shared/protocol').CollaborationRelayStatusLookup, fileId: string): Promise<{ file: import('@tokenbird/shared/protocol').CollaborationRelayFile; dataBase64: string }>
+  createCollaboration(primarySessionId: string, secondarySessions: import('@tokenbird/shared/protocol').CollaborationSessionSelection[]): Promise<import('@tokenbird/shared/protocol').CollaborationCreateResult>
+  getCollaboration(groupId: string, coordinatorWorkspaceId: string): Promise<import('@tokenbird/shared/protocol').CollaborationGroup>
+  listCollaborations(workspaceId: string): Promise<import('@tokenbird/shared/protocol').CollaborationGroup[]>
   listCollaborationCandidates(): Promise<Session[]>
-  listCollaborationWorkspaces(): Promise<import('@craft-agent/shared/protocol').CollaborationWorkspace[]>
-  listRemoteCollaborationWorkspaces(profileId: string): Promise<import('@craft-agent/shared/protocol').CollaborationWorkspace[]>
+  listCollaborationWorkspaces(): Promise<import('@tokenbird/shared/protocol').CollaborationWorkspace[]>
+  listRemoteCollaborationWorkspaces(profileId: string): Promise<import('@tokenbird/shared/protocol').CollaborationWorkspace[]>
   openRemoteCollaborationWorkspace(profileId: string, workspaceId: string): Promise<{ ok: boolean; error?: string; workspaceId?: string }>
   listRemoteCollaborationCandidates(profileId: string, workspaceId: string): Promise<Session[]>
-  createRemoteCollaboration(profileId: string, workspaceId: string, primarySessionId: string, secondarySessions: import('@craft-agent/shared/protocol').CollaborationSessionSelection[]): Promise<import('@craft-agent/shared/protocol').CollaborationCreateResult>
-  getCollaborationFile(groupId: string, coordinatorWorkspaceId: string, fileId: string): Promise<{ file: import('@craft-agent/shared/protocol').CollaborationFile; dataBase64: string }>
-  retryCollaborationDelivery(groupId: string, coordinatorWorkspaceId: string, operationId: string): Promise<{ group: import('@craft-agent/shared/protocol').CollaborationGroup; delivery: string }>
-  endCollaboration(groupId: string, coordinatorWorkspaceId: string): Promise<import('@craft-agent/shared/protocol').CollaborationGroup>
+  createRemoteCollaboration(profileId: string, workspaceId: string, primarySessionId: string, secondarySessions: import('@tokenbird/shared/protocol').CollaborationSessionSelection[]): Promise<import('@tokenbird/shared/protocol').CollaborationCreateResult>
+  getCollaborationFile(groupId: string, coordinatorWorkspaceId: string, fileId: string): Promise<{ file: import('@tokenbird/shared/protocol').CollaborationFile; dataBase64: string }>
+  retryCollaborationDelivery(groupId: string, coordinatorWorkspaceId: string, operationId: string): Promise<{ group: import('@tokenbird/shared/protocol').CollaborationGroup; delivery: string }>
+  endCollaboration(groupId: string, coordinatorWorkspaceId: string): Promise<import('@tokenbird/shared/protocol').CollaborationGroup>
   onCollaborationChanged(callback: (event: { groupId: string; revision: number }) => void): () => void
 
   // Language
@@ -1069,7 +1070,7 @@ export interface MessagingPlatformRuntimeInfo {
 
 /**
  * Workspace-level access policy for a messaging platform.
- * Mirrors the canonical type in `@craft-agent/messaging-gateway`.
+ * Mirrors the canonical type in `@tokenbird/messaging-gateway`.
  */
 export type MessagingPlatformAccessMode = 'open' | 'owner-only'
 

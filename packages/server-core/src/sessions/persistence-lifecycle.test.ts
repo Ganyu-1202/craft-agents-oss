@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test'
 import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { createSession, getSessionFilePath, loadSession, sessionPersistenceQueue } from '@craft-agent/shared/sessions'
+import { createSession, getSessionFilePath, loadSession, sessionPersistenceQueue } from '@tokenbird/shared/sessions'
 import { SessionManager, createManagedSession } from './SessionManager'
 
 const cleanups: Array<() => Promise<void>> = []

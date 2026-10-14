@@ -1,4 +1,4 @@
-import type { SuperAgentConfig, SuperAgentNode } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentNode } from '@tokenbird/shared/super-agent'
 
 /** Keep stable rules here; task details and live permissions arrive once per turn. */
 export function buildSuperAgentNodePrompt(config: SuperAgentConfig, node: SuperAgentNode, taskText = ''): string {

@@ -1,7 +1,7 @@
 export type CustomEndpointInput = 'text' | 'image'
 
 /** Custom endpoint protocol — determines which streaming adapter Pi SDK uses. */
-export type CustomEndpointApi = 'openai-completions' | 'anthropic-messages'
+export type CustomEndpointApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages'
 
 export interface CustomEndpointModelDefaults {
   supportsImages?: boolean
@@ -57,7 +57,7 @@ export function normalizeCustomEndpointModelEntry(model: CustomEndpointModelConf
  * For `openai-completions` endpoints we set `compat.supportsStore = false` so the
  * pi-ai driver omits the OpenAI-platform-specific `store` param entirely. Third-party
  * OpenAI-compatible gateways gain nothing from `store`, and strict ones reject unknown
- * params with a 400 — which made those connections unusable. See craft-agents-oss#1022.
+ * params with a 400 — which made those connections unusable. See tokenbird#1022.
  */
 export function buildCustomEndpointModelDef(
   id: string,
@@ -74,7 +74,7 @@ export function buildCustomEndpointModelDef(
     reasoning: false,
     input,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: overrides?.contextWindow ?? 131_072,
+    contextWindow: overrides?.contextWindow ?? 1_000_000,
     maxTokens: 8_192,
     ...(api === 'openai-completions' ? { compat: { supportsStore: false } } : {}),
   }

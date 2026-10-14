@@ -1,13 +1,13 @@
-import { getWorkspaces } from '@craft-agent/shared/config';
-import { getCredentialManager, type CredentialManager } from '@craft-agent/shared/credentials';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import { CredentialVaultError } from '@craft-agent/shared/credentials/backends/vault-protection';
-import { NATIVE_CREDENTIAL_FIELDS, type NativeCredentialMetadata, type NativeCredentialVaultStatus } from '@craft-agent/shared/credentials/native-types';
-import { validateNativeCredentialId } from '@craft-agent/shared/credentials/native-validation';
-import { sourceCredentialWorkspaceId, workspaceForSourceCredentialId } from '@craft-agent/shared/credentials/workspace-scope';
-import { reconcileSourceCredentialChanges } from '@craft-agent/shared/sources/credential-runtime';
-import type { RemoteCredentialHost } from '@craft-agent/server-core/handlers/rpc/credentials';
-import type { SessionManager } from '@craft-agent/server-core/sessions';
+import { getWorkspaces } from '@tokenbird/shared/config';
+import { getCredentialManager, type CredentialManager } from '@tokenbird/shared/credentials';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import { CredentialVaultError } from '@tokenbird/shared/credentials/backends/vault-protection';
+import { NATIVE_CREDENTIAL_FIELDS, type NativeCredentialMetadata, type NativeCredentialVaultStatus } from '@tokenbird/shared/credentials/native-types';
+import { validateNativeCredentialId } from '@tokenbird/shared/credentials/native-validation';
+import { sourceCredentialWorkspaceId, workspaceForSourceCredentialId } from '@tokenbird/shared/credentials/workspace-scope';
+import { reconcileSourceCredentialChanges } from '@tokenbird/shared/sources/credential-runtime';
+import type { RemoteCredentialHost } from '@tokenbird/server-core/handlers/rpc/credentials';
+import type { SessionManager } from '@tokenbird/server-core/sessions';
 
 /** Standalone storage uses the existing machine-bound AES vault, without Electron. */
 export function createHeadlessCredentialHost(sessionManager: Pick<SessionManager, 'notifyStoredCredentialChanges' | 'reloadMcpServers'>, options: {

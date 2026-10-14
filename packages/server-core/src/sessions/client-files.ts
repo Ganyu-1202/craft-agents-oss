@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, type ClientFileSelection, type SavedClientFiles } from '@craft-agent/core/types';
+import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, type ClientFileSelection, type SavedClientFiles } from '@tokenbird/core/types';
 
 /** Validate the entire response before writing. No client-supplied paths are used. */
 export async function saveClientFiles(directory: string, selection: ClientFileSelection): Promise<SavedClientFiles> {

@@ -4,6 +4,7 @@ export interface PreferencesFormState {
   preferredProxy: string
   city: string
   country: string
+  includeCoAuthoredBy: boolean
   notes: string
 }
 
@@ -13,6 +14,7 @@ export const emptyFormState: PreferencesFormState = {
   preferredProxy: '',
   city: '',
   country: '',
+  includeCoAuthoredBy: false,
   notes: '',
 }
 
@@ -26,6 +28,7 @@ export function parsePreferences(json: string): PreferencesFormState {
       preferredProxy: text(prefs.preferredProxy),
       city: text(prefs.location?.city),
       country: text(prefs.location?.country),
+      includeCoAuthoredBy: prefs.includeCoAuthoredBy === true,
       notes: text(prefs.notes),
     }
   } catch {
@@ -55,6 +58,7 @@ export function serializePreferences(state: PreferencesFormState, existingJson: 
   if (Object.keys(location).length > 0) prefs.location = location
   else delete prefs.location
 
+  prefs.includeCoAuthoredBy = state.includeCoAuthoredBy
   prefs.updatedAt = Date.now()
   return JSON.stringify(prefs, null, 2)
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument, type SuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, type SuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { superAgentFixture as fixture, until } from './SuperAgentTestSupport'
 
 type Fixture = Awaited<ReturnType<typeof fixture>>

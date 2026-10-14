@@ -2,7 +2,7 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync } from '
 import { join } from 'node:path'
 import { hostname } from 'node:os'
 import { randomBytes, randomUUID } from 'node:crypto'
-import { getConfigDir } from '@craft-agent/shared/config/paths'
+import { getConfigDir } from '@tokenbird/shared/config/paths'
 import { DEFAULT_CLOUD_URL, normalizeCloudUrl, type CloudConfig } from '../../../shared/src/cloud/types'
 
 interface StoredCloud { config: CloudConfig; deviceId: string; deviceSecret: string }

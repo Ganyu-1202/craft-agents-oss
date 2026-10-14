@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRegisterModal } from '@/context/ModalContext'
-import type { TokenNestAuthorizationIssue } from '@craft-agent/shared/auth'
+import type { TokenNestAuthorizationIssue } from '@tokenbird/shared/auth'
 
 interface Props {
   issue: TokenNestAuthorizationIssue | null

@@ -1,6 +1,6 @@
 import { open } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, type ClientFileSelection } from '@craft-agent/core/types';
+import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, type ClientFileSelection } from '@tokenbird/core/types';
 
 /** Read only paths explicitly returned by the native picker, with bounded allocations. */
 export async function readSelectedClientFiles(paths: string[], assertCurrent: () => void): Promise<ClientFileSelection> {

@@ -21,16 +21,16 @@ export function createServerSwitcher(deps: {
       deps.persistLocation(target)
       // A workspace selection belongs to one server only. Saved credentials
       // stay in main and never become part of a renderer/subprocess environment.
-      delete deps.env.CRAFT_WORKSPACE_ID
-      delete deps.env.CRAFT_SERVER_TOKEN
+      delete deps.env.TOKENBIRD_WORKSPACE_ID
+      delete deps.env.TOKENBIRD_SERVER_TOKEN
       if (profile) {
-        deps.env.CRAFT_SERVER_URL = profile.url
-        deps.env.CRAFT_SERVER_PROFILE_ID = profile.id
-        deps.env.CRAFT_SERVER_PROFILE_NAME = profile.name
+        deps.env.TOKENBIRD_SERVER_URL = profile.url
+        deps.env.TOKENBIRD_SERVER_PROFILE_ID = profile.id
+        deps.env.TOKENBIRD_SERVER_PROFILE_NAME = profile.name
       } else {
-        delete deps.env.CRAFT_SERVER_URL
-        delete deps.env.CRAFT_SERVER_PROFILE_ID
-        delete deps.env.CRAFT_SERVER_PROFILE_NAME
+        delete deps.env.TOKENBIRD_SERVER_URL
+        delete deps.env.TOKENBIRD_SERVER_PROFILE_ID
+        delete deps.env.TOKENBIRD_SERVER_PROFILE_NAME
       }
       deps.setContext(target, profile)
       if (deps.canReload(target)) deps.reloadWindows()

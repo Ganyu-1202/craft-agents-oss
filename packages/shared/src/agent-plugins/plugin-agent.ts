@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { AgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent } from '@tokenbird/core/types';
 import type { FileAttachment } from '../utils/files.ts';
 import { BaseAgent } from '../agent/base-agent.ts';
 import { AbortReason, type AgentBackend, type BackendConfig, type ChatOptions, type PostInitResult } from '../agent/backend/types.ts';

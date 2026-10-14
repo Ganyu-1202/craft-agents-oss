@@ -1,5 +1,5 @@
 import i18n from 'i18next';
-import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, CLIENT_FILE_TIMEOUT_MS, validateClientFileRequest, type ClientFileRequest, type ClientFileSelection } from '@craft-agent/core/types';
+import { CLIENT_FILE_MAX_BYTES, CLIENT_FILE_MAX_COUNT, CLIENT_FILE_TIMEOUT_MS, validateClientFileRequest, type ClientFileRequest, type ClientFileSelection } from '@tokenbird/core/types';
 import { blobBase64 } from './browser-files';
 
 let pending = false;
@@ -31,11 +31,11 @@ export async function requestBrowserClientFiles(input: ClientFileRequest): Promi
       const finish = (result?: ClientFileSelection, error?: unknown) => {
         if (settled) return;
         settled = true; clearTimeout(timer); dialog.remove();
-        window.removeEventListener('craft-agent:file-picker-cancel', onNativeCancel);
+        window.removeEventListener('tokenbird:file-picker-cancel', onNativeCancel);
         if (error) reject(error); else resolve(result ?? { canceled: true, files: [] });
       };
       const onNativeCancel = () => finish();
-      window.addEventListener('craft-agent:file-picker-cancel', onNativeCancel);
+      window.addEventListener('tokenbird:file-picker-cancel', onNativeCancel);
       const timer = setTimeout(() => finish(), CLIENT_FILE_TIMEOUT_MS - 5000);
       cancel.onclick = () => finish();
       dialog.oncancel = (event) => { event.preventDefault(); finish(); };

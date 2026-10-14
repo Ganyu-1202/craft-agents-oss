@@ -10,8 +10,8 @@ import type {
   PageDataSnapshot,
   PageKind,
   PageRenderLease,
-} from '@craft-agent/shared/pages/types'
-import { isPageGrantUsable } from '@craft-agent/shared/pages/types'
+} from '@tokenbird/shared/pages/types'
+import { isPageGrantUsable } from '@tokenbird/shared/pages/types'
 import {
   PageActionRateLimiter,
   buildPageActionResultMessage,
@@ -20,6 +20,7 @@ import {
   buildPageInitMessage,
   descriptorEquals,
   grantIdsEqual,
+  getPageContentProtocol,
   isMutatingInvocation,
   isSafeExternalUrl,
   parsePageBridgeMessage,
@@ -119,13 +120,14 @@ export function PageFrame({ workspaceId, page, lease, content, snapshot, classNa
   const deniedRef = useRef<Set<string>>(new Set())
   /** Approvals from this render the config watcher hasn't confirmed yet. */
   const locallyIssuedRef = useRef<Set<string>>(new Set())
+  const bridgeProtocol = getPageContentProtocol(content)
 
   const postToFrame = useCallback((message: Record<string, unknown>) => {
     // '*' is required: an opaque-origin frame cannot be addressed by origin.
     // The payload never contains credentials, and only THIS frame's window
     // object receives it.
-    iframeRef.current?.contentWindow?.postMessage(message, '*')
-  }, [])
+    iframeRef.current?.contentWindow?.postMessage({ ...message, protocol: bridgeProtocol }, '*')
+  }, [bridgeProtocol])
 
   const postInit = useCallback(() => {
     postToFrame(

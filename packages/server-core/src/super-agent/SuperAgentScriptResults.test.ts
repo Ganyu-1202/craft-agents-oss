@@ -4,7 +4,7 @@ import type { ChildProcess } from 'node:child_process'
 import { unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { loadSuperAgentDocument, saveSuperAgentDocument, type SuperAgentPlanItem } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, saveSuperAgentDocument, type SuperAgentPlanItem } from '@tokenbird/shared/super-agent'
 import { superAgentFixture as fixture, until } from './SuperAgentTestSupport'
 import { SUPER_AGENT_RECOVERY_WINDOW_MS } from './SuperAgentRetry'
 

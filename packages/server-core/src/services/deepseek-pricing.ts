@@ -1,4 +1,4 @@
-import type { PeakValleySchedule } from '@craft-agent/shared/utils/peak-valley'
+import type { PeakValleySchedule } from '@tokenbird/shared/utils/peak-valley'
 
 export const DEEPSEEK_PRICING_URL = 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing'
 

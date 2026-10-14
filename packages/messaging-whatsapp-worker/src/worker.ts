@@ -156,7 +156,7 @@ interface SessionState {
    * `connection.update` as soon as WhatsApp delivers it. Null until (and unless) WA sends a
    * LID for this account. Primary source for self-chat classification on LID-migrated
    * accounts; the upsert path falls back to a live `sock.user.lid` read. See
-   * craft-agents-oss#1021.
+   * tokenbird#1021.
    */
   selfLid: string | null
 }
@@ -305,7 +305,7 @@ async function startSession(
           session.connectedAtSec = Math.floor(Date.now() / 1000)
           if (selfLid) session.selfLid = selfLid
         }
-        // Diagnostic (craft-agents-oss#1021): `lid=?` means WhatsApp delivered no LID for this
+        // Diagnostic (tokenbird#1021): `lid=?` means WhatsApp delivered no LID for this
         // account, so LID-form self-chats cannot be classified — the cause is then upstream in
         // Baileys/WA, not our classifier. Logged at connect so it's the first thing operators see.
         log(`connected jid=${bareJid(sock.user?.id) ?? '?'} lid=${session?.selfLid ?? '?'}`)

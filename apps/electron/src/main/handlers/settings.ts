@@ -1,5 +1,5 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from './handler-deps'
 
 export const GUI_HANDLED_CHANNELS = [
@@ -19,7 +19,7 @@ export function registerSettingsGuiHandlers(server: RpcServer, _deps: HandlerDep
     return getRuntimeToolStatuses()
   })
 
-  server.handle(RPC_CHANNELS.tools.SET_RUNTIME_TOOL_PATH, async (_ctx, tool: import('@craft-agent/shared/config/types').RuntimeToolId, path?: string) => {
+  server.handle(RPC_CHANNELS.tools.SET_RUNTIME_TOOL_PATH, async (_ctx, tool: import('@tokenbird/shared/config/types').RuntimeToolId, path?: string) => {
     if (!['java', 'python', 'node'].includes(tool)) throw new Error(`Unsupported runtime tool: ${tool}`)
     const { updateRuntimeToolPath } = await import('../runtime-toolchains')
     return updateRuntimeToolPath(tool, path)
@@ -27,7 +27,7 @@ export function registerSettingsGuiHandlers(server: RpcServer, _deps: HandlerDep
 
   // Set keep awake while running setting (requires Electron power-manager)
   server.handle(RPC_CHANNELS.power.SET_KEEP_AWAKE, async (_ctx, enabled: boolean) => {
-    const { setKeepAwakeWhileRunning } = await import('@craft-agent/shared/config/storage')
+    const { setKeepAwakeWhileRunning } = await import('@tokenbird/shared/config/storage')
     const { setKeepAwakeSetting } = await import('../power-manager')
     // Save to config
     setKeepAwakeWhileRunning(enabled)
@@ -36,7 +36,7 @@ export function registerSettingsGuiHandlers(server: RpcServer, _deps: HandlerDep
   })
 
   // Set network proxy settings (requires Electron session proxy)
-  server.handle(RPC_CHANNELS.settings.SET_NETWORK_PROXY, async (_ctx, settings: import('@craft-agent/shared/config/types').NetworkProxySettings) => {
+  server.handle(RPC_CHANNELS.settings.SET_NETWORK_PROXY, async (_ctx, settings: import('@tokenbird/shared/config/types').NetworkProxySettings) => {
     const { updateConfiguredProxySettings } = await import('../network-proxy')
     await updateConfiguredProxySettings(settings)
   })

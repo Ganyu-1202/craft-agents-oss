@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import type { SuperAgentConfig, SuperAgentEnvironment, SuperAgentSessionPolicy } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentEnvironment, SuperAgentSessionPolicy } from '@tokenbird/shared/super-agent'
 import { sandboxArguments, SuperAgentEnvironments } from './SuperAgentEnvironments'
 
 let root: string

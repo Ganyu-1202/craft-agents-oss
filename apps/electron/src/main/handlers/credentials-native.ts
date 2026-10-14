@@ -1,7 +1,7 @@
-import { NATIVE_CREDENTIAL_IPC, type NativeCredentialResult, type NativeCredentialScope, type NativeCredentialAppliedChange } from '@craft-agent/shared/credentials/native-types';
-import { validateNativeCredentialChanges } from '@craft-agent/shared/credentials/native-validation';
-import { CredentialVaultError } from '@craft-agent/shared/credentials/backends/vault-protection';
-import type { CredentialId } from '@craft-agent/shared/credentials';
+import { NATIVE_CREDENTIAL_IPC, type NativeCredentialResult, type NativeCredentialScope, type NativeCredentialAppliedChange } from '@tokenbird/shared/credentials/native-types';
+import { validateNativeCredentialChanges } from '@tokenbird/shared/credentials/native-validation';
+import { CredentialVaultError } from '@tokenbird/shared/credentials/backends/vault-protection';
+import type { CredentialId } from '@tokenbird/shared/credentials';
 import type { ElectronCredentialVault } from '../credential-vault';
 import type { NativeAuthorityEvent } from '../native-window-authority';
 

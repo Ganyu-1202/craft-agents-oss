@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { SuperAgentDocument } from '@craft-agent/shared/super-agent'
+import type { SuperAgentDocument } from '@tokenbird/shared/super-agent'
 
 export function normalizeSuperAgentResponse(text: string): string {
   return text.normalize('NFKC').replace(/\s+/gu, ' ').trim()

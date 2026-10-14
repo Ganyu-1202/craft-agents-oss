@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { WsRpcClient, WsRpcServer, CLIENT_OPEN_EXTERNAL, CLIENT_SFTP_TRANSFER } from '@craft-agent/server-core/transport'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { WsRpcClient, WsRpcServer, CLIENT_OPEN_EXTERNAL, CLIENT_SFTP_TRANSFER } from '@tokenbird/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { createNativeWindowAuthority, advanceNativeWindowBinding, type NativeAuthorityEvent } from './native-window-authority'
 import { registerNativeRemoteTransport, REMOTE_ATTACHMENT_INLINE_LIMIT, type MainRemoteTarget, type NativeRemoteTransportDependencies } from './native-remote-transport'
 import { readFile } from 'node:fs/promises'

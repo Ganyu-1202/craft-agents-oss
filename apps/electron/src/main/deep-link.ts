@@ -38,7 +38,7 @@ import type { BrowserWindow } from 'electron'
 import { mainLog } from './logger'
 import type { WindowManager } from './window-manager'
 import { RPC_CHANNELS } from '../shared/types'
-import type { EventSink } from '@craft-agent/server-core/transport'
+import type { EventSink } from '@tokenbird/server-core/transport'
 
 export interface DeepLinkTarget {
   /** Workspace ID - undefined means use active window */
@@ -96,7 +96,7 @@ export function parseDeepLink(url: string): DeepLinkTarget | null {
   try {
     const parsed = new URL(url)
 
-    const expectedScheme = process.env.CRAFT_DEEPLINK_SCHEME || 'tokenbird'
+    const expectedScheme = process.env.TOKENBIRD_DEEPLINK_SCHEME || 'tokenbird'
     if (parsed.protocol !== `${expectedScheme}:`) {
       return null
     }

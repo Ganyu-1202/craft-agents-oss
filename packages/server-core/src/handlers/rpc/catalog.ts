@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import type {
   FeatureGuideCatalogItem,
   WorkspaceToolCatalogItem,
   WorkspaceToolCatalogResult,
-} from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
-import { getDocPath, listDocs } from '@craft-agent/shared/docs'
-import { getCachedMcpSourceTools, proxyToolName } from '@craft-agent/shared/mcp'
-import { loadWorkspaceSources } from '@craft-agent/shared/sources'
-import { getBuiltinToolCatalog } from '@craft-agent/shared/tools'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+} from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
+import { getDocPath, listDocs } from '@tokenbird/shared/docs'
+import { getCachedMcpSourceTools, proxyToolName } from '@tokenbird/shared/mcp'
+import { loadWorkspaceSources } from '@tokenbird/shared/sources'
+import { getBuiltinToolCatalog } from '@tokenbird/shared/tools'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 export const HANDLED_CHANNELS = [
@@ -23,7 +23,7 @@ const SYSTEM_GUIDE_TAGS: Record<string, string[]> = {
   'product-guide.md': ['overview', 'feature', 'local'],
   'automations.md': ['automation', 'configuration'],
   'browser-tools.md': ['tools', 'browser'],
-  'craft-cli.md': ['tools', 'cli'],
+  'tokenbird-cli.md': ['tools', 'cli'],
   'data-tables.md': ['content', 'preview'],
   'html-preview.md': ['content', 'preview'],
   'image-preview.md': ['content', 'preview'],

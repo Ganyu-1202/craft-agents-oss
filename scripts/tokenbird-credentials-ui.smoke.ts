@@ -41,7 +41,7 @@ mock.module('../apps/electron/src/renderer/components/ui/scroll-area', () => ({ 
 const { createRoot } = await import('react-dom/client')
 const { act } = React
 const { NativeCredentialManager } = await import('../apps/electron/src/renderer/components/settings/NativeCredentialManager')
-mock.module('@craft-agent/ui', () => ({ Spinner: () => React.createElement('span') }))
+mock.module('@tokenbird/ui', () => ({ Spinner: () => React.createElement('span') }))
 const { AuthRequestCard } = await import('../apps/electron/src/renderer/components/chat/AuthRequestCard')
 let root: ReturnType<typeof createRoot>
 let container: HTMLDivElement
@@ -360,8 +360,8 @@ test('managed remote metadata is navigation-only and cannot enter a generic atom
   expect(document.querySelectorAll('input[type="checkbox"]')).toHaveLength(1)
   let navigated: any
   const listener = (event: Event) => { navigated = (event as CustomEvent).detail }
-  window.addEventListener('craft-agent-navigate', listener)
-  try { await click(button(`${prefix}manageConnections`)); expect(navigated.route).toBe('settings/remoteServers') } finally { window.removeEventListener('craft-agent-navigate', listener) }
+  window.addEventListener('tokenbird-navigate', listener)
+  try { await click(button(`${prefix}manageConnections`)); expect(navigated.route).toBe('settings/remoteServers') } finally { window.removeEventListener('tokenbird-navigate', listener) }
   expect(api.applyNativeCredentialChanges).not.toHaveBeenCalled()
 })
 test('post-commit runtime warning keeps save successful, clears secrets, and does not invite a retry', async () => {

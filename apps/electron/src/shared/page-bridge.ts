@@ -14,7 +14,7 @@
  *      and the server-side PageActionBroker re-validates the lease, nonce,
  *      replay cache, and grant independently.
  *
- * Message flow (all envelopes carry `protocol: 'craft-pages/v1'`):
+ * Message flow (all envelopes carry `protocol: 'tokenbird-pages/v1'`):
  *
  *   host → page
  *     init          { page: {slug, kind}, nonce, snapshot, grants }  on load / 'ready'
@@ -47,10 +47,18 @@ import type {
   PageActionResult,
   PageDataSnapshot,
   PageKind,
-} from '@craft-agent/shared/pages/types'
-import { hasPathTraversal } from '@craft-agent/shared/pages/types'
+} from '@tokenbird/shared/pages/types'
+import { hasPathTraversal } from '@tokenbird/shared/pages/types'
 
-export const PAGE_BRIDGE_PROTOCOL = 'craft-pages/v1'
+export const PAGE_BRIDGE_PROTOCOL = 'tokenbird-pages/v1'
+// Existing saved pages retain their digest-bound HTML and grants after upgrading.
+const LEGACY_PAGE_BRIDGE_PROTOCOL = 'craft-pages/v1'
+
+export function getPageContentProtocol(content: string): string {
+  return content.includes(LEGACY_PAGE_BRIDGE_PROTOCOL) && !content.includes(PAGE_BRIDGE_PROTOCOL)
+    ? LEGACY_PAGE_BRIDGE_PROTOCOL
+    : PAGE_BRIDGE_PROTOCOL
+}
 
 // Bounded inputs: anything larger is dropped before further processing.
 const MAX_MESSAGE_JSON_CHARS = 256 * 1024
@@ -306,7 +314,7 @@ function parseGrantRequestEntries(value: unknown): PageGrantRequestEntry[] | nul
  * the caller must drop such events silently (pages can post arbitrary junk).
  */
 export function parsePageBridgeMessage(data: unknown): PageBridgeIncoming | null {
-  if (!isPlainObject(data) || data.protocol !== PAGE_BRIDGE_PROTOCOL) return null
+  if (!isPlainObject(data) || (data.protocol !== PAGE_BRIDGE_PROTOCOL && data.protocol !== LEGACY_PAGE_BRIDGE_PROTOCOL)) return null
 
   try {
     if (JSON.stringify(data).length > MAX_MESSAGE_JSON_CHARS) return null

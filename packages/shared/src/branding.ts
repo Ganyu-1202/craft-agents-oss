@@ -3,7 +3,7 @@
  * Used by OAuth callback pages
  */
 
-export const CRAFT_LOGO = [
+export const TOKENBIRD_LOGO = [
   'TokenBird',
   '词元鸟',
 ] as const;
@@ -19,4 +19,4 @@ export function getLocalizedProductName(language?: string | null): string {
 }
 
 /** Logo as a single string for HTML templates */
-export const CRAFT_LOGO_HTML = CRAFT_LOGO.map((line) => line.trimEnd()).join('\n');
+export const TOKENBIRD_LOGO_HTML = TOKENBIRD_LOGO.map((line) => line.trimEnd()).join('\n');

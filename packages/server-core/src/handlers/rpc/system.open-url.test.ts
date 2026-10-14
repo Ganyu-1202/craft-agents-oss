@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { CLIENT_OPEN_EXTERNAL, CLIENT_OPEN_PATH, CLIENT_SHOW_IN_FOLDER } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { CLIENT_OPEN_EXTERNAL, CLIENT_OPEN_PATH, CLIENT_SHOW_IN_FOLDER } from '@tokenbird/server-core/transport'
 import { homedir } from 'os'
 import { join, sep } from 'path'
-import type { RpcServer, HandlerFn, RequestContext } from '@craft-agent/server-core/transport'
+import type { RpcServer, HandlerFn, RequestContext } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import { registerSystemCoreHandlers } from './system'
 
@@ -102,7 +102,7 @@ describe('user shell file actions', () => {
 })
 
 describe('registerSystemCoreHandlers OPEN_URL', () => {
-  it('routes craftagents action links internally via deeplink:navigate', async () => {
+  it('routes tokenbird action links internally via deeplink:navigate', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
     await openUrl(ctx, 'tokenbird://action/new-session?input=sg&send=true')
@@ -130,7 +130,7 @@ describe('registerSystemCoreHandlers OPEN_URL', () => {
     })
   })
 
-  it('falls back to client openExternal for craftagents window-mode links', async () => {
+  it('falls back to client openExternal for tokenbird window-mode links', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
     await openUrl(ctx, 'tokenbird://action/new-session?window=focused')

@@ -3,7 +3,7 @@ import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
-import type { SuperAgentNodeRuntime } from '@craft-agent/shared/super-agent'
+import type { SuperAgentNodeRuntime } from '@tokenbird/shared/super-agent'
 import { SuperAgentNodeRecovery } from './SuperAgentNodeRecovery'
 
 const i18n = createInstance()

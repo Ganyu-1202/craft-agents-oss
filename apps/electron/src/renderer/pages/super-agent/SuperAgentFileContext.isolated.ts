@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 
-const { PlatformProvider, usePlatform } = await import('@craft-agent/ui/context')
+const { PlatformProvider, usePlatform } = await import('@tokenbird/ui/context')
 const { MarkdownLink } = await import('../../../../../../packages/ui/src/components/markdown/MarkdownLink')
 const { SuperAgentFileContext } = await import('./SuperAgentFileContext')
 const i18n = createInstance()

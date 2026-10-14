@@ -36,26 +36,26 @@ function httpConfig(token: string): SdkMcpServerConfig {
 describe('McpClientPool.ensureConnected', () => {
   test('connects an absent source once', async () => {
     const pool = new TestPool();
-    await pool.ensureConnected('craft', httpConfig('a'));
+    await pool.ensureConnected('tokenbird', httpConfig('a'));
     expect(pool.connectCalls.length).toBe(1);
-    expect(pool.isConnected('craft')).toBe(true);
+    expect(pool.isConnected('tokenbird')).toBe(true);
   });
 
   test('is a no-op when already connected with an unchanged config', async () => {
     const pool = new TestPool();
-    await pool.ensureConnected('craft', httpConfig('a'));
-    await pool.ensureConnected('craft', httpConfig('a'));
+    await pool.ensureConnected('tokenbird', httpConfig('a'));
+    await pool.ensureConnected('tokenbird', httpConfig('a'));
     expect(pool.connectCalls.length).toBe(1);
     expect(pool.closedSlugs).toEqual([]);
   });
 
   test('reconnects when the auth header changed (token refresh)', async () => {
     const pool = new TestPool();
-    await pool.ensureConnected('craft', httpConfig('a'));
-    await pool.ensureConnected('craft', httpConfig('b'));
+    await pool.ensureConnected('tokenbird', httpConfig('a'));
+    await pool.ensureConnected('tokenbird', httpConfig('b'));
     expect(pool.connectCalls.length).toBe(2);
-    expect(pool.closedSlugs).toEqual(['craft']);
-    expect(pool.isConnected('craft')).toBe(true);
+    expect(pool.closedSlugs).toEqual(['tokenbird']);
+    expect(pool.isConnected('tokenbird')).toBe(true);
   });
 
   test('reconnects when a custom API key header is rotated or removed', async () => {
@@ -103,16 +103,16 @@ describe('McpClientPool.ensureConnected', () => {
   });
 
   test('refuses stdio configs when local MCP is disabled for the workspace', async () => {
-    const prev = process.env.CRAFT_LOCAL_MCP_ENABLED;
-    process.env.CRAFT_LOCAL_MCP_ENABLED = 'false';
+    const prev = process.env.TOKENBIRD_LOCAL_MCP_ENABLED;
+    process.env.TOKENBIRD_LOCAL_MCP_ENABLED = 'false';
     try {
       const pool = new TestPool({ workspaceRootPath: '/tmp/ws-does-not-exist' });
       const stdio: SdkMcpServerConfig = { type: 'stdio', command: 'echo', args: [] };
       await expect(pool.ensureConnected('local', stdio)).rejects.toThrow(/Local MCP is disabled/);
       expect(pool.connectCalls.length).toBe(0);
     } finally {
-      if (prev === undefined) delete process.env.CRAFT_LOCAL_MCP_ENABLED;
-      else process.env.CRAFT_LOCAL_MCP_ENABLED = prev;
+      if (prev === undefined) delete process.env.TOKENBIRD_LOCAL_MCP_ENABLED;
+      else process.env.TOKENBIRD_LOCAL_MCP_ENABLED = prev;
     }
   });
 });

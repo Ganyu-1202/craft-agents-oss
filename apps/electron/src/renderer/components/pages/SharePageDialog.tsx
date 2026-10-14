@@ -13,17 +13,17 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import { Info_Alert } from '@/components/info'
-import type { LoadedPage, PageActionGrant } from '@craft-agent/shared/pages/types'
-import { isPageGrantUsable } from '@craft-agent/shared/pages/types'
+import type { LoadedPage, PageActionGrant } from '@tokenbird/shared/pages/types'
+import { isPageGrantUsable } from '@tokenbird/shared/pages/types'
 import { describeGrantAction, useGrantRemoval } from './grant-visuals'
 
 /**
  * Share dialog: publish / republish / password management / unpublish.
  *
  * Server-side gating is authoritative (the publish RPCs re-check the
- * CRAFT_FEATURE_PAGES_SHARING flag); `sharingEnabled` only controls what the
+ * TOKENBIRD_FEATURE_PAGES_SHARING flag); `sharingEnabled` only controls what the
  * dialog offers. Unpublish is always offered for a published page so a
  * disabled flag can never strand a public copy (design §12).
  */

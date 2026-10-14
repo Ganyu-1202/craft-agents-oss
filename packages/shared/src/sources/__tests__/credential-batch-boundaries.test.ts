@@ -1,4 +1,4 @@
-/* eslint-disable craft-shared/no-inline-source-auth-check -- Assert persisted batch status, not source usability. */
+/* eslint-disable tokenbird-shared/no-inline-source-auth-check -- Assert persisted batch status, not source usability. */
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

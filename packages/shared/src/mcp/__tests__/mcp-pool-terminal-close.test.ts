@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { CraftMcpClient } from '../client.ts'
+import { TokenBirdMcpClient } from '../client.ts'
 import { McpClientPool } from '../mcp-pool.ts'
 import { mcpRuntimeLimiter } from '../runtime-limiter.ts'
 import { config, ControllablePool, deferred } from './fixtures/pool-race-harness.ts'
@@ -54,7 +54,7 @@ function stdioFixture(createPool = () => new McpClientPool()) {
       return { type: 'stdio' as const, command: process.execPath, args: [script, join(directory, `${slug}.jsonl`), join(directory, `${slug}.exit`), mode] }
     },
     exit: (slug: string) => writeFileSync(join(directory, `${slug}.exit`), 'exit'),
-    client: (slug: string) => (pool as any).clients.get(slug) as CraftMcpClient,
+    client: (slug: string) => (pool as any).clients.get(slug) as TokenBirdMcpClient,
     calls: (slug: string) => events(slug).filter(event => event.method === 'tools/call').map(event => event.token),
     spawns: (slug: string) => events(slug).filter(event => event.event === 'spawn').length,
   }
@@ -148,7 +148,7 @@ test('real stdio death before initialization rejects, frees its slot, and publis
 test('real stdio close after discovery response but before publication rejects readiness', async () => {
   let responseObserved = false
   class PublicationBoundaryPool extends McpClientPool {
-    override async registerClient(slug: string, client: CraftMcpClient): Promise<void> {
+    override async registerClient(slug: string, client: TokenBirdMcpClient): Promise<void> {
       if (!responseObserved) {
         const listTools = client.listTools.bind(client)
         client.listTools = async () => {

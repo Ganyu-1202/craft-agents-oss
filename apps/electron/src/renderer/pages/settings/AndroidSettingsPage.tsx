@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LANGUAGES } from '@craft-agent/shared/i18n'
+import { LANGUAGES } from '@tokenbird/shared/i18n'
 import {
   Bell,
   CalendarDays,
@@ -34,7 +34,7 @@ import {
 } from '../../../shared/android-native'
 
 function androidBridge(): AndroidBridge | undefined {
-  return (window as Window & { CraftAgentAndroid?: AndroidBridge }).CraftAgentAndroid
+  return (window as Window & { TokenBirdAgentAndroid?: AndroidBridge }).TokenBirdAgentAndroid
 }
 
 const DEFAULT_ADB_CONFIG: NetworkAdbConfig = {
@@ -144,7 +144,7 @@ export default function AndroidSettingsPage() {
     setRequestingPermission(key)
     try {
       await invokeAndroidNative<AndroidPermissionSnapshot>(
-        'craft-agent:android-permission-result',
+        'tokenbird:android-permission-result',
         requestId => bridge.requestPermission(requestId, key, `你正在权限管理中启用“${label}”权限。`),
       )
     } catch {
@@ -176,7 +176,7 @@ export default function AndroidSettingsPage() {
     setAdbMessage('正在连接…')
     try {
       const result = await invokeAndroidNative<{ stdout?: string }>(
-        'craft-agent:android-adb-result',
+        'tokenbird:android-adb-result',
         requestId => bridge.testNetworkAdb(requestId),
         40_000,
       )

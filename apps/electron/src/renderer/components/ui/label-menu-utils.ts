@@ -1,5 +1,5 @@
-import type { LabelConfig } from '@craft-agent/shared/labels'
-import { flattenLabelsWithParentPath } from '@craft-agent/shared/labels'
+import type { LabelConfig } from '@tokenbird/shared/labels'
+import { flattenLabelsWithParentPath } from '@tokenbird/shared/labels'
 
 export interface LabelMenuItem {
   id: string

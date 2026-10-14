@@ -2,14 +2,14 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { handleComputerUse, type ComputerUseArgs, type SessionToolContext } from '@craft-agent/session-tools-core';
+import { handleComputerUse, type ComputerUseArgs, type SessionToolContext } from '@tokenbird/session-tools-core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 if (process.platform !== 'win32') throw new Error('This smoke test requires an unlocked Windows desktop.');
 const root = resolve(import.meta.dir, '..');
 const packagedApp = process.argv[2] ? resolve(process.argv[2]) : undefined;
-process.env.CRAFT_SCRIPTS = join(packagedApp || join(root, 'apps/electron'), 'resources/scripts');
+process.env.TOKENBIRD_SCRIPTS = join(packagedApp || join(root, 'apps/electron'), 'resources/scripts');
 const directory = await mkdtemp(join(tmpdir(), 'tokenbird-desktop-test-'));
 const statePath = join(directory, 'state.json');
 const closePath = join(directory, 'close');

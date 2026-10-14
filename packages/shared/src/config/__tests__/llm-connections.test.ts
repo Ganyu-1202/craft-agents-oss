@@ -263,6 +263,8 @@ describe('agent runtime compatibility', () => {
       customEndpoint: { api: 'openai-completions' },
     })).toEqual(['pi', 'codex'])
     expect(getCompatibleAgentRuntimes({ providerType: 'pi', piAuthProvider: 'google' })).toEqual(['pi'])
+    expect(getCompatibleAgentRuntimes({ providerType: 'pi_compat', piAuthProvider: 'openai',
+      customEndpoint: { api: 'openai-responses' } })).toEqual(['pi', 'codex'])
     expect(getCompatibleAgentRuntimes({ providerType: 'pi_compat', piAuthProvider: 'openai' })).toEqual(['pi'])
     expect(getCompatibleAgentRuntimes({
       providerType: 'pi_compat',

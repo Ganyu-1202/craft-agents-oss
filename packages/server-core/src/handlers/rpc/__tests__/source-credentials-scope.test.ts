@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol';
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol';
 import { registerSourcesHandlers } from '../sources.ts';
 import type { RpcServer } from '../../../transport/types.ts';
 import type { HandlerDeps } from '../../handler-deps.ts';

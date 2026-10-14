@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { createServer } from 'node:http'
-import { PROTOCOL_VERSION } from '@craft-agent/shared/protocol'
+import { PROTOCOL_VERSION } from '@tokenbird/shared/protocol'
 import { WsRpcClient, type TransportConnectionState, type WsRpcClientOptions } from '../client'
 const cleanup: Array<() => void | Promise<void>> = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })

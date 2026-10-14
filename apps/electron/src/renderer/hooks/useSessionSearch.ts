@@ -2,13 +2,13 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { isToday, isYesterday, format, startOfDay } from "date-fns"
 
 import { searchLog } from "@/lib/logger"
-import { parseLabelEntry, matchesLabelFilter } from "@craft-agent/shared/labels"
-import type { LabelConfig } from "@craft-agent/shared/labels"
-import { fuzzyScore } from "@craft-agent/shared/search"
+import { parseLabelEntry, matchesLabelFilter } from "@tokenbird/shared/labels"
+import type { LabelConfig } from "@tokenbird/shared/labels"
+import { fuzzyScore } from "@tokenbird/shared/search"
 import { getSessionTitle, getSessionStatus } from "@/utils/session"
 import type { SessionMeta } from "@/atoms/sessions"
 import { collapseSessionBranchHistory } from '../lib/session-branch-history'
-import type { ViewConfig } from "@craft-agent/shared/views"
+import type { ViewConfig } from "@tokenbird/shared/views"
 import type { SessionFilter } from "@/contexts/NavigationContext"
 
 // ---------------------------------------------------------------------------

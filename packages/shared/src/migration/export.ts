@@ -26,9 +26,9 @@ import { Zip, ZipDeflate } from 'fflate';
 import { CONFIG_DIR } from '../config/paths.ts';
 import { readJsonFileSync } from '../utils/files.ts';
 import { APP_VERSION } from '../version/index.ts';
-import type { Workspace } from '@craft-agent/core/types';
+import type { Workspace } from '@tokenbird/core/types';
 
-export const EXPORT_FORMAT = 'craft-agent-data-export';
+export const EXPORT_FORMAT = 'tokenbird-data-export';
 export const EXPORT_FORMAT_VERSION = 2;
 
 /** Global config-dir files always included (relative to config dir). */

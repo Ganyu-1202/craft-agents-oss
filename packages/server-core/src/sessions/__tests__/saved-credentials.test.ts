@@ -2,10 +2,10 @@ import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CredentialManager, getCredentialManager } from '@craft-agent/shared/credentials';
+import { CredentialManager, getCredentialManager } from '@tokenbird/shared/credentials';
 import { SessionManager } from '../SessionManager';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import { accountToCredentialId, credentialIdToAccount } from '@craft-agent/shared/credentials/types';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import { accountToCredentialId, credentialIdToAccount } from '@tokenbird/shared/credentials/types';
 import { runSavedCredentialOperation, saveRequestedCredential } from '../saved-credentials';
 
 const directories: string[] = [];

@@ -40,7 +40,7 @@ function makeFakeContext(overrides: Partial<SessionToolContext> = {}): SessionTo
   } as SessionToolContext;
 }
 
-const MARKER = 'craft-resource-bundle';
+const MARKER = 'tokenbird-resource-bundle';
 
 function textOf(result: ToolResult): string {
   const first = result.content[0];

@@ -11,7 +11,7 @@
  * Remote data stays on the remote server — only connection metadata is local.
  */
 
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import {
   loadRemoteServerProfiles,
   getRemoteServerProfile,
@@ -20,10 +20,10 @@ import {
   toProfileInfo,
   type RemoteServerProfile,
   type RemoteServerSftpInput,
-} from '@craft-agent/shared/config/remote-servers'
-import { getWorkspaces, addWorkspace, updateWorkspaceRemoteServer } from '@craft-agent/shared/config'
-import { getDefaultWorkspacesDir, generateUniqueWorkspacePath } from '@craft-agent/shared/workspaces'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+} from '@tokenbird/shared/config/remote-servers'
+import { getWorkspaces, addWorkspace, updateWorkspaceRemoteServer } from '@tokenbird/shared/config'
+import { getDefaultWorkspacesDir, generateUniqueWorkspacePath } from '@tokenbird/shared/workspaces'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from './handler-deps'
 import { connectToRemote } from './workspace'
 import { validateNativeRemoteUrl } from '../remote-transport-policy'

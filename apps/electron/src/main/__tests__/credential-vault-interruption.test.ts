@@ -3,8 +3,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import type { CredentialKeyProtection } from '@craft-agent/shared/credentials/backends/vault-protection';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import type { CredentialKeyProtection } from '@tokenbird/shared/credentials/backends/vault-protection';
 
 // Explicit public fixture key for dummy data, never an OS/user credential.
 const fixtureKey = Buffer.alloc(32, 7);
@@ -68,7 +68,7 @@ describe.skipIf(process.platform === 'win32')('owned-process native migration in
         expect(new SecureStorageBackend(path, protection()).readLegacyRollbackSnapshot()).toEqual(original);
         expect(readFileSync(`${path}.legacy-backup`).subarray(0, 8).toString()).toBe('TBROLL01');
         const native = phase === 'after-native-rename';
-        expect(readFileSync(path).subarray(0, 8).toString()).toBe(native ? 'TBVAULT2' : 'CRAFT01\0');
+        expect(readFileSync(path).subarray(0, 8).toString()).toBe(native ? 'TBVAULT2' : 'TOKENBIRD01\0');
         const backend = new SecureStorageBackend(path, protection());
         expect((await backend.get(id))?.refreshToken).toBe('dummy-original-refresh');
         expect(existsSync(`${path}.lock`)).toBe(true);

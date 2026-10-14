@@ -122,7 +122,7 @@ export const DOC_REFS = {
   markdownPreview: `${APP_ROOT}/docs/markdown-preview.md`,
   llmTool: `${APP_ROOT}/docs/llm-tool.md`,
   browserTools: `${APP_ROOT}/docs/browser-tools.md`,
-  craftCli: `${APP_ROOT}/docs/craft-cli.md`,
+  tokenBirdCli: `${APP_ROOT}/docs/tokenbird-cli.md`,
   docsDir: `${APP_ROOT}/docs/`,
 } as const;
 

@@ -1,4 +1,4 @@
-# @craft-agent/core
+# @tokenbird/core
 
 Shared TypeScript types and utilities for TokenBird applications.
 
@@ -6,14 +6,14 @@ Shared TypeScript types and utilities for TokenBird applications.
 
 ```bash
 # In a workspace package
-bun add @craft-agent/core
+bun add @tokenbird/core
 ```
 
 Or add to `package.json`:
 ```json
 {
   "dependencies": {
-    "@craft-agent/core": "workspace:*"
+    "@tokenbird/core": "workspace:*"
   }
 }
 ```
@@ -28,10 +28,10 @@ import type {
   Message,
   TokenUsage,
   AgentEvent,
-} from '@craft-agent/core';
+} from '@tokenbird/core';
 
 // Import utilities
-import { generateMessageId, debug } from '@craft-agent/core';
+import { generateMessageId, debug } from '@tokenbird/core';
 ```
 
 ## Exported Types
@@ -54,7 +54,7 @@ import { generateMessageId, debug } from '@craft-agent/core';
 - `MessageRole` - Message type enum
 - `ToolStatus` - Tool execution state
 - `TokenUsage` - Token counts and cost
-- `AgentEvent` - Events from CraftAgent
+- `AgentEvent` - Events from TokenBirdAgent
 - `TypedError` - Structured error info
 - `Question` - AskUserQuestion format
 

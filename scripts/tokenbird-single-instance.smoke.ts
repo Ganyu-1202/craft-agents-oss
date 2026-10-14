@@ -56,13 +56,13 @@ require(${JSON.stringify(bundle)});
 `)
 
 const env = { ...process.env, TOKENBIRD_CONFIG_DIR: configDir, NODE_PATH: resolve(import.meta.dir, '../node_modules') }
-for (const key of ['ELECTRON_RUN_AS_NODE', 'CRAFT_SERVER_URL', 'CRAFT_SERVER_TOKEN', 'CRAFT_SERVER_PROFILE_ID', 'VITE_DEV_SERVER_URL', 'CRAFT_HEADLESS']) {
+for (const key of ['ELECTRON_RUN_AS_NODE', 'TOKENBIRD_SERVER_URL', 'TOKENBIRD_SERVER_TOKEN', 'TOKENBIRD_SERVER_PROFILE_ID', 'VITE_DEV_SERVER_URL', 'TOKENBIRD_HEADLESS']) {
   delete env[key]
 }
 const electron = resolve(import.meta.dir, '../node_modules/electron/dist', process.platform === 'win32' ? 'electron.exe' : 'electron')
 function launch(role: string, headless = false) {
   const child = Bun.spawn([electron, runner], {
-    env: { ...env, INSTANCE_SMOKE_ROLE: role, ...(headless ? { CRAFT_HEADLESS: '1' } : {}) },
+    env: { ...env, INSTANCE_SMOKE_ROLE: role, ...(headless ? { TOKENBIRD_HEADLESS: '1' } : {}) },
     stdout: 'pipe', stderr: 'pipe', windowsHide: true,
   })
   const output = Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text()])

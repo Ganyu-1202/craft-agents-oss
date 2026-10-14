@@ -1,7 +1,7 @@
 {
   "version": 1,
   "tools": [
-    { "id": "craft-agent", "displayName": "TokenBird", "icon": "craft-agent.svg", "commands": ["craft-agent"] },
+    { "id": "tokenbird", "displayName": "TokenBird", "icon": "tokenbird.svg", "commands": ["tokenbird"] },
     { "id": "git", "displayName": "Git", "icon": "git.ico", "commands": ["git"] },
     { "id": "github", "displayName": "GitHub", "icon": "github.png", "commands": ["gh"] },
     { "id": "npm", "displayName": "npm", "icon": "npm.png", "commands": ["npm", "npx"] },

@@ -72,8 +72,8 @@ export function GettingStartedGuide({ open, onComplete }: GettingStartedGuidePro
       }
     }
 
-    window.addEventListener('craft-agent-android-back', handleAndroidBack)
-    return () => window.removeEventListener('craft-agent-android-back', handleAndroidBack)
+    window.addEventListener('tokenbird-android-back', handleAndroidBack)
+    return () => window.removeEventListener('tokenbird-android-back', handleAndroidBack)
   }, [onComplete, open, step])
 
   const isLastStep = step === GUIDE_STEP_COUNT - 1

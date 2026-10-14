@@ -1,4 +1,4 @@
-import type { TransportConnectionState } from '@craft-agent/server-core/transport'
+import type { TransportConnectionState } from '@tokenbird/server-core/transport'
 
 /** Native Electron only. None of these channels belongs to the network RPC server. */
 export const NATIVE_REMOTE_TRANSPORT = {

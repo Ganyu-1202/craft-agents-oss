@@ -1,6 +1,6 @@
-import { getProviderRechargeTarget } from '@craft-agent/shared/utils/billing'
+import { getProviderRechargeTarget } from '@tokenbird/shared/utils/billing'
 import { AgentFrameworkDetails, agentRuntimeLabel, agentRuntimeDescription } from './BackendFrameworkSettings'
-import { setAgentPluginCatalog } from '@craft-agent/shared/agent-plugins/catalog'
+import { setAgentPluginCatalog } from '@tokenbird/shared/agent-plugins/catalog'
 /**
  * AiSettingsPage
  *
@@ -22,13 +22,13 @@ import { HeaderMenu } from '@/components/ui/HeaderMenu'
 import { routes } from '@/lib/navigate'
 import { X, MoreHorizontal, Pencil, Trash2, Star, ChevronDown, ChevronRight, CheckCircle2, AlertTriangle, RefreshCcw, Settings2, MessageSquareMore, Zap, Clock, Check, WalletCards } from 'lucide-react'
 import type { CredentialHealthStatus, CredentialHealthIssue } from '../../../shared/types'
-import { Spinner, FullscreenOverlayBase, Tooltip, TooltipTrigger, TooltipContent } from '@craft-agent/ui'
+import { Spinner, FullscreenOverlayBase, Tooltip, TooltipTrigger, TooltipContent } from '@tokenbird/ui'
 import { useSetAtom } from 'jotai'
 import { fullscreenOverlayOpenAtom } from '@/atoms/overlay'
 import { motion, AnimatePresence } from 'motion/react'
 import type { LlmConnectionWithStatus, ThinkingLevel, WorkspaceSettings, Workspace } from '../../../shared/types'
-import type { AgentRuntimeProtocol } from '@craft-agent/shared/config'
-import { DEFAULT_THINKING_LEVEL, THINKING_LEVELS } from '@craft-agent/shared/agent/thinking-levels'
+import type { AgentRuntimeProtocol } from '@tokenbird/shared/config'
+import { DEFAULT_THINKING_LEVEL, THINKING_LEVELS } from '@tokenbird/shared/agent/thinking-levels'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
 import {
   DropdownMenu,

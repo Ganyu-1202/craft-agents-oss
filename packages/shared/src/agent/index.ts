@@ -1,4 +1,4 @@
-// Export ClaudeAgent (renamed from CraftAgent) and backward-compatible aliases
+// Export ClaudeAgent (renamed from TokenBirdAgent) and backward-compatible aliases
 export * from './claude-agent.ts';
 export * from './conversation-summary.ts';
 

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@craft-agent/ui"
+import { Spinner } from "@tokenbird/ui"
 import tokenNestIcon from '@/assets/provider-icons/tokennest.png'
 import { StepFormLayout } from "./primitives"
 
@@ -73,7 +73,7 @@ export function ReauthScreen({ onLogin, onReset }: ReauthScreenProps) {
                 ) : (
                   <>
                     <img src={tokenNestIcon} alt="" className="mr-2 size-5 object-contain" />
-                    {t("onboarding.reauth.loginWithCraft")}
+                    {t("onboarding.reauth.loginWithTokenBird")}
                   </>
                 )}
               </Button>

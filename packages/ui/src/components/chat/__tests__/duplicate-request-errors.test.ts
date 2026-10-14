@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { Message } from '@craft-agent/core'
+import type { Message } from '@tokenbird/core'
 import { groupMessagesByTurn } from '../turn-utils'
 
 const requestId = '20261011133948439232468268d9d6nfIF0vPK'

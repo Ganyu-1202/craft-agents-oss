@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { PlatformProvider, usePlatform, type PlatformActions } from '@craft-agent/ui/context'
+import { PlatformProvider, usePlatform, type PlatformActions } from '@tokenbird/ui/context'
 import { resolveSessionFileLink } from '../../lib/session-data-link'
 
 /** Every team surface shares the environment's file context, independently of

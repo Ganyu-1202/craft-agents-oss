@@ -1,4 +1,4 @@
-import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import type { StudioWorkEvent } from '@tokenbird/shared/protocol'
 import { createHash } from 'node:crypto'
 
 export type StudioToolCall = { id: string; type: 'function'; function: { name: string; arguments: string } }

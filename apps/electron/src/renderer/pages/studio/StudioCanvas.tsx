@@ -1,7 +1,7 @@
 import { useStudioCompactLayout } from './useStudioCompactLayout'
 import { StudioMobileSheet } from './StudioMobileSheet'
 import { CanvasMobileControls } from './CanvasMobileControls'
-import { i18n } from '@craft-agent/shared/i18n'
+import { i18n } from '@tokenbird/shared/i18n'
 import { useTranslation } from 'react-i18next'
 import { WorkbenchSelect } from '@/components/ui/workbench-select'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'

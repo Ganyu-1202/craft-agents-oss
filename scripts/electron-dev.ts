@@ -76,22 +76,22 @@ async function ensureBundledUvForCurrentPlatform(): Promise<void> {
 }
 
 // Multi-instance detection (matches detect-instance.sh logic)
-// Detects instance number from folder name suffix (e.g., craft-agents-1 → instance 1)
+// Detects instance number from folder name suffix (e.g., tokenbird-1 → instance 1)
 function detectInstance(): void {
   // Don't override if already set (e.g., by sourcing detect-instance.sh first)
-  if (process.env.CRAFT_VITE_PORT) return;
+  if (process.env.TOKENBIRD_VITE_PORT) return;
 
   const folderName = basename(ROOT_DIR);
   const match = folderName.match(/-(\d+)$/);
 
   if (match) {
     const instanceNum = match[1];
-    process.env.CRAFT_INSTANCE_NUMBER = instanceNum;
-    process.env.CRAFT_VITE_PORT = `${instanceNum}173`;
-    process.env.CRAFT_APP_NAME = `TokenBird [${instanceNum}]`;
+    process.env.TOKENBIRD_INSTANCE_NUMBER = instanceNum;
+    process.env.TOKENBIRD_VITE_PORT = `${instanceNum}173`;
+    process.env.TOKENBIRD_APP_NAME = `TokenBird [${instanceNum}]`;
     process.env.TOKENBIRD_CONFIG_DIR = join(process.env.HOME || "", `.tokenbird-${instanceNum}`);
-    process.env.CRAFT_DEEPLINK_SCHEME = `tokenbird${instanceNum}`;
-    console.log(`🔢 Instance ${instanceNum} detected: port=${process.env.CRAFT_VITE_PORT}, config=${process.env.TOKENBIRD_CONFIG_DIR}`);
+    process.env.TOKENBIRD_DEEPLINK_SCHEME = `tokenbird${instanceNum}`;
+    console.log(`🔢 Instance ${instanceNum} detected: port=${process.env.TOKENBIRD_VITE_PORT}, config=${process.env.TOKENBIRD_CONFIG_DIR}`);
   }
 }
 
@@ -287,7 +287,7 @@ function getOAuthDefines(): Record<string, string> {
 
 // Get environment variables for electron process
 function getElectronEnv(): Record<string, string> {
-  const vitePort = process.env.CRAFT_VITE_PORT || "5173";
+  const vitePort = process.env.TOKENBIRD_VITE_PORT || "5173";
   const electronEnv = { ...process.env } as Record<string, string>;
 
   // Some Node-based launchers set this for their own Electron subprocesses.
@@ -303,9 +303,9 @@ function getElectronEnv(): Record<string, string> {
     ...electronEnv,
     VITE_DEV_SERVER_URL: `http://localhost:${vitePort}`,
     TOKENBIRD_CONFIG_DIR: process.env.TOKENBIRD_CONFIG_DIR || "",
-    CRAFT_APP_NAME: process.env.CRAFT_APP_NAME || "TokenBird",
-    CRAFT_DEEPLINK_SCHEME: process.env.CRAFT_DEEPLINK_SCHEME || "tokenbird",
-    CRAFT_INSTANCE_NUMBER: process.env.CRAFT_INSTANCE_NUMBER || "",
+    TOKENBIRD_APP_NAME: process.env.TOKENBIRD_APP_NAME || "TokenBird",
+    TOKENBIRD_DEEPLINK_SCHEME: process.env.TOKENBIRD_DEEPLINK_SCHEME || "tokenbird",
+    TOKENBIRD_INSTANCE_NUMBER: process.env.TOKENBIRD_INSTANCE_NUMBER || "",
   };
 }
 
@@ -450,7 +450,7 @@ async function main(): Promise<void> {
   // Build WhatsApp worker bundle so the adapter can spawn it on demand
   await buildWaWorker();
 
-  const vitePort = process.env.CRAFT_VITE_PORT || "5173";
+  const vitePort = process.env.TOKENBIRD_VITE_PORT || "5173";
   const oauthDefines = getOAuthDefines();
 
   // Kill any existing process on the Vite port

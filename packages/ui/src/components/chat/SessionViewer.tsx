@@ -9,7 +9,7 @@
 
 import type { ReactNode } from 'react'
 import { useMemo, useState, useCallback } from 'react'
-import type { StoredSession } from '@craft-agent/core'
+import type { StoredSession } from '@tokenbird/core'
 import { cn } from '../../lib/utils'
 import { CHAT_LAYOUT, CHAT_CLASSES } from '../../lib/layout'
 import { PlatformProvider, type PlatformActions } from '../../context'
@@ -49,9 +49,9 @@ export interface SessionViewerProps {
 }
 
 /**
- * CraftAgentLogo - The TokenBird "C" logo for branding
+ * TokenBirdAgentLogo - The TokenBird "C" logo for branding
  */
-function CraftAgentLogo({ className }: { className?: string }) {
+function TokenBirdAgentLogo({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -227,7 +227,7 @@ export function SessionViewer({
 
             {/* Bottom branding */}
             <div className={CHAT_CLASSES.brandingContainer}>
-              <CraftAgentLogo className="w-8 h-8 text-[#9570BE]/40" />
+              <TokenBirdAgentLogo className="w-8 h-8 text-[#9570BE]/40" />
             </div>
             </div>
           </div>

@@ -13,8 +13,8 @@ import type { ScriptRuntimeLanguage } from './resolve-script-runtime.ts';
 export const BLOCKED_ENV_VARS = [
   'ANTHROPIC_API_KEY',
   'CLAUDE_CODE_OAUTH_TOKEN',
-  'CRAFT_SERVER_TOKEN',
-  'CRAFT_RPC_TOKEN',
+  'TOKENBIRD_SERVER_TOKEN',
+  'TOKENBIRD_RPC_TOKEN',
   'TOKENBIRD_SERVER_TOKEN',
   'AWS_ACCESS_KEY_ID',
   'AWS_SECRET_ACCESS_KEY',

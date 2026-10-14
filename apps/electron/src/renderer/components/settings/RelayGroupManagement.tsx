@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { CollaborationRelayStatus } from '@craft-agent/shared/protocol'
+import type { CollaborationRelayStatus } from '@tokenbird/shared/protocol'
 import { Button } from '@/components/ui/button'
 
 export function RelayGroupManagement({ workspaceId }: { workspaceId: string | null }) {

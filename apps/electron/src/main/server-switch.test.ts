@@ -8,7 +8,7 @@ const profile = (id: string): ResolvedRemoteProfile => ({
 })
 
 function fixture(localRunning = true) {
-  const env: NodeJS.ProcessEnv = { CRAFT_WORKSPACE_ID: 'old-workspace' }
+  const env: NodeJS.ProcessEnv = { TOKENBIRD_WORKSPACE_ID: 'old-workspace' }
   let remote: ResolvedRemoteProfile | undefined
   let mode = 'local'
   const reloadWindows = mock(() => {})
@@ -30,18 +30,18 @@ describe('runtime server switching', () => {
     expect(f.restart).not.toHaveBeenCalled()
     expect(f.reloadWindows).toHaveBeenCalledTimes(4)
     expect(f.context()).toEqual({ mode: 'local', remote: undefined })
-    expect(f.env.CRAFT_SERVER_URL).toBeUndefined()
-    expect(f.env.CRAFT_SERVER_PROFILE_ID).toBeUndefined()
-    expect(f.env.CRAFT_WORKSPACE_ID).toBeUndefined()
+    expect(f.env.TOKENBIRD_SERVER_URL).toBeUndefined()
+    expect(f.env.TOKENBIRD_SERVER_PROFILE_ID).toBeUndefined()
+    expect(f.env.TOKENBIRD_WORKSPACE_ID).toBeUndefined()
   })
 
   it('uses a main-owned credential snapshot without passing the bearer to the new renderer', async () => {
     const f = fixture()
-    f.env.CRAFT_SERVER_TOKEN = 'old-ad-hoc-secret'
+    f.env.TOKENBIRD_SERVER_TOKEN = 'old-ad-hoc-secret'
     await f.switchServer('remote-a')
-    expect(f.env.CRAFT_SERVER_URL).toBe(profile('remote-a').url)
-    expect(f.env.CRAFT_SERVER_PROFILE_ID).toBe('remote-a')
-    expect(f.env.CRAFT_SERVER_TOKEN).toBeUndefined()
+    expect(f.env.TOKENBIRD_SERVER_URL).toBe(profile('remote-a').url)
+    expect(f.env.TOKENBIRD_SERVER_PROFILE_ID).toBe('remote-a')
+    expect(f.env.TOKENBIRD_SERVER_TOKEN).toBeUndefined()
     expect(f.context().remote?.token).toBe('saved-secret')
     expect(f.context().remote?.revision).toBe('revision-remote-a')
   })
@@ -49,7 +49,7 @@ describe('runtime server switching', () => {
   it('leaves the current server untouched if profile resolution fails', async () => {
     const f = fixture()
     await expect(f.switchServer('missing')).rejects.toThrow('Remote server profile not found')
-    expect(f.env.CRAFT_WORKSPACE_ID).toBe('old-workspace')
+    expect(f.env.TOKENBIRD_WORKSPACE_ID).toBe('old-workspace')
     expect(f.persistLocation).not.toHaveBeenCalled()
     expect(f.reloadWindows).not.toHaveBeenCalled()
     expect(f.restart).not.toHaveBeenCalled()
@@ -64,7 +64,7 @@ describe('runtime server switching', () => {
     })).rejects.toThrow('expired frame')
     expect(f.persistLocation).not.toHaveBeenCalled()
     expect(f.reloadWindows).not.toHaveBeenCalled()
-    expect(f.env.CRAFT_SERVER_URL).toBeUndefined()
+    expect(f.env.TOKENBIRD_SERVER_URL).toBeUndefined()
   })
 
   it('orders overlapping requests and continues after a rejected request', async () => {
@@ -84,6 +84,6 @@ describe('runtime server switching', () => {
     expect(f.restart).not.toHaveBeenCalled()
     await f.switchServer('local')
     expect(f.restart).toHaveBeenCalledTimes(1)
-    expect(f.env.CRAFT_SERVER_URL).toBeUndefined()
+    expect(f.env.TOKENBIRD_SERVER_URL).toBeUndefined()
   })
 })

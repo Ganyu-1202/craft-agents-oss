@@ -2,6 +2,20 @@ import { describe, expect, it } from 'bun:test'
 import { emptyFormState, parsePreferences, serializePreferences } from './preferences-form'
 
 describe('preferences form', () => {
+  it('defaults commit attribution to off and requires an explicit boolean opt-in', () => {
+    for (const value of [undefined, false, 'true', 1, null]) {
+      expect(parsePreferences(JSON.stringify({ includeCoAuthoredBy: value })).includeCoAuthoredBy).toBe(false)
+    }
+    expect(parsePreferences('{"includeCoAuthoredBy":true}').includeCoAuthoredBy).toBe(true)
+  })
+
+  it('persists enabling and disabling commit attribution while preserving other settings', () => {
+    const enabled = serializePreferences({ ...emptyFormState, includeCoAuthoredBy: true }, '{"uiLanguage":"zh-Hans"}')
+    expect(parsePreferences(enabled).includeCoAuthoredBy).toBe(true)
+    const disabled = JSON.parse(serializePreferences({ ...parsePreferences(enabled), includeCoAuthoredBy: false }, enabled))
+    expect(disabled).toMatchObject({ includeCoAuthoredBy: false, uiLanguage: 'zh-Hans' })
+  })
+
   it('loads the proxy preference', () => {
     expect(parsePreferences('{"preferredProxy":"http://127.0.0.1:7890"}').preferredProxy)
       .toBe('http://127.0.0.1:7890')

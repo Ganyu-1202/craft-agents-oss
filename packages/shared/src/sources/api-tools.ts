@@ -281,7 +281,7 @@ export async function executeApiRequest(
   }
 
   // Header VALUES are never logged — Authorization and friends are live
-  // credentials and this line used to put them in main.log under CRAFT_DEBUG.
+  // credentials and this line used to put them in main.log under TOKENBIRD_DEBUG.
   debug(`[api-tools] ${config.name}: headerNames=[${Object.keys(headers).join(', ')}], bodyLength=${fetchOptions.body ? String(fetchOptions.body).length : 0}`);
 
   const response = await fetch(url, fetchOptions);

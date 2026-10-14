@@ -1,13 +1,13 @@
 import { expect, mock, test } from 'bun:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { PlatformProvider } from '@craft-agent/ui/context'
+import { PlatformProvider } from '@tokenbird/ui/context'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
-import type { SuperAgentArtifact, SuperAgentDelivery } from '@craft-agent/shared/super-agent'
+import type { SuperAgentArtifact, SuperAgentDelivery } from '@tokenbird/shared/super-agent'
 import { SuperAgentFileContext } from './SuperAgentFileContext'
 import type { SuperAgentText } from './super-agent-ui'
-import zh from '@craft-agent/shared/i18n/locales/zh-Hans.json'
+import zh from '@tokenbird/shared/i18n/locales/zh-Hans.json'
 
 // The full Markdown barrel loads Vite-only PDF workers. Keep this mock in its
 // own process; production Markdown integration is checked by the renderer build.

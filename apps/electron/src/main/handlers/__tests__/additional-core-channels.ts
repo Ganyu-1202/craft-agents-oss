@@ -1,4 +1,4 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 
 /** Core domains added after the original registration fixtures. Keep event
  * channels out: these are RPC request handlers, not pushed notifications. */

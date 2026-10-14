@@ -1,14 +1,15 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { arch, platform } from 'node:os';
-import { delimiter, extname, isAbsolute, join } from 'node:path';
+import { delimiter, dirname, extname, isAbsolute, join } from 'node:path';
 import { getConfigDir } from '../config/paths.ts';
 import { loadBackendFrameworkConfiguration } from '../agent-plugins/framework-storage.ts';
 
 export interface NativeCodexBinary {
   path: string;
-  source: 'CRAFT_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | 'configured';
+  source: 'TOKENBIRD_CODEX_PATH' | 'CODEX_PATH' | 'bundled' | 'managed' | 'PATH' | 'configured';
   version: string;
   testedProtocol: boolean;
 }
@@ -16,7 +17,7 @@ export interface NativeCodexBinary {
 const TESTED_VERSION = /^0\.154\./;
 export const MANAGED_CODEX_VERSION = '0.154.0';
 let cached: NativeCodexBinary | null | undefined;
-let cachedConfiguredPath: string | undefined;
+let cachedContextKey: string | undefined;
 let configuredResourcesPath: string | undefined;
 let managedInstall: Promise<ManagedCodexInstallResult> | null = null;
 
@@ -62,6 +63,38 @@ function resolveExistingPath(value: string | undefined): string | null {
   return null;
 }
 
+/** npm installs command shims; app-server must spawn the native binary itself. */
+export function resolveCodexPackageExecutable(path: string): string | null {
+  if (!existsSync(path)) return path;
+  const actual = realpathSync(path);
+  if (!['.cmd', '.bat', '.js'].includes(extname(actual).toLowerCase())) return actual;
+  const targets: Record<string, string> = {
+    'win32-x64': 'x86_64-pc-windows-msvc', 'win32-arm64': 'aarch64-pc-windows-msvc',
+    'linux-x64': 'x86_64-unknown-linux-musl', 'linux-arm64': 'aarch64-unknown-linux-musl',
+    'darwin-x64': 'x86_64-apple-darwin', 'darwin-arm64': 'aarch64-apple-darwin',
+  };
+  const target = targets[`${platform()}-${arch()}`];
+  if (!target) return null;
+  const roots = [join(dirname(actual), 'node_modules', '@openai', 'codex'),
+    join(dirname(actual), '..', '@openai', 'codex'), join(dirname(actual), '..')];
+  for (const root of roots) {
+    const manifest = join(root, 'package.json');
+    try {
+      if (JSON.parse(readFileSync(manifest, 'utf8')).name !== '@openai/codex') continue;
+      let vendor = join(root, 'vendor');
+      try {
+        vendor = join(dirname(createRequire(manifest).resolve(`@openai/codex-${platform()}-${arch()}/package.json`)), 'vendor');
+      } catch { /* Older packages bundle vendor directly. */ }
+      // Both layouts have shipped in official Codex packages.
+      for (const folder of ['bin', 'codex']) {
+        const binary = join(vendor, target, folder, executableName());
+        if (existsSync(binary)) return binary;
+      }
+    } catch { /* This candidate is not an installed Codex package. */ }
+  }
+  return null;
+}
+
 function readVersion(path: string): string | null {
   const result = spawnSync(path, ['--version'], {
     encoding: 'utf8',
@@ -87,30 +120,38 @@ export function resolveNativeCodexBinary(options: {
   useCache?: boolean;
 } = {}): NativeCodexBinary | null {
   const configuredPath = loadBackendFrameworkConfiguration('codex')?.executablePath;
-  if (options.useCache !== false && cached !== undefined && cachedConfiguredPath === configuredPath) return cached;
-  cachedConfiguredPath = configuredPath;
   const env = options.env ?? process.env;
   const resourcesPath = options.resourcesPath ?? configuredResourcesPath;
+  const contextKey = JSON.stringify([configuredPath, env.TOKENBIRD_CODEX_PATH, env.CODEX_PATH,
+    env.TOKENBIRD_CODEX_ALLOW_UNTESTED, env.PATH, resourcesPath, getConfigDir()]);
+  if (options.useCache !== false && cached !== undefined && cachedContextKey === contextKey) return cached;
+  if (options.useCache !== false) cachedContextKey = contextKey;
   const bundled = resourcesPath ? [
     join(resourcesPath, 'codex', `${platform()}-${arch()}`, executableName()),
     join(resourcesPath, 'vendor', 'codex', `${platform()}-${arch()}`, executableName()),
     join(resourcesPath, 'app', 'vendor', 'codex', `${platform()}-${arch()}`, executableName()),
   ] : [];
   const candidates: Array<{ path: string | null; source: NativeCodexBinary['source'] }> = [
-    { path: resolveExistingPath(env.CRAFT_CODEX_PATH), source: 'CRAFT_CODEX_PATH' },
+    { path: resolveExistingPath(env.TOKENBIRD_CODEX_PATH), source: 'TOKENBIRD_CODEX_PATH' },
     { path: resolveExistingPath(env.CODEX_PATH), source: 'CODEX_PATH' },
     ...bundled.map(path => ({ path: existsSync(path) ? path : null, source: 'bundled' as const })),
     ...managedCodexCandidates().map(path => ({ path: existsSync(path) ? path : null, source: 'managed' as const })),
     ...pathCandidates(env).map(path => ({ path: existsSync(path) ? path : null, source: 'PATH' as const })),
   ];
 
-  for (const candidate of configuredPath ? [{ path: configuredPath, source: 'configured' as const }] : candidates) {
+  // Explicit overrides are authoritative, including invalid paths.
+  const selected = configuredPath ? [{ path: configuredPath, source: 'configured' as const }]
+    : env.TOKENBIRD_CODEX_PATH ? [candidates[0]!]
+    : env.CODEX_PATH ? [candidates[1]!] : candidates;
+  for (const candidate of selected) {
     if (!candidate.path) continue;
-    const version = readVersion(candidate.path);
+    const path = resolveCodexPackageExecutable(candidate.path);
+    if (!path) continue;
+    const version = readVersion(path);
     if (!version) continue;
     const testedProtocol = TESTED_VERSION.test(version);
-    if (!testedProtocol && env.CRAFT_CODEX_ALLOW_UNTESTED !== '1') continue;
-    const resolved = { path: candidate.path, source: candidate.source, version, testedProtocol };
+    if (!testedProtocol && env.TOKENBIRD_CODEX_ALLOW_UNTESTED !== '1') continue;
+    const resolved = { path, source: candidate.source, version, testedProtocol };
     if (options.useCache !== false) cached = resolved;
     return resolved;
   }
@@ -164,8 +205,8 @@ export function installManagedNativeCodex(): Promise<ManagedCodexInstallResult> 
 
     const packageSpec = `@openai/codex@${MANAGED_CODEX_VERSION}`;
     const installers: Array<{ command: string; args: string[] }> = [];
-    if (process.env.CRAFT_BUN) installers.push({
-      command: process.env.CRAFT_BUN,
+    if (process.env.TOKENBIRD_BUN) installers.push({
+      command: process.env.TOKENBIRD_BUN,
       args: ['add', '--cwd', installRoot, '--exact', packageSpec],
     });
     installers.push({ command: platform() === 'win32' ? 'bun.exe' : 'bun', args: ['add', '--cwd', installRoot, '--exact', packageSpec] });

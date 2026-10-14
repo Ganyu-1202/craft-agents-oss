@@ -12,8 +12,8 @@ afterEach(() => {
 
 describe('moveFileIntoPlace', () => {
   it('publishes through a destination-local temporary file and removes the source', () => {
-    const sourceDir = mkdtempSync(join(tmpdir(), 'craft-import-source-'));
-    const destDir = mkdtempSync(join(tmpdir(), 'craft-import-dest-'));
+    const sourceDir = mkdtempSync(join(tmpdir(), 'tokenbird-import-source-'));
+    const destDir = mkdtempSync(join(tmpdir(), 'tokenbird-import-dest-'));
     tempDirs.push(sourceDir, destDir);
 
     const source = join(sourceDir, 'preferences.json');
@@ -24,6 +24,6 @@ describe('moveFileIntoPlace', () => {
 
     expect(existsSync(source)).toBe(false);
     expect(readFileSync(destination, 'utf8')).toBe('{"theme":"dark"}');
-    expect(readdirSync(destDir).filter((name) => name.includes('.craft-import-'))).toEqual([]);
+    expect(readdirSync(destDir).filter((name) => name.includes('.tokenbird-import-'))).toEqual([]);
   });
 });

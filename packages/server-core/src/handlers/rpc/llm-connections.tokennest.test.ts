@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test'
-import * as config from '@craft-agent/shared/config'
-import * as configStorage from '@craft-agent/shared/config/storage'
-import * as credentials from '@craft-agent/shared/credentials'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { HandlerFn, RequestContext, RpcServer } from '@craft-agent/server-core/transport'
+import * as config from '@tokenbird/shared/config'
+import * as configStorage from '@tokenbird/shared/config/storage'
+import * as credentials from '@tokenbird/shared/credentials'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import type { HandlerFn, RequestContext, RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import { registerLlmConnectionsHandlers, refreshTokenNestModelsAtStartup } from './llm-connections'
 
@@ -59,7 +59,7 @@ function stubStorage(existing: config.LlmConnection | null = null) {
   const setLlmOAuth = mock(async (_slug: string, tokens: typeof oauth) => { oauth = { ...oauth, ...tokens } })
   const deleteLlmCredentials = mock(async (_slug: string) => {})
   const getSnapshot = mock(async () => ({ credential: { value: oauth.accessToken, refreshToken: oauth.refreshToken, expiresAt: oauth.expiresAt }, revision: 'test-revision' }))
-  const compareAndSetMany = mock(async (changes: import('@craft-agent/shared/credentials').CredentialCompareAndSet[]) => {
+  const compareAndSetMany = mock(async (changes: import('@tokenbird/shared/credentials').CredentialCompareAndSet[]) => {
     const credential = changes[0]!.credential!
     oauth = { accessToken: credential.value, refreshToken: credential.refreshToken!, expiresAt: credential.expiresAt! }
     return true
@@ -387,7 +387,7 @@ describe('TokenNest OAuth RPC handlers', () => {
     }) as unknown as typeof fetch
     const harness = createHarness()
 
-    const result = await harness.getHandler(RPC_CHANNELS.tokennest.GET_USAGE)(harness.context, { connectionSlug: existing.slug, days: 30 }) as import('@craft-agent/shared/protocol').TokenNestUsageSnapshot
+    const result = await harness.getHandler(RPC_CHANNELS.tokennest.GET_USAGE)(harness.context, { connectionSlug: existing.slug, days: 30 }) as import('@tokenbird/shared/protocol').TokenNestUsageSnapshot
 
     expect(result.totalTokens).toBe(40)
     expect(result.byModel).toEqual([expect.objectContaining({ key: 'gpt-5', requests: 2, totalTokens: 40 })])

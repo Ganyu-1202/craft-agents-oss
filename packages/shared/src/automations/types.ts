@@ -11,7 +11,7 @@ import type { ThinkingLevel } from '../agent/thinking-levels.ts';
 // Event Types
 // ============================================================================
 
-/** App events - handled by Craft */
+/** App events - handled by TokenBird */
 export type AppEvent =
   | 'LabelAdd'
   | 'LabelRemove'
@@ -115,8 +115,8 @@ export type ScriptActionRuntime = 'bun' | 'node' | 'python3';
  * - The script path is workspace-relative and must stay within the workspace
  *   (symlink-aware check at execution time).
  * - argv spawn through resolveScriptRuntime — no shell interpretation.
- * - The child env contains ONLY CRAFT_* variables (event context + workspace
- *   paths + pass-through of the user's CRAFT_* exports), never full process.env.
+ * - The child env contains ONLY TOKENBIRD_* variables (event context + workspace
+ *   paths + pass-through of the user's TOKENBIRD_* exports), never full process.env.
  * - Runs of the same matcher never overlap (per-matcher concurrency lock).
  */
 export interface ScriptAction {
@@ -131,7 +131,7 @@ export interface ScriptAction {
   timeoutMs?: number;
   /**
    * Page slug this script refreshes. When set, the executor injects
-   * CRAFT_PAGE_* env vars and records the outcome on the page's page.json
+   * TOKENBIRD_PAGE_* env vars and records the outcome on the page's page.json
    * (the completion marker the config watcher turns into `pages:changed`).
    */
   page?: string;

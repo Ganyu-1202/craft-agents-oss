@@ -87,8 +87,8 @@ interface ThemeContextType {
   refreshThemePacks: () => void
   /** Select a theme pack (null disables) */
   setThemePack: (packId: string | null) => void
-  /** Import a pack/skin folder via native dialog */
-  importThemePack: () => Promise<ThemePack | null>
+  /** Import a ZIP theme pack or pack/skin folder via native dialog */
+  importThemePack: (format?: 'zip' | 'folder') => Promise<ThemePack | null>
   /** Delete an installed pack */
   deleteThemePack: (packId: string) => Promise<boolean>
   /** Explicit opt-in for compatibility scripts from imported theme packs. */
@@ -155,11 +155,11 @@ function decodeAssetDataUrl(dataUrl: string): string | null {
  */
 function runThemeCompatibilityScript(source: string): () => void {
   const cleanups: Array<() => void> = []
-  const unwrap = (value: any) => value?.__craftThemeElement ?? value
+  const unwrap = (value: any) => value?.__tokenBirdThemeElement ?? value
   const wrapElement = (real: HTMLElement) => {
     const dataset = real.dataset
     return {
-      __craftThemeElement: real,
+      __tokenBirdThemeElement: real,
       dataset,
       get textContent() { return real.textContent ?? '' },
       set textContent(value: string) { real.textContent = value },
@@ -235,7 +235,7 @@ function loadStoredTheme(): StoredTheme | null {
   if (typeof window === 'undefined') return null
   const stored = storage.get<StoredTheme | null>(storage.KEYS.theme, null)
   // Android's loopback origin changes on restart; native preferences survive it.
-  const nativeMode = window.CraftAgentAndroid?.getThemeMode?.()
+  const nativeMode = window.TokenBirdAgentAndroid?.getThemeMode?.()
   if (nativeMode === 'light' || nativeMode === 'dark' || nativeMode === 'system') {
     return { colorTheme: 'default', ...stored, mode: nativeMode }
   }
@@ -244,7 +244,7 @@ function loadStoredTheme(): StoredTheme | null {
 
 function saveTheme(theme: StoredTheme): void {
   storage.set(storage.KEYS.theme, theme)
-  window.CraftAgentAndroid?.setThemeMode?.(theme.mode)
+  window.TokenBirdAgentAndroid?.setThemeMode?.(theme.mode)
 }
 
 export function ThemeProvider({
@@ -472,9 +472,9 @@ export function ThemeProvider({
 
     // Always set theme override for semi-transparent background (vibrancy effect)
     root.dataset.themeOverride = 'true'
-    root.style.setProperty('--craft-chat-panel-opacity', `${chatOpacity * 100}%`)
-    root.style.setProperty('--craft-chat-bubble-opacity', `${chatOpacity * 100}%`)
-    root.style.setProperty('--craft-chat-opacity-number', String(chatOpacity))
+    root.style.setProperty('--tokenbird-chat-panel-opacity', `${chatOpacity * 100}%`)
+    root.style.setProperty('--tokenbird-chat-bubble-opacity', `${chatOpacity * 100}%`)
+    root.style.setProperty('--tokenbird-chat-opacity-number', String(chatOpacity))
   }, [effectiveColorTheme, font, chatOpacity])
 
   useEffect(() => {
@@ -494,7 +494,7 @@ export function ThemeProvider({
     const body = document.body
     const candidateAttr = pack?.manifest.bodyAttr?.trim()
     const attr = candidateAttr && /^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(candidateAttr) ? candidateAttr : undefined
-    const styleId = 'craft-theme-pack-css'
+    const styleId = 'tokenbird-theme-pack-css'
     let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
     if (pack?.manifest.customCss) {
       if (!styleEl) {
@@ -632,7 +632,7 @@ export function ThemeProvider({
 
   // Inject CSS variables
   useEffect(() => {
-    const styleId = 'craft-theme-overrides'
+    const styleId = 'tokenbird-theme-overrides'
     let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
 
     if (!styleEl) {
@@ -859,8 +859,10 @@ export function ThemeProvider({
     }
   }, [])
 
-  const importThemePack = useCallback(async (): Promise<ThemePack | null> => {
-    const pack = await window.electronAPI?.importThemePackFolder?.() ?? null
+  const importThemePack = useCallback(async (format: 'zip' | 'folder' = 'zip'): Promise<ThemePack | null> => {
+    const pack = await (format === 'folder'
+      ? window.electronAPI?.importThemePackFolder?.()
+      : window.electronAPI?.importThemePack?.()) ?? null
     if (pack) {
       refreshThemePacks()
       setThemePack(pack.id)

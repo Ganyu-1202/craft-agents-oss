@@ -3,7 +3,7 @@
  *
  * Successor to the pre-rename command-executor tests (recovered from
  * 9f013b3f^): the security model changed from shell + allowlist to
- * argv spawn + workspace containment + CRAFT_*-only env, so the cases
+ * argv spawn + workspace containment + TOKENBIRD_*-only env, so the cases
  * here assert the new invariants.
  */
 
@@ -97,21 +97,21 @@ describe('script-executor', () => {
       expect(result.stderr).toContain('boom');
     });
 
-    it('passes argv and the provided env (and nothing else CRAFT-relevant)', async () => {
+    it('passes argv and the provided env (and nothing else TOKENBIRD-relevant)', async () => {
       writeFileSync(
         join(workspaceDir, 'env.ts'),
-        'console.log(JSON.stringify({ argv: process.argv.slice(2), craft: process.env.CRAFT_EVENT, leak: process.env.SCRIPT_EXECUTOR_LEAK_PROBE ?? null }))',
+        'console.log(JSON.stringify({ argv: process.argv.slice(2), tokenbird: process.env.TOKENBIRD_EVENT, leak: process.env.SCRIPT_EXECUTOR_LEAK_PROBE ?? null }))',
       );
       process.env.SCRIPT_EXECUTOR_LEAK_PROBE = 'should-not-leak';
       try {
         const result = await executeScriptAction(
           action({ script: 'env.ts', args: ['--flag', 'value'] }),
-          ctx({ CRAFT_EVENT: 'SchedulerTick' }),
+          ctx({ TOKENBIRD_EVENT: 'SchedulerTick' }),
         );
         expect(result.success).toBe(true);
-        const parsed = JSON.parse(result.stdout) as { argv: string[]; craft: string; leak: string | null };
+        const parsed = JSON.parse(result.stdout) as { argv: string[]; tokenbird: string; leak: string | null };
         expect(parsed.argv).toEqual(['--flag', 'value']);
-        expect(parsed.craft).toBe('SchedulerTick');
+        expect(parsed.tokenbird).toBe('SchedulerTick');
         expect(parsed.leak).toBeNull();
       } finally {
         delete process.env.SCRIPT_EXECUTOR_LEAK_PROBE;
@@ -242,33 +242,33 @@ describe('script-executor', () => {
   });
 
   describe('buildScriptEnv', () => {
-    it('is CRAFT_*-only plus documented platform essentials', () => {
-      process.env.CRAFT_TEST_PASSTHROUGH = 'yes';
-      process.env.NOT_CRAFT_SECRET = 'no';
+    it('is TOKENBIRD_*-only plus documented platform essentials', () => {
+      process.env.TOKENBIRD_TEST_PASSTHROUGH = 'yes';
+      process.env.NOT_TOKENBIRD_SECRET = 'no';
       try {
         const env = buildScriptEnv(
           'SchedulerTick',
           { workspaceId: 'ws', timestamp: 123, localTime: '10:00', utcTime: 't' } as never,
           { workspaceRootPath: workspaceDir, page: 'dash' },
         );
-        expect(env.CRAFT_TEST_PASSTHROUGH).toBe('yes');
-        expect(env.NOT_CRAFT_SECRET).toBeUndefined();
-        expect(env.CRAFT_EVENT).toBe('SchedulerTick');
-        expect(env.CRAFT_WORKSPACE_PATH).toBe(workspaceDir);
-        expect(env.CRAFT_PAGE_SLUG).toBe('dash');
-        expect(env.CRAFT_PAGE_DIR).toBe(join(workspaceDir, 'pages', 'dash'));
-        expect(env.CRAFT_PAGE_DATA_DIR).toBe(join(workspaceDir, 'pages', 'dash', 'data'));
+        expect(env.TOKENBIRD_TEST_PASSTHROUGH).toBe('yes');
+        expect(env.NOT_TOKENBIRD_SECRET).toBeUndefined();
+        expect(env.TOKENBIRD_EVENT).toBe('SchedulerTick');
+        expect(env.TOKENBIRD_WORKSPACE_PATH).toBe(workspaceDir);
+        expect(env.TOKENBIRD_PAGE_SLUG).toBe('dash');
+        expect(env.TOKENBIRD_PAGE_DIR).toBe(join(workspaceDir, 'pages', 'dash'));
+        expect(env.TOKENBIRD_PAGE_DATA_DIR).toBe(join(workspaceDir, 'pages', 'dash', 'data'));
         expect(env.PATH).toBeUndefined();
-        // Every key is CRAFT_* or a documented essential
+        // Every key is TOKENBIRD_* or a documented essential
         const essentials = new Set(IS_WINDOWS
           ? ['USERPROFILE', 'SYSTEMROOT', 'WINDIR', 'SYSTEMDRIVE', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP']
           : ['HOME']);
         for (const key of Object.keys(env)) {
-          expect(key.startsWith('CRAFT_') || essentials.has(key)).toBe(true);
+          expect(key.startsWith('TOKENBIRD_') || essentials.has(key)).toBe(true);
         }
       } finally {
-        delete process.env.CRAFT_TEST_PASSTHROUGH;
-        delete process.env.NOT_CRAFT_SECRET;
+        delete process.env.TOKENBIRD_TEST_PASSTHROUGH;
+        delete process.env.NOT_TOKENBIRD_SECRET;
       }
     });
   });

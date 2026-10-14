@@ -124,7 +124,7 @@ try {
         --splitting `
         --external=markitdown-js `
         --external=sharp `
-        --external=@craft-agent/messaging-gateway `
+        --external=@tokenbird/messaging-gateway `
         --external=@anthropic-ai/claude-agent-sdk `
         --entry-naming=server.js `
         --chunk-naming=chunks/[name]-[hash].[ext] `

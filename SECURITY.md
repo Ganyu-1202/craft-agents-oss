@@ -8,7 +8,7 @@ We take security seriously. If you discover a security vulnerability in TokenBir
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to: **security@craft.do**
+Instead, contact the TokenBird maintainer privately using the contact information on the [maintainer's profile](https://github.com/Goldgom).
 
 Include the following information:
 - Description of the vulnerability
@@ -26,7 +26,7 @@ Include the following information:
 
 This policy applies to:
 - The TokenBird desktop application
-- The `@craft-agent/*` npm packages
+- The `@tokenbird/*` npm packages
 - Official TokenBird repositories
 
 ### Out of Scope

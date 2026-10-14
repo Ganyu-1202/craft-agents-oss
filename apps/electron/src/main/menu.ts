@@ -1,13 +1,13 @@
 import { Menu, app, BrowserWindow } from 'electron'
-import { i18n } from '@craft-agent/shared/i18n'
+import { i18n } from '@tokenbird/shared/i18n'
 import { RPC_CHANNELS, type BroadcastEventMap } from '../shared/types'
 import { EDIT_MENU, VIEW_MENU, WINDOW_MENU } from '../shared/menu-schema'
 import type { MenuItem } from '../shared/menu-schema'
 import type { WindowManager } from './window-manager'
-import type { EventSink } from '@craft-agent/server-core/transport'
+import type { EventSink } from '@tokenbird/server-core/transport'
 import { mainLog, isDebugMode } from './logger'
 import { handleDeepLink } from './deep-link'
-import { LOCAL_DOCS_URL } from '@craft-agent/shared/docs'
+import { LOCAL_DOCS_URL } from '@tokenbird/shared/docs'
 
 type ClientResolver = (webContentsId: number) => string | undefined
 
@@ -54,7 +54,7 @@ export function setMenuEventSink(sink: EventSink, resolver: ClientResolver): voi
  * Rebuilds the application menu with current update state.
  * Call this when update availability changes.
  *
- * On Windows/Linux: Menu is hidden - all functionality is in the Craft logo menu.
+ * On Windows/Linux: Menu is hidden - all functionality is in the TokenBird logo menu.
  * On macOS: Native menu is required by Apple guidelines, so we keep it synced.
  */
 export async function rebuildMenu(): Promise<void> {
@@ -64,7 +64,7 @@ export async function rebuildMenu(): Promise<void> {
   const isMac = process.platform === 'darwin'
 
   // On Windows/Linux, hide the native menu entirely
-  // Users access menu via the Craft logo dropdown in the app
+  // Users access menu via the TokenBird logo dropdown in the app
   if (!isMac) {
     Menu.setApplicationMenu(null)
     return
@@ -95,7 +95,7 @@ export async function rebuildMenu(): Promise<void> {
     ...(isMac ? [{
       label: 'TokenBird',
       submenu: [
-        { role: 'about' as const, label: i18n.t('menu.aboutCraftAgents') },
+        { role: 'about' as const, label: i18n.t('menu.aboutTokenBird') },
         updateMenuItem,
         { type: 'separator' as const },
         {
@@ -105,11 +105,11 @@ export async function rebuildMenu(): Promise<void> {
           click: () => sendToRenderer(RPC_CHANNELS.menu.OPEN_SETTINGS)
         },
         { type: 'separator' as const },
-        { role: 'hide' as const, label: i18n.t('menu.hideCraftAgents') },
+        { role: 'hide' as const, label: i18n.t('menu.hideTokenBird') },
         { role: 'hideOthers' as const },
         { role: 'unhide' as const },
         { type: 'separator' as const },
-        { role: 'quit' as const, label: i18n.t('menu.quitCraftAgents') }
+        { role: 'quit' as const, label: i18n.t('menu.quitTokenBird') }
       ]
     }] : []),
 

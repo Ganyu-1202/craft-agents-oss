@@ -339,13 +339,15 @@ export function createCodexBackend(
   if (loadBackendFrameworkConfiguration('codex')?.executablePath && !nativeBinary) {
     throw new Error('The configured Codex executable is unavailable or unsupported; test its location in backend framework settings.');
   }
+  if (!nativeBinary && (process.env.TOKENBIRD_CODEX_PATH || process.env.CODEX_PATH)) {
+    throw new Error('The explicitly configured Codex executable is unavailable or unsupported; check TOKENBIRD_CODEX_PATH or CODEX_PATH.');
+  }
   const runtime = getBackendRuntime(config);
-  // Native app-server currently owns OpenAI transports only. Other connections
-  // can still select the Codex agent protocol, but must use the Pi compatibility
-  // runtime so DeepSeek/TokenBird credentials are never sent to OpenAI by mistake.
+  // Custom Responses transports use an isolated provider at the configured URL.
+  // Chat Completions and other protocols keep the Pi compatibility loop.
   const nativeCompatible = nativeCodexTransportCompatible({ ...runtime, authType: config.authType });
-  if (config.authType === 'none' && (!nativeBinary || !nativeCompatible)) {
-    throw new Error('Native Codex is required when using an existing `codex login`; install a tested codex-cli, set CRAFT_CODEX_PATH, and do not configure a custom endpoint.');
+  if (config.authType === 'none' && !runtime.baseUrl && (!nativeBinary || !nativeCompatible)) {
+    throw new Error('Native Codex is required when using an existing `codex login`; install a tested codex-cli, set TOKENBIRD_CODEX_PATH, and do not configure a custom endpoint.');
   }
   return nativeBinary && nativeCompatible
     ? new NativeCodexAgent(config, nativeBinary)

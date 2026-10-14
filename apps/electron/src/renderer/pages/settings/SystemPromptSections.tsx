@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SettingsCard, SettingsSection, SettingsTextarea, SettingsToggle } from '@/components/settings'
 import { useAppShellContext } from '@/context/AppShellContext'
-import type { SystemPromptSource } from '@craft-agent/shared/protocol'
+import type { SystemPromptSource } from '@tokenbird/shared/protocol'
 
 const SOURCE_KEYS: Record<SystemPromptSource['source'], string> = {
   builtin: 'builtin',

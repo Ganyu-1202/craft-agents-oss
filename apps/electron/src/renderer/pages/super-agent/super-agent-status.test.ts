@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { SuperAgentActivityEntry, SuperAgentNodeActivity, SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import type { SuperAgentActivityEntry, SuperAgentNodeActivity, SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 import { nodeWorkStatus, teamWorkStatus } from './super-agent-status'
 
 function snapshot(): SuperAgentSnapshot {

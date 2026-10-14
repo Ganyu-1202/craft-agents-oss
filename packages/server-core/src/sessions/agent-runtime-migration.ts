@@ -1,4 +1,4 @@
-import type { AgentRuntimeProtocol } from '@craft-agent/shared/config';
+import type { AgentRuntimeProtocol } from '@tokenbird/shared/config';
 
 /** Native ids are owned by an agent engine. Only visible transcript context is portable. */
 export function migrateAgentSessionRuntime(state: {

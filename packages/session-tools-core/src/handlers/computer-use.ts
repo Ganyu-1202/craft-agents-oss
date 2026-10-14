@@ -9,7 +9,7 @@ import { errorResponse, successResponse } from '../response.ts';
 import { ComputerUseSchema, type ComputerUseArgs } from '../computer-use.ts';
 
 function scriptPath(): string | undefined {
-  const root = process.env.CRAFT_SCRIPTS;
+  const root = process.env.TOKENBIRD_SCRIPTS;
   const path = root && join(root, 'desktop-control.ps1');
   return path && existsSync(path) ? path : undefined;
 }

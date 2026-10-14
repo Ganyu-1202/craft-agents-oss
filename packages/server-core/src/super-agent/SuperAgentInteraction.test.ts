@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 
 const actions = (value: object) => `<super_agent_actions>${JSON.stringify(value)}</super_agent_actions>`

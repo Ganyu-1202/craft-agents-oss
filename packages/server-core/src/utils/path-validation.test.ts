@@ -52,7 +52,7 @@ describe('isValidWorkingDirectory', () => {
   // These use the real tmpdir, which is a Windows drive path on win32 and
   // therefore invalid for a 'darwin' server — skip on Windows.
   it.skipIf(process.platform === 'win32')('accepts an existing Unix directory', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'craft-agent-path-validation-'))
+    const dir = mkdtempSync(join(tmpdir(), 'tokenbird-path-validation-'))
     try {
       expect(isValidWorkingDirectory(dir, 'darwin')).toEqual({ valid: true })
     } finally {
@@ -61,7 +61,7 @@ describe('isValidWorkingDirectory', () => {
   })
 
   it.skipIf(process.platform === 'win32')('rejects a file path', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'craft-agent-path-validation-'))
+    const dir = mkdtempSync(join(tmpdir(), 'tokenbird-path-validation-'))
     const file = join(dir, 'file.txt')
     writeFileSync(file, 'x')
 

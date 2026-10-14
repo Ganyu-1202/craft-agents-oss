@@ -101,7 +101,7 @@ describe('profile CRUD', () => {
         enabled: true,
         username: 'deploy',
         password: 'sftp-secret',
-        remoteRoot: '/srv/craft',
+        remoteRoot: '/srv/tokenbird',
       },
     });
 

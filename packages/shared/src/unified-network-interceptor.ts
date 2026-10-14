@@ -43,13 +43,13 @@ const originalResponsesCallIds = new WeakMap<Record<string, unknown>, string>();
 type HeadersInitType = Headers | Record<string, string> | string[][];
 
 /**
- * When `CRAFT_DEBUG_SSE_RAW=1`, the OpenAI strip streams dump every raw SSE
+ * When `TOKENBIRD_DEBUG_SSE_RAW=1`, the OpenAI strip streams dump every raw SSE
  * line they see (in) and emit (out) to interceptor.log. Used to diagnose
  * upstream SSE shape issues (e.g. DeepSeek's two-phase tool_call emission).
  * Independent of the broader DEBUG flag — opt-in only because raw chunks are
  * verbose and may contain user prompts/tool args.
  */
-const DEBUG_SSE_RAW = process.env.CRAFT_DEBUG_SSE_RAW === '1';
+const DEBUG_SSE_RAW = process.env.TOKENBIRD_DEBUG_SSE_RAW === '1';
 
 // ============================================================================
 // PROXY CONFIGURATION (from env vars injected by parent process)
@@ -1834,7 +1834,7 @@ const adapters: ApiAdapter[] = [anthropicAdapter, openAiResponsesAdapter, openAi
  * Example values: anthropic-messages, openai-completions, openai-responses.
  */
 function getPiApiHint(): string | undefined {
-  const hint = process.env.CRAFT_PI_MODEL_API?.trim();
+  const hint = process.env.TOKENBIRD_PI_MODEL_API?.trim();
   return hint || undefined;
 }
 
@@ -2324,7 +2324,7 @@ const fetchProxy = new Proxy(interceptedFetch, {
 });
 
 // Auto-install in runtime subprocesses. Tests can disable this side effect.
-if (process.env.CRAFT_INTERCEPTOR_DISABLE_AUTO_INSTALL !== '1') {
+if (process.env.TOKENBIRD_INTERCEPTOR_DISABLE_AUTO_INSTALL !== '1') {
   (globalThis as unknown as { fetch: unknown }).fetch = fetchProxy;
   debugLog('Unified fetch interceptor installed');
 }

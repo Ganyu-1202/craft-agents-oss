@@ -14,7 +14,7 @@ export function webFilePicker(accept = ''): Promise<string[]> {
     const finish = (files: File[]) => {
       if (settled) return
       settled = true
-      window.removeEventListener('craft-agent:file-picker-cancel', cancel)
+      window.removeEventListener('tokenbird:file-picker-cancel', cancel)
       input.remove()
       const paths = files.map(file => {
         const path = `web-file://${crypto.randomUUID()}/${encodeURIComponent(file.name)}`
@@ -28,7 +28,7 @@ export function webFilePicker(accept = ''): Promise<string[]> {
     const cancel = () => finish([])
     input.onchange = () => finish(Array.from(input.files ?? []))
     input.oncancel = cancel
-    window.addEventListener('craft-agent:file-picker-cancel', cancel)
+    window.addEventListener('tokenbird:file-picker-cancel', cancel)
     input.click()
   })
 }
@@ -53,11 +53,11 @@ export async function pickedAttachment(path: string): Promise<FileAttachment | n
 }
 
 export async function saveBlob(blob: Blob, name: string): Promise<{ canceled?: boolean; path?: string }> {
-  const bridge = window.CraftAgentAndroid
+  const bridge = window.TokenBirdAgentAndroid
   if (bridge?.saveFile) {
     if (blob.size > 64 * 1024 * 1024) throw new Error('文件超过 64 MB，请通过服务器文件管理下载')
     const base64 = await blobBase64(blob)
-    return invokeAndroidNative('craft-agent:android-file-result', id => bridge.saveFile!(id, name, blob.type || 'application/octet-stream', base64), 10 * 60_000)
+    return invokeAndroidNative('tokenbird:android-file-result', id => bridge.saveFile!(id, name, blob.type || 'application/octet-stream', base64), 10 * 60_000)
   }
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a'); link.href = url; link.download = name
@@ -70,12 +70,12 @@ export async function saveBlob(blob: Blob, name: string): Promise<{ canceled?: b
 export function installAndroidDownloads(): () => void {
   const onClick = (event: MouseEvent) => {
     const link = (event.target as Element | null)?.closest?.('a[download]') as HTMLAnchorElement | null
-    if (!link || !window.CraftAgentAndroid?.saveFile) return
+    if (!link || !window.TokenBirdAgentAndroid?.saveFile) return
     if (!link.href.startsWith('blob:') && !link.href.startsWith('data:')) return
     event.preventDefault()
     event.stopImmediatePropagation()
     void fetch(link.href).then(response => response.blob()).then(blob => saveBlob(blob, link.download || 'TokenBird-export'))
-      .catch(error => window.dispatchEvent(new CustomEvent('craft-agent:file-error', { detail: String(error) })))
+      .catch(error => window.dispatchEvent(new CustomEvent('tokenbird:file-error', { detail: String(error) })))
   }
   document.addEventListener('click', onClick, true)
   return () => document.removeEventListener('click', onClick, true)

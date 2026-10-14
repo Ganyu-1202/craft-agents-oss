@@ -1,5 +1,5 @@
 /**
- * Minimal Codex app-server protocol surface used by Craft Agents.
+ * Minimal Codex app-server protocol surface used by TokenBird.
  *
  * The app-server API is experimental. These structural types intentionally
  * cover only messages we send or render and are based on the TypeScript

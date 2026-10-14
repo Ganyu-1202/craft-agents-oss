@@ -23,7 +23,7 @@ import {
 describe('isExistingDirectory', () => {
   let tempDir: string;
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'craft-spawn-helpers-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'tokenbird-spawn-helpers-'));
   });
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
@@ -69,7 +69,7 @@ describe('resolveSpawnCwd (simulated)', () => {
   let sdkCwd: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'craft-resolve-cwd-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'tokenbird-resolve-cwd-'));
     workspaceRoot = join(tempDir, 'ws');
     parentCwd = join(tempDir, 'parent');
     sessionPath = join(tempDir, 'session');

@@ -133,7 +133,7 @@ export function PanelSlot({
           // scenic background. Apply the user-controlled alpha at this level,
           // while leaving headers/settings and other panels untouched.
           ...(isChatPanel
-            ? { backgroundColor: 'color-mix(in srgb, var(--background) var(--craft-chat-panel-opacity, 100%), transparent)' }
+            ? { backgroundColor: 'color-mix(in srgb, var(--background) var(--tokenbird-chat-panel-opacity, 100%), transparent)' }
             : {}),
           // In multi-panel, unfocused panels override --background so all
           // bg-background children render at the elevated (dimmed) background.

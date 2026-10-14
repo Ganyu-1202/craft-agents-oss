@@ -9,7 +9,7 @@ Use this skill when the user wants work to begin after an application event, on 
 
 ## Choose the trigger
 
-- Use an application event such as `LabelAdd`, `SessionStatusChange`, or `PermissionModeChange` when Craft state changes should trigger work.
+- Use an application event such as `LabelAdd`, `SessionStatusChange`, or `PermissionModeChange` when TokenBird state changes should trigger work.
 - Use `SchedulerTick` with a five-field cron expression and timezone for calendar-based work.
 - Use `HostedScriptTick` for polling or health checks. It runs on startup and then every `intervalMs`; return `false`, `null`, or `undefined` to do nothing, or a JSON-safe truthy value to trigger actions.
 

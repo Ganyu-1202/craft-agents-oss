@@ -7,7 +7,7 @@ import sharp from 'sharp'
 import type { RpcServer, HandlerFn, RequestContext } from '../../transport'
 import type { HandlerDeps } from '../handler-deps'
 import type { ImageProcessor } from '../../runtime/platform'
-import type { StoredAttachment } from '@craft-agent/core/types'
+import type { StoredAttachment } from '@tokenbird/core/types'
 
 const root = await mkdtemp(join(tmpdir(), 'tokenbird-image-upload-test-'))
 const previous = process.env.TOKENBIRD_CONFIG_DIR
@@ -16,13 +16,13 @@ await writeFile(join(root, 'config.json'), JSON.stringify({
   workspaces: [{ id: 'workspace', name: 'Image test', rootPath: join(root, 'workspace'), createdAt: Date.now() }],
   activeWorkspaceId: 'workspace',
 }))
-await import('@craft-agent/shared/utils')
-const { getSessionAttachmentsPath } = await import('@craft-agent/shared/sessions')
-await import('@craft-agent/shared/config')
-const { setImageProcessor } = await import('@craft-agent/server-core/services')
-await import('@craft-agent/server-core/handlers')
+await import('@tokenbird/shared/utils')
+const { getSessionAttachmentsPath } = await import('@tokenbird/shared/sessions')
+await import('@tokenbird/shared/config')
+const { setImageProcessor } = await import('@tokenbird/server-core/services')
+await import('@tokenbird/server-core/handlers')
 const { registerFilesHandlers } = await import('./files')
-const { RPC_CHANNELS, IMAGE_UPLOAD_MAX_BYTES } = await import('@craft-agent/shared/protocol')
+const { RPC_CHANNELS, IMAGE_UPLOAD_MAX_BYTES } = await import('@tokenbird/shared/protocol')
 const realProcessor: ImageProcessor = {
   getMetadata: async input => {
     const result = await sharp(input).metadata()

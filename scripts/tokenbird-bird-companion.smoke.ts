@@ -46,7 +46,7 @@ import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { BirdCompanionManager } from ${JSON.stringify(resolve(import.meta.dir, '../apps/electron/src/main/bird-companion'))};
 import { createNativeWindowAuthority } from ${JSON.stringify(resolve(import.meta.dir, '../apps/electron/src/main/native-window-authority'))};
-import { setupI18n, i18n } from '@craft-agent/shared/i18n';
+import { setupI18n, i18n } from '@tokenbird/shared/i18n';
 app.setPath('userData', ${JSON.stringify(join(root, 'electron'))});
 app.commandLine.appendSwitch('disable-gpu');
 const shown = new Set<number>();

@@ -1,4 +1,4 @@
-package com.craftagents.mobile;
+package com.tokenbird.mobile;
 
 import android.Manifest;
 import android.app.Activity;
@@ -71,7 +71,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
-    private static final String PREFS = "craft_agent_mobile";
+    private static final String PREFS = "tokenbird_agent_mobile";
     private static final String MODE_KEY = "server_mode";
     private static final String LEGACY_SERVER_URL_KEY = "server_url";
     private static final String LEGACY_SERVER_TOKEN_KEY = "server_token";
@@ -97,10 +97,10 @@ public final class MainActivity extends Activity {
     private static final String ANDROID_BACK_SCRIPT =
             "(function(){"
                     + "var guideOpen=!!document.querySelector('[data-getting-started-guide]');"
-                    + "var handled=!window.dispatchEvent(new CustomEvent('craft-agent-android-back',{cancelable:true}));"
+                    + "var handled=!window.dispatchEvent(new CustomEvent('tokenbird-android-back',{cancelable:true}));"
                     + "return guideOpen||handled;"
                     + "})()";
-    private static final String TOKENNEST_OAUTH_CALLBACK_EVENT = "craft-agent:tokennest-oauth-callback";
+    private static final String TOKENNEST_OAUTH_CALLBACK_EVENT = "tokenbird:tokennest-oauth-callback";
 
     private enum ServerMode {
         LOCAL("local"),
@@ -290,10 +290,10 @@ public final class MainActivity extends Activity {
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             settings.setForceDark(WebSettings.FORCE_DARK_OFF);
         }
-        settings.setUserAgentString(settings.getUserAgentString() + " CraftAgentAndroid/" + BuildConfig.VERSION_NAME);
+        settings.setUserAgentString(settings.getUserAgentString() + " TokenBirdAgentAndroid/" + BuildConfig.VERSION_NAME);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, true);
-        view.addJavascriptInterface(new AndroidBridge(), "CraftAgentAndroid");
+        view.addJavascriptInterface(new AndroidBridge(), "TokenBirdAgentAndroid");
         view.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(
@@ -1009,12 +1009,12 @@ public final class MainActivity extends Activity {
     private void requestPermissionFromBridge(String requestId, String permissionKey, String reason) {
         String[] permissions = permissionsForKey(permissionKey);
         if (permissions == null) {
-            dispatchNativeResult("craft-agent:android-permission-result", requestId,
+            dispatchNativeResult("tokenbird:android-permission-result", requestId,
                     false, "unsupported_permission", "Unsupported Android permission", null);
             return;
         }
         if (hasPermissionKey(permissionKey)) {
-            dispatchNativeResult("craft-agent:android-permission-result", requestId,
+            dispatchNativeResult("tokenbird:android-permission-result", requestId,
                     true, null, null, permissionSnapshotJson());
             return;
         }
@@ -1025,11 +1025,11 @@ public final class MainActivity extends Activity {
                 .setTitle(R.string.permission_request_title)
                 .setMessage(safeReason + "\n\nPermission: " + permissionKey)
                 .setNegativeButton(R.string.permission_request_deny, (dialog, which) ->
-                        dispatchNativeResult("craft-agent:android-permission-result", requestId,
+                        dispatchNativeResult("tokenbird:android-permission-result", requestId,
                                 false, "user_denied", "User declined the permission request", null))
                 .setPositiveButton(R.string.permission_request_allow, (dialog, which) -> {
                     if (permissions.length == 0) {
-                        dispatchNativeResult("craft-agent:android-permission-result", requestId,
+                        dispatchNativeResult("tokenbird:android-permission-result", requestId,
                                 true, null, null, permissionSnapshotJson());
                         return;
                     }
@@ -1038,7 +1038,7 @@ public final class MainActivity extends Activity {
                     requestPermissions(permissions, code);
                 })
                 .setOnCancelListener(dialog -> dispatchNativeResult(
-                        "craft-agent:android-permission-result", requestId,
+                        "tokenbird:android-permission-result", requestId,
                         false, "user_cancelled", "User cancelled the permission request", null))
                 .create()));
     }
@@ -1086,12 +1086,12 @@ public final class MainActivity extends Activity {
 
     private void runAdbCommand(String requestId, String command, String reason, boolean requireConfirmation) {
         if (!preferences.getBoolean(ADB_ENABLED_KEY, false)) {
-            dispatchNativeResult("craft-agent:android-adb-result", requestId,
+            dispatchNativeResult("tokenbird:android-adb-result", requestId,
                     false, "adb_disabled", "Network ADB is disabled in Android settings", null);
             return;
         }
         if (command == null || command.trim().isEmpty() || command.length() > 4000) {
-            dispatchNativeResult("craft-agent:android-adb-result", requestId,
+            dispatchNativeResult("tokenbird:android-adb-result", requestId,
                     false, "invalid_command", "ADB command is empty or too long", null);
             return;
         }
@@ -1104,10 +1104,10 @@ public final class MainActivity extends Activity {
                 payload.put("stdout", result.stdout);
                 payload.put("exitCode", result.exitCode);
                 payload.put("truncated", result.truncated);
-                dispatchNativeResult("craft-agent:android-adb-result", requestId,
+                dispatchNativeResult("tokenbird:android-adb-result", requestId,
                         true, null, null, payload.toString());
             } catch (Exception error) {
-                dispatchNativeResult("craft-agent:android-adb-result", requestId,
+                dispatchNativeResult("tokenbird:android-adb-result", requestId,
                         false, "adb_connection_failed", error.getMessage(), null);
             }
         });
@@ -1125,11 +1125,11 @@ public final class MainActivity extends Activity {
                 .setTitle(R.string.adb_command_title)
                 .setMessage(message)
                 .setNegativeButton(R.string.permission_request_deny, (dialog, which) ->
-                        dispatchNativeResult("craft-agent:android-adb-result", requestId,
+                        dispatchNativeResult("tokenbird:android-adb-result", requestId,
                                 false, "user_denied", "User declined the ADB command", null))
                 .setPositiveButton(R.string.permission_request_allow, (dialog, which) -> execute.run())
                 .setOnCancelListener(dialog -> dispatchNativeResult(
-                        "craft-agent:android-adb-result", requestId,
+                        "tokenbird:android-adb-result", requestId,
                         false, "user_cancelled", "User cancelled the ADB command", null))
                 .create()));
     }
@@ -1182,7 +1182,7 @@ public final class MainActivity extends Activity {
         if (pending != null) {
             pendingPermissionRequests.remove(requestCode);
             boolean granted = hasPermissionKey(pending.permissionKey);
-            dispatchNativeResult("craft-agent:android-permission-result", pending.requestId,
+            dispatchNativeResult("tokenbird:android-permission-result", pending.requestId,
                     granted,
                     granted ? null : "permission_denied",
                     granted ? null : "Android permission was not granted",
@@ -1204,7 +1204,7 @@ public final class MainActivity extends Activity {
             if (callback != null) {
                 callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
             }
-            if (resultCode != RESULT_OK) webView.evaluateJavascript("window.dispatchEvent(new Event('craft-agent:file-picker-cancel'))", null);
+            if (resultCode != RESULT_OK) webView.evaluateJavascript("window.dispatchEvent(new Event('tokenbird:file-picker-cancel'))", null);
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -1250,7 +1250,7 @@ public final class MainActivity extends Activity {
         notificationSession = intent.getStringExtra("notification_session");
         if (webView != null && notificationSession != null && !notificationSession.isEmpty()) {
             String detail = "{\"sessionId\":" + JSONObject.quote(notificationSession) + "}";
-            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('craft-agent:notification-navigate',{detail:" + detail + "}))", null);
+            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('tokenbird:notification-navigate',{detail:" + detail + "}))", null);
         }
     }
 
@@ -1298,7 +1298,7 @@ public final class MainActivity extends Activity {
         public void renderHtmlImage(String id, String name, String html) {
             runOnUiThread(() -> {
                 if (html == null || html.length() > 5_000_000) {
-                    dispatchNativeResult("craft-agent:android-file-result", id, false, "export_limit", "对话过长，请使用 PDF 导出", null); return;
+                    dispatchNativeResult("tokenbird:android-file-result", id, false, "export_limit", "对话过长，请使用 PDF 导出", null); return;
                 }
                 WebView imageView = new WebView(MainActivity.this);
                 imageView.setBackgroundColor(Color.WHITE);
@@ -1323,7 +1323,7 @@ public final class MainActivity extends Activity {
                                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes);
                                 saveFile(id, name, "image/png", Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP));
                             } catch (Exception | OutOfMemoryError error) {
-                                dispatchNativeResult("craft-agent:android-file-result", id, false, "image_export_failed", "长图导出失败，请使用 PDF：" + error.getMessage(), null);
+                                dispatchNativeResult("tokenbird:android-file-result", id, false, "image_export_failed", "长图导出失败，请使用 PDF：" + error.getMessage(), null);
                             } finally {
                                 if (bitmap != null) bitmap.recycle();
                                 content.removeView(view); view.destroy();
@@ -1345,7 +1345,7 @@ public final class MainActivity extends Activity {
         public void saveFile(String id, String name, String mime, String base64) {
             runOnUiThread(() -> {
                 if (documentSaver == null) documentSaver = new DocumentSaver(MainActivity.this,
-                        (requestId, success, error, json) -> dispatchNativeResult("craft-agent:android-file-result",
+                        (requestId, success, error, json) -> dispatchNativeResult("tokenbird:android-file-result",
                                 requestId, success, success ? null : "file_save_failed", error, json));
                 documentSaver.save(id, name, mime, base64);
             });

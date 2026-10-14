@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument, saveSuperAgentDocument, type SuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, saveSuperAgentDocument, type SuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { SuperAgentService } from './SuperAgentService'
 import { SUPER_AGENT_RECOVERY_WINDOW_MS } from './SuperAgentRetry'
 import { superAgentFixture, until } from './SuperAgentTestSupport'

@@ -36,7 +36,7 @@ describe('resolveServerPath fallback', () => {
     const paths = resolveBackendRuntimePaths(hostRuntime);
     if (process.platform === 'win32') {
       expect(paths.piServerPath).not.toBe(join(serverDir, 'index.js'));
-      expect(paths.piServerPath).toContain(join('Craft Agents', 'runtime', 'pi-agent-server-'));
+      expect(paths.piServerPath).toContain(join('TokenBird', 'runtime', 'pi-agent-server-'));
       expect(readFileSync(paths.piServerPath!, 'utf8')).toBe('// stub');
       rmSync(paths.piServerPath!, { force: true });
     } else {
@@ -262,7 +262,7 @@ describe('resolveInterceptorBundlePath dev-mode source preference', () => {
     const paths = resolveBackendRuntimePaths(hostRuntime);
     if (process.platform === 'win32') {
       expect(paths.interceptorBundlePath).not.toBe(bundlePath);
-      expect(paths.interceptorBundlePath).toContain(join('Craft Agents', 'runtime', 'interceptor-'));
+      expect(paths.interceptorBundlePath).toContain(join('TokenBird', 'runtime', 'interceptor-'));
       expect(readFileSync(paths.interceptorBundlePath!, 'utf8')).toBe('// bundle\n');
       rmSync(paths.interceptorBundlePath!, { force: true });
     } else {
@@ -302,7 +302,7 @@ describe('resolveInterceptorBundlePath dev-mode source preference', () => {
 
     if (process.platform === 'win32') {
       expect(paths.interceptorBundlePath).not.toBe(overridePath);
-      expect(paths.interceptorBundlePath).toContain(join('Craft Agents', 'runtime', 'interceptor-'));
+      expect(paths.interceptorBundlePath).toContain(join('TokenBird', 'runtime', 'interceptor-'));
       expect(readFileSync(paths.interceptorBundlePath!, 'utf8')).toBe('// packaged custom\n');
       rmSync(paths.interceptorBundlePath!, { force: true });
     } else {

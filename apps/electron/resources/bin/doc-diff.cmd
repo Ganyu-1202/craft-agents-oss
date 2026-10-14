@@ -1,2 +1,2 @@
 @echo off
-"%CRAFT_UV%" run --python 3.12 "%CRAFT_SCRIPTS%\doc_diff.py" %*
+"%TOKENBIRD_UV%" run --python 3.12 "%TOKENBIRD_SCRIPTS%\doc_diff.py" %*

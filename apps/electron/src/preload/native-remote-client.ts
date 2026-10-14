@@ -1,7 +1,7 @@
 /** Preload transport adapter. It never accepts, resolves, or stores a server token. */
-import type { RpcClient, TransportConnectionState } from '@craft-agent/server-core/transport'
-import { getAllChannelValues } from '@craft-agent/shared/protocol'
-import { LOCAL_CLIENT_CAPABILITIES } from '@craft-agent/server-core/transport'
+import type { RpcClient, TransportConnectionState } from '@tokenbird/server-core/transport'
+import { getAllChannelValues } from '@tokenbird/shared/protocol'
+import { LOCAL_CLIENT_CAPABILITIES } from '@tokenbird/server-core/transport'
 import { NATIVE_REMOTE_TRANSPORT as IPC, type NativeRemoteOpened, type NativeRemotePacket, type NativeRemoteResult } from '../shared/native-remote-transport'
 
 export interface NativeRemoteIpcClient {

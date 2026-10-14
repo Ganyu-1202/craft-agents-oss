@@ -1,5 +1,5 @@
 import { prepareImageUpload } from './image-upload';
-import { IMAGE_UPLOAD_MAX_BYTES } from '@craft-agent/shared/protocol';
+import { IMAGE_UPLOAD_MAX_BYTES } from '@tokenbird/shared/protocol';
 import type { FileAttachment } from '../../shared/types';
 
 declare global { interface Window { runImageUploadChecks(): Promise<string[]> } }

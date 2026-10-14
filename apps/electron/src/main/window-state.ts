@@ -1,6 +1,6 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
-import { readJsonFileSync } from '@craft-agent/shared/utils/files'
-import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
+import { readJsonFileSync } from '@tokenbird/shared/utils/files'
+import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
 import { mainLog } from './logger'
 import { join } from 'path'
 

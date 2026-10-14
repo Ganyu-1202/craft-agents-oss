@@ -1,4 +1,4 @@
-import type { SuperAgentNode, SuperAgentDocument } from '@craft-agent/shared/super-agent'
+import type { SuperAgentNode, SuperAgentDocument } from '@tokenbird/shared/super-agent'
 
 /** Lower bounds from durable state, never an invented estimate of model execution time. */
 export function nodeSchedulingState(document: SuperAgentDocument, node: SuperAgentNode, now: number) {

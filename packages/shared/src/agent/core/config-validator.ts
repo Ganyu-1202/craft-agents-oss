@@ -29,7 +29,7 @@ const CONFIG_FILE_PATTERNS: { pattern: RegExp; type: ConfigFileType }[] = [
 /**
  * TokenBird specific config files that have known schemas.
  */
-const CRAFT_AGENT_CONFIG_PATTERNS = [
+const TOKENBIRD_CONFIG_PATTERNS = [
   // Main config
   /\.tokenbird\/config\.json$/,
   // Preferences
@@ -103,11 +103,11 @@ export class ConfigValidator {
    * @param filePath - Path to check
    * @returns true if this is a TokenBird config
    */
-  isCraftAgentConfig(filePath: string): boolean {
+  isTokenBirdAgentConfig(filePath: string): boolean {
     const normalizedPath = process.platform === 'win32'
       ? filePath.replace(/\\/g, '/').toLowerCase()
       : filePath.replace(/\\/g, '/');
-    return CRAFT_AGENT_CONFIG_PATTERNS.some((pattern) => pattern.test(normalizedPath));
+    return TOKENBIRD_CONFIG_PATTERNS.some((pattern) => pattern.test(normalizedPath));
   }
 
   // ============================================================

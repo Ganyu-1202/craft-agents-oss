@@ -14,17 +14,17 @@ import { createServerSwitcher } from './server-switch'
 import { configureElectronCredentialVault } from './credential-vault'
 import { registerNativeCredentialIpcHandlers } from './handlers/credentials-native'
 import { configureRemoteCredentialProtection, hasPendingRemoteCredentialMigration, listManagedRemoteCredentialMetadata, migrateRemoteCredentials, prepareRemoteWorkspaceConfig, resolveRemoteProfile, resolveRemoteWorkspace, saveRemoteProfile, type ResolvedRemoteProfile } from './remote-credentials'
-import { reconcileSourceCredentialChanges } from '@craft-agent/shared/sources/credential-runtime'
+import { reconcileSourceCredentialChanges } from '@tokenbird/shared/sources/credential-runtime'
 import { validateNativeRemoteUrl } from './remote-transport-policy'
 import { registerNativeRemoteTransport } from './native-remote-transport'
 import { NATIVE_REMOTE_TRANSPORT } from '../shared/native-remote-transport'
-import { WsRpcClient } from '@craft-agent/server-core/transport'
-import { createNodeCloudPeer } from '@craft-agent/server-core/cloud/peer-node'
-import { redactWorkspaceRemoteCredentials } from '@craft-agent/server-core/handlers/rpc/workspace-remote-input'
+import { WsRpcClient } from '@tokenbird/server-core/transport'
+import { createNodeCloudPeer } from '@tokenbird/server-core/cloud/peer-node'
+import { redactWorkspaceRemoteCredentials } from '@tokenbird/server-core/handlers/rpc/workspace-remote-input'
 import { sourceCredentialWorkspaceId, workspaceForSourceCredentialId } from './credential-scope'
 import * as Sentry from '@sentry/electron/main'
-import { redactSensitiveHeadersInPlace, redactSensitiveKeysInPlace } from '@craft-agent/shared/utils'
-import { getLocalizedProductName } from '@craft-agent/shared/branding'
+import { redactSensitiveHeadersInPlace, redactSensitiveKeysInPlace } from '@tokenbird/shared/utils'
+import { getLocalizedProductName } from '@tokenbird/shared/branding'
 import { applyRuntimeToolEnvironment } from './runtime-toolchains'
 import { exportChatTranscript } from './chat-export'
 import { openTokenNestRechargeWindow } from './tokennest-recharge'
@@ -32,7 +32,7 @@ import { BirdCompanionManager } from './bird-companion'
 import { TOKENNEST_RECHARGE_IPC } from '../shared/tokennest-recharge'
 import { deleteMindMapSession, mindMapWorkspaceContext, readMindMapSession, writeMindMapSession, executeMindMapTool } from './studio-mindmap-files'
 
-// Keep Electron-managed state separate from every Craft Agents installation,
+// Keep Electron-managed state in the TokenBird profile,
 // including development launches where Electron would otherwise derive the
 // directory name from package metadata.
 const electronUserDataDir = join(app.getPath('appData'), 'TokenBird')
@@ -60,7 +60,7 @@ Sentry.init({
   enabled: !!process.env.SENTRY_ELECTRON_INGEST_URL,
 
   // Scrub sensitive data before sending to Sentry.
-  // Shared logic in @craft-agent/shared/utils redaction.ts (also used by the
+  // Shared logic in @tokenbird/shared/utils redaction.ts (also used by the
   // renderer hook and the Pages action audit log) — keep semantics there.
   beforeSend(event) {
     // Scrub request headers (authorization, cookies)
@@ -90,14 +90,14 @@ Sentry.init({
 // renderer would restore its language from localStorage on every restart while
 // the main process silently stayed at English — breaking session title language,
 // the system prompt's "Preferred language" line, and the native menu.
-import { setupI18n, i18n, SUPPORTED_LANGUAGE_CODES, type LanguageCode } from '@craft-agent/shared/i18n'
-import { getPersistedUiLanguage, setPersistedUiLanguage } from '@craft-agent/shared/config'
+import { setupI18n, i18n, SUPPORTED_LANGUAGE_CODES, type LanguageCode } from '@tokenbird/shared/i18n'
+import { getPersistedUiLanguage, setPersistedUiLanguage } from '@tokenbird/shared/config'
 setupI18n()
 const persistedUiLanguage = getPersistedUiLanguage()
 if (persistedUiLanguage) {
   void i18n.changeLanguage(persistedUiLanguage)
 }
-app.setName(process.env.CRAFT_APP_NAME || getLocalizedProductName(persistedUiLanguage ?? systemUiLanguage))
+app.setName(process.env.TOKENBIRD_APP_NAME || getLocalizedProductName(persistedUiLanguage ?? systemUiLanguage))
 // Note: deferred startup log lives below where mainLog is available (after log.initialize()).
 
 // Set anonymous machine ID for Sentry user tracking (no PII — just a hash).
@@ -106,19 +106,19 @@ const machineId = createHash('sha256').update(hostname() + homedir()).digest('he
 Sentry.setUser({ id: machineId })
 
 import { existsSync, readFileSync, statSync } from 'fs'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@craft-agent/server-core/sessions'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@tokenbird/server-core/sessions'
 import { PageThumbnailer } from './page-thumbnailer'
 import { registerAllRpcHandlers } from './handlers/index'
-import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient, refreshTokenNestModelsAtStartup } from '@craft-agent/server-core/handlers/rpc'
+import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient, refreshTokenNestModelsAtStartup } from '@tokenbird/server-core/handlers/rpc'
 import type { PlatformServices } from '../runtime/platform'
 import { createElectronPlatform } from './platform'
 import type { HandlerDeps } from './handlers/handler-deps'
-import { bootstrapServer, releaseServerLock } from '@craft-agent/server-core/bootstrap'
-import { createMessagingBootstrap, type MessagingBootstrapHandle } from '@craft-agent/messaging-gateway'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
-import { initModelRefreshService, getModelRefreshService, setFetcherPlatform } from '@craft-agent/server-core/model-fetchers'
-import { setSearchPlatform, setImageProcessor } from '@craft-agent/server-core/services'
+import { bootstrapServer, releaseServerLock } from '@tokenbird/server-core/bootstrap'
+import { createMessagingBootstrap, type MessagingBootstrapHandle } from '@tokenbird/messaging-gateway'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
+import { initModelRefreshService, getModelRefreshService, setFetcherPlatform } from '@tokenbird/server-core/model-fetchers'
+import { setSearchPlatform, setImageProcessor } from '@tokenbird/server-core/services'
 import { createApplicationMenu } from './menu'
 import { WindowManager } from './window-manager'
 import { SystemTray } from './system-tray'
@@ -133,29 +133,29 @@ import {
   setStartupServerLocation,
   requestWorkspaceSelectionOnNextLaunch,
   consumeWorkspaceSelectionOnNextLaunch,
-} from '@craft-agent/shared/config'
-import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
-import { loadRemoteServerProfiles, getRemoteServerProfile, upsertRemoteServerProfile, deleteRemoteServerProfile, markRemoteServerConnected, toProfileInfo, type RemoteServerProfile, type RemoteServerSftpInput } from '@craft-agent/shared/config/remote-servers'
-import { getDefaultWorkspacesDir } from '@craft-agent/shared/workspaces'
-import { initializeDocs } from '@craft-agent/shared/docs'
-import { ensureDefaultPermissions } from '@craft-agent/shared/agent/permissions-config'
-import { ensureToolIcons, ensurePresetThemes } from '@craft-agent/shared/config'
-import { setBundledAssetsRoot } from '@craft-agent/shared/utils'
-import { initializeBackendHostRuntime } from '@craft-agent/shared/agent/backend'
-import { setPowerShellValidatorRoot } from '@craft-agent/shared/agent'
+} from '@tokenbird/shared/config'
+import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
+import { loadRemoteServerProfiles, getRemoteServerProfile, upsertRemoteServerProfile, deleteRemoteServerProfile, markRemoteServerConnected, toProfileInfo, type RemoteServerProfile, type RemoteServerSftpInput } from '@tokenbird/shared/config/remote-servers'
+import { getDefaultWorkspacesDir } from '@tokenbird/shared/workspaces'
+import { initializeDocs } from '@tokenbird/shared/docs'
+import { ensureDefaultPermissions } from '@tokenbird/shared/agent/permissions-config'
+import { ensureToolIcons, ensurePresetThemes } from '@tokenbird/shared/config'
+import { setBundledAssetsRoot } from '@tokenbird/shared/utils'
+import { initializeBackendHostRuntime } from '@tokenbird/shared/agent/backend'
+import { setPowerShellValidatorRoot } from '@tokenbird/shared/agent'
 import { handleDeepLink } from './deep-link'
 import { BrowserPaneManager } from './browser-pane-manager'
-import { OAuthFlowStore } from '@craft-agent/shared/auth'
+import { OAuthFlowStore } from '@tokenbird/shared/auth'
 import { registerThumbnailScheme, registerThumbnailHandler } from './thumbnail-protocol'
 import { registerStudioScheme, registerStudioHandler } from './studio-protocol'
 import log, { isDebugMode, mainLog, getLogFilePath, getMessagingGatewayLogFilePath, messagingGatewayLog, autoUpdateLog } from './logger'
-import { setPerfEnabled, enableDebug } from '@craft-agent/shared/utils'
-import { registerPiModelResolver } from '@craft-agent/shared/config'
-import { getPiModelsForAuthProvider, getAllPiModels } from '@craft-agent/shared/config'
+import { setPerfEnabled, enableDebug } from '@tokenbird/shared/utils'
+import { registerPiModelResolver } from '@tokenbird/shared/config'
+import { getPiModelsForAuthProvider, getAllPiModels } from '@tokenbird/shared/config'
 import { initNotificationService, initBadgeIcon, initInstanceBadge, updateBadgeCount } from './notifications'
 import { checkForUpdatesOnLaunch, setAutoUpdateEventSink, isUpdating, setBeforeUpdateQuitHook, setBeforeUpdateInstallHook, setInstallQuitFailedHook } from './auto-update'
-import type { EventSink } from '@craft-agent/server-core/transport'
-import { getBundledGitBashPath, validateGitBashPath, checkVCRedistInstalled } from '@craft-agent/server-core/services'
+import type { EventSink } from '@tokenbird/server-core/transport'
+import { getBundledGitBashPath, validateGitBashPath, checkVCRedistInstalled } from '@tokenbird/server-core/services'
 
 // Initialize electron-log for renderer process support
 log.initialize()
@@ -169,13 +169,13 @@ mainLog.info('[i18n] startup hydration', {
 
 // Enable debug/perf in dev mode (running from source)
 if (isDebugMode) {
-  process.env.CRAFT_DEBUG = '1'
+  process.env.TOKENBIRD_DEBUG = '1'
   enableDebug()
   setPerfEnabled(true)
 }
 
 // Bundle CLI tools: resolve platform-specific uv binary and wrapper scripts.
-// These are available to all agent Bash sessions via CRAFT_UV, CRAFT_SCRIPTS env vars
+// These are available to all agent Bash sessions via TOKENBIRD_UV, TOKENBIRD_SCRIPTS env vars
 // and PATH prepend. uv auto-downloads Python 3.12 on first use (~5s, then cached).
 {
   // In packaged app: resources are at process.resourcesPath/app/resources/
@@ -193,11 +193,11 @@ if (isDebugMode) {
   const fallbackUv = bundledUvExists ? null : 'uv'
 
   // Runtime resolver hints for shared session tools
-  process.env.CRAFT_IS_PACKAGED = app.isPackaged ? '1' : '0'
-  process.env.CRAFT_RESOURCES_BASE = resourcesBase
-  process.env.CRAFT_APP_ROOT = app.isPackaged ? app.getAppPath() : process.cwd()
+  process.env.TOKENBIRD_IS_PACKAGED = app.isPackaged ? '1' : '0'
+  process.env.TOKENBIRD_RESOURCES_BASE = resourcesBase
+  process.env.TOKENBIRD_APP_ROOT = app.isPackaged ? app.getAppPath() : process.cwd()
 
-  process.env.CRAFT_UV = bundledUvExists ? uvBinary : (fallbackUv ?? uvBinary)
+  process.env.TOKENBIRD_UV = bundledUvExists ? uvBinary : (fallbackUv ?? uvBinary)
 
   // Bun runtime (packaged builds should prefer bundled runtime over PATH)
   const bunBase = app.isPackaged && process.platform === 'win32'
@@ -205,7 +205,7 @@ if (isDebugMode) {
     : resourcesBase
   const bunBinary = join(bunBase, 'vendor', 'bun', process.platform === 'win32' ? 'bun.exe' : 'bun')
   if (existsSync(bunBinary)) {
-    process.env.CRAFT_BUN = bunBinary
+    process.env.TOKENBIRD_BUN = bunBinary
   }
 
   // A packaged Windows build is self-contained: establish the bundled Bash
@@ -223,18 +223,18 @@ if (isDebugMode) {
     }
   }
 
-  process.env.CRAFT_SCRIPTS = scriptsDir
-  process.env.CRAFT_COMMANDS_ENTRY = app.isPackaged
-    ? join(app.getAppPath(), 'packages', 'craft-agents-commands', 'src', 'main.ts')
-    : join(process.cwd(), 'packages', 'craft-agents-commands', 'src', 'main.ts')
-  process.env.CRAFT_CLI_ENTRY = app.isPackaged
-    ? join(app.getAppPath(), 'packages', 'craft-cli', 'src', 'cli.ts')
-    : join(process.cwd(), 'packages', 'craft-cli', 'src', 'cli.ts')
-  process.env.CRAFT_COMMANDS_DOC_PATH = app.isPackaged
-    ? join(resourcesBase, 'resources', 'docs', 'craft-cli.md')
-    : join(process.cwd(), 'apps', 'electron', 'resources', 'docs', 'craft-cli.md')
-  process.env.CRAFT_CLI_DOC_PATH = process.env.CRAFT_COMMANDS_DOC_PATH
-  process.env.CRAFT_AGENT_VERSION = app.getVersion()
+  process.env.TOKENBIRD_SCRIPTS = scriptsDir
+  process.env.TOKENBIRD_COMMANDS_ENTRY = app.isPackaged
+    ? join(app.getAppPath(), 'packages', 'tokenbird-commands', 'src', 'main.ts')
+    : join(process.cwd(), 'packages', 'tokenbird-commands', 'src', 'main.ts')
+  process.env.TOKENBIRD_CLI_ENTRY = app.isPackaged
+    ? join(app.getAppPath(), 'packages', 'tokenbird-cli', 'src', 'cli.ts')
+    : join(process.cwd(), 'packages', 'tokenbird-cli', 'src', 'cli.ts')
+  process.env.TOKENBIRD_COMMANDS_DOC_PATH = app.isPackaged
+    ? join(resourcesBase, 'resources', 'docs', 'tokenbird-cli.md')
+    : join(process.cwd(), 'apps', 'electron', 'resources', 'docs', 'tokenbird-cli.md')
+  process.env.TOKENBIRD_CLI_DOC_PATH = process.env.TOKENBIRD_COMMANDS_DOC_PATH
+  process.env.TOKENBIRD_VERSION = app.getVersion()
   // Prepend both generic wrappers dir and platform uv dir:
   // - binDir exposes wrapper commands (pdf-tool, docx-tool, ...)
   // - uvPlatformDir exposes raw `uv` for direct shell usage / debugging
@@ -247,12 +247,12 @@ if (isDebugMode) {
   if (!bundledUvExists) {
     mainLog.warn('Bundled uv binary missing, CLI document tools may fail unless uv is available on PATH.', {
       expectedUvPath: uvBinary,
-      usingCraftUv: process.env.CRAFT_UV,
+      usingTokenBirdUv: process.env.TOKENBIRD_UV,
     })
   }
 
   if (isDebugMode) {
-    mainLog.info('CLI tools configured:', { uvBinary: process.env.CRAFT_UV, binDir, scriptsDir, bundledUvExists })
+    mainLog.info('CLI tools configured:', { uvBinary: process.env.TOKENBIRD_UV, binDir, scriptsDir, bundledUvExists })
   }
 }
 
@@ -263,8 +263,8 @@ registerPiModelResolver((piAuthProvider) =>
 )
 
 // Custom URL scheme for deeplinks (e.g., tokenbird://auth-complete)
-// Supports multi-instance dev: CRAFT_DEEPLINK_SCHEME env var (tokenbird1, tokenbird2, etc.)
-const DEEPLINK_SCHEME = process.env.CRAFT_DEEPLINK_SCHEME || 'tokenbird'
+// Supports multi-instance dev: TOKENBIRD_DEEPLINK_SCHEME env var (tokenbird1, tokenbird2, etc.)
+const DEEPLINK_SCHEME = process.env.TOKENBIRD_DEEPLINK_SCHEME || 'tokenbird'
 
 let windowManager: WindowManager | null = null
 let startupRemoteTarget: ResolvedRemoteProfile | undefined
@@ -286,7 +286,7 @@ async function freshStartupRemoteTarget(): Promise<ResolvedRemoteProfile> {
 }
 
 async function getActiveRemoteProfile(webContentsId: number): Promise<ResolvedRemoteProfile | undefined> {
-  const startupProfileId = process.env.CRAFT_SERVER_PROFILE_ID
+  const startupProfileId = process.env.TOKENBIRD_SERVER_PROFILE_ID
   if (startupProfileId) {
     const profile = await resolveRemoteProfile(startupProfileId)
     return profile && startupRemoteTarget && profile.revision === startupRemoteTarget.revision && profile.url === startupRemoteTarget.url && profile.token === startupRemoteTarget.token ? profile : undefined
@@ -333,10 +333,10 @@ const STARTUP_LOCATION_LOCAL = 'local'
 /**
  * 'none' means: do NOT bootstrap the local service — open only the frontend
  * picker so the user chooses which service to enter for this launch.
- * A relaunch with CRAFT_SERVER_URL set overrides picker mode (the user
+ * A relaunch with TOKENBIRD_SERVER_URL set overrides picker mode (the user
  * already picked a remote service).
  */
-let pickerMode = getStartupServerLocation() === STARTUP_LOCATION_NONE && !process.env.CRAFT_SERVER_URL
+let pickerMode = getStartupServerLocation() === STARTUP_LOCATION_NONE && !process.env.TOKENBIRD_SERVER_URL
 
 /** Resolve the persisted startup location to a remote profile (if any). */
 function resolveStartupRemoteProfile(): RemoteServerProfile | null {
@@ -346,15 +346,15 @@ function resolveStartupRemoteProfile(): RemoteServerProfile | null {
 }
 
 // Apply a remote-profile startup BEFORE whenReady so the existing thin-client
-// (CRAFT_SERVER_URL) path takes over without bootstrapping the local service.
+// (TOKENBIRD_SERVER_URL) path takes over without bootstrapping the local service.
 {
   const profile = resolveStartupRemoteProfile()
   if (profile) {
-    process.env.CRAFT_SERVER_URL = profile.url
+    process.env.TOKENBIRD_SERVER_URL = profile.url
     // OS-protected credentials can be opened only after Electron app.ready.
-    delete process.env.CRAFT_SERVER_TOKEN
-    process.env.CRAFT_SERVER_PROFILE_ID = profile.id
-    process.env.CRAFT_SERVER_PROFILE_NAME = profile.name
+    delete process.env.TOKENBIRD_SERVER_TOKEN
+    process.env.TOKENBIRD_SERVER_PROFILE_ID = profile.id
+    process.env.TOKENBIRD_SERVER_PROFILE_NAME = profile.name
   }
 }
 
@@ -367,17 +367,17 @@ export interface StartupServerContext {
 
 function getServerContext(): StartupServerContext {
   if (pickerMode) return { mode: 'picker' }
-  if (process.env.CRAFT_SERVER_URL) {
-    let profileName = process.env.CRAFT_SERVER_PROFILE_NAME
+  if (process.env.TOKENBIRD_SERVER_URL) {
+    let profileName = process.env.TOKENBIRD_SERVER_PROFILE_NAME
     if (!profileName) {
       try {
-        profileName = new URL(process.env.CRAFT_SERVER_URL).hostname
+        profileName = new URL(process.env.TOKENBIRD_SERVER_URL).hostname
       } catch { /* keep undefined */ }
     }
     return {
       mode: 'remote',
-      serverUrl: process.env.CRAFT_SERVER_URL,
-      profileId: process.env.CRAFT_SERVER_PROFILE_ID,
+      serverUrl: process.env.TOKENBIRD_SERVER_URL,
+      profileId: process.env.TOKENBIRD_SERVER_PROFILE_ID,
       profileName,
     }
   }
@@ -421,12 +421,12 @@ const switchServer = createServerSwitcher({
 ipcMain.on('__get-startup-context', (e) => {
   e.returnValue = {
     mode: pickerMode ? 'picker' : 'normal',
-    remote: process.env.CRAFT_SERVER_URL ? {
-      url: process.env.CRAFT_SERVER_URL,
-      profileId: process.env.CRAFT_SERVER_PROFILE_ID,
-      workspaceId: process.env.CRAFT_WORKSPACE_ID,
+    remote: process.env.TOKENBIRD_SERVER_URL ? {
+      url: process.env.TOKENBIRD_SERVER_URL,
+      profileId: process.env.TOKENBIRD_SERVER_PROFILE_ID,
+      workspaceId: process.env.TOKENBIRD_WORKSPACE_ID,
       // Only legacy ad-hoc connections use a preload-owned bearer.
-      ...(!process.env.CRAFT_SERVER_PROFILE_ID && { token: process.env.CRAFT_SERVER_TOKEN ?? '' }),
+      ...(!process.env.TOKENBIRD_SERVER_PROFILE_ID && { token: process.env.TOKENBIRD_SERVER_TOKEN ?? '' }),
     } : undefined,
   }
 })
@@ -543,11 +543,11 @@ ipcMain.handle('__client:install-update', async () => {
   return installUpdate()
 })
 ipcMain.handle('__client:dismiss-update', async (_event, version: string) => {
-  const { setDismissedUpdateVersion } = await import('@craft-agent/shared/config')
+  const { setDismissedUpdateVersion } = await import('@tokenbird/shared/config')
   setDismissedUpdateVersion(version)
 })
 ipcMain.handle('__client:get-dismissed-update', async () => {
-  const { getDismissedUpdateVersion } = await import('@craft-agent/shared/config')
+  const { getDismissedUpdateVersion } = await import('@tokenbird/shared/config')
   return getDismissedUpdateVersion()
 })
 
@@ -571,13 +571,13 @@ ipcMain.handle('data:importFromLocalFile', async (_event, filePath: string) => {
   // route the local backup there instead of importing it into this machine.
   const activeWorkspaceId = windowManager?.getWorkspaceForWindow(_event.sender.id)
   const activeWorkspace = activeWorkspaceId ? getWorkspaceByNameOrId(activeWorkspaceId) : undefined
-  const remoteTarget = process.env.CRAFT_SERVER_URL
-    ? startupRemoteTarget ?? { url: process.env.CRAFT_SERVER_URL, token: process.env.CRAFT_SERVER_TOKEN ?? '' }
+  const remoteTarget = process.env.TOKENBIRD_SERVER_URL
+    ? startupRemoteTarget ?? { url: process.env.TOKENBIRD_SERVER_URL, token: process.env.TOKENBIRD_SERVER_TOKEN ?? '' }
     : activeWorkspace?.remoteServer ? await resolveRemoteWorkspace(activeWorkspace.remoteServer) : undefined
 
   if (!remoteTarget) {
     // Local mode — the embedded server owns the data and runs in THIS process.
-    const { importAllData } = await import('@craft-agent/shared/migration')
+    const { importAllData } = await import('@tokenbird/shared/migration')
     try {
       const result = await importAllData({ sourcePath: filePath })
       mainLog.info(`[data-import] complete: ${result.importedWorkspaces.length} workspace(s), ${result.fileCount} file(s)`)
@@ -628,8 +628,8 @@ ipcMain.handle('data:importFromLocalFile', async (_event, filePath: string) => {
 })
 
 // Set app name early (before app.whenReady) to ensure correct macOS menu bar title
-// Supports multi-instance dev: CRAFT_APP_NAME env var (e.g., "TokenBird [1]")
-app.setName(process.env.CRAFT_APP_NAME || getLocalizedProductName(persistedUiLanguage ?? systemUiLanguage))
+// Supports multi-instance dev: TOKENBIRD_APP_NAME env var (e.g., "TokenBird [1]")
+app.setName(process.env.TOKENBIRD_APP_NAME || getLocalizedProductName(persistedUiLanguage ?? systemUiLanguage))
 
 // Register as default protocol client for tokenbird:// URLs
 // This must be done before app.whenReady() on some platforms
@@ -648,7 +648,7 @@ import { applyConfiguredProxySettings } from './network-proxy'
 void applyConfiguredProxySettings()
 
 // Accept self-signed / untrusted certificates when connecting to a user-configured remote server.
-// Only bypasses cert validation for the exact CRAFT_SERVER_URL origin — all other connections
+// Only bypasses cert validation for the exact TOKENBIRD_SERVER_URL origin — all other connections
 // use standard certificate verification. Without this, wss:// to self-signed servers fails with
 // ERR_CERT_AUTHORITY_INVALID because Chromium's WebSocket rejects untrusted certs.
 //
@@ -661,10 +661,10 @@ function normalizeOriginForCert(urlStr: string): string {
   return u.origin
 }
 
-if (process.env.CRAFT_SERVER_URL) {
+if (process.env.TOKENBIRD_SERVER_URL) {
   let serverOrigin: string | undefined
   try {
-    serverOrigin = normalizeOriginForCert(process.env.CRAFT_SERVER_URL)
+    serverOrigin = normalizeOriginForCert(process.env.TOKENBIRD_SERVER_URL)
   } catch {
     // Invalid URL — will fail later during connection, no need to handle here
   }
@@ -727,7 +727,7 @@ if (!gotTheLock) {
 let systemTray: SystemTray | null = null
 
 function showAppWindow(): void {
-  if (isQuitting || process.env.CRAFT_HEADLESS || !windowManager) return
+  if (isQuitting || process.env.TOKENBIRD_HEADLESS || !windowManager) return
   if (windowManager.showMainWindow()) return
   if (!systemTray) return // Bootstrap has not created the UI yet.
   const existing = windowManager.getLastActiveWindow()
@@ -739,7 +739,7 @@ function showAppWindow(): void {
 }
 
 function initializeSystemTray(): void {
-  if (process.env.CRAFT_HEADLESS || !windowManager || systemTray) return
+  if (process.env.TOKENBIRD_HEADLESS || !windowManager || systemTray) return
   systemTray = new SystemTray(showAppWindow)
   windowManager.setCloseToTrayEnabled(systemTray.isAvailable)
 }
@@ -754,7 +754,7 @@ async function createInitialWindows(restoreSavedWindows = true): Promise<void> {
   // Thin clients do not own the local workspace registry, and switching
   // server locations must never carry a workspace selection across the
   // boundary. Open without an id so the renderer shows WorkspacePicker.
-  if (pickerMode || process.env.CRAFT_SERVER_URL || selectWorkspaceFirst) {
+  if (pickerMode || process.env.TOKENBIRD_SERVER_URL || selectWorkspaceFirst) {
     windowManager.createWindow({ workspaceId: '' })
     mainLog.info('Created initial window without a workspace; waiting for explicit workspace selection')
     return
@@ -823,28 +823,28 @@ app.whenReady().then(async () => {
     migrate: migrateRemoteCredentials,
   } })
   configureRemoteCredentialProtection(() => credentialVault.backend.getProtectionFormat() === 'native')
-  if (process.env.CRAFT_SERVER_PROFILE_ID) {
+  if (process.env.TOKENBIRD_SERVER_PROFILE_ID) {
     try {
-      const startupProfile = await resolveRemoteProfile(process.env.CRAFT_SERVER_PROFILE_ID)
+      const startupProfile = await resolveRemoteProfile(process.env.TOKENBIRD_SERVER_PROFILE_ID)
       if (!startupProfile) throw new Error('Unavailable saved startup connection')
-      process.env.CRAFT_SERVER_URL = startupProfile.url
+      process.env.TOKENBIRD_SERVER_URL = startupProfile.url
       startupRemoteTarget = startupProfile
-      delete process.env.CRAFT_SERVER_TOKEN
+      delete process.env.TOKENBIRD_SERVER_TOKEN
     } catch {
       // Keep the saved profile and vault untouched, but make recovery reachable.
       // No failed native vault is downgraded and no old token is sent.
       pickerMode = true
       startupRemoteTarget = undefined
-      delete process.env.CRAFT_SERVER_URL
-      delete process.env.CRAFT_SERVER_TOKEN
-      delete process.env.CRAFT_SERVER_PROFILE_ID
-      delete process.env.CRAFT_SERVER_PROFILE_NAME
+      delete process.env.TOKENBIRD_SERVER_URL
+      delete process.env.TOKENBIRD_SERVER_TOKEN
+      delete process.env.TOKENBIRD_SERVER_PROFILE_ID
+      delete process.env.TOKENBIRD_SERVER_PROFILE_NAME
       mainLog.warn('Saved startup credentials are unavailable; opening the server picker')
       dialog.showErrorBox('Saved server unavailable', 'TokenBird could not unlock the saved server credential. Unlock your operating-system credential store and reopen the app, or choose another server from the picker. Your saved configuration was preserved.')
     }
   }
   // Export packaged state as env var so logger.ts (and headless Bun) don't need 'electron'
-  process.env.CRAFT_IS_PACKAGED = app.isPackaged ? 'true' : 'false'
+  process.env.TOKENBIRD_IS_PACKAGED = app.isPackaged ? 'true' : 'false'
 
   // Register bundled assets root so all seeding functions can find their files
   // (docs, permissions, themes, tool-icons resolve via getBundledAssetsDir)
@@ -903,8 +903,8 @@ app.whenReady().then(async () => {
     }
 
     // Multi-instance dev: show instance number badge on dock icon
-    // CRAFT_INSTANCE_NUMBER is set by detect-instance.sh for numbered folders
-    const instanceNum = process.env.CRAFT_INSTANCE_NUMBER
+    // TOKENBIRD_INSTANCE_NUMBER is set by detect-instance.sh for numbered folders
+    const instanceNum = process.env.TOKENBIRD_INSTANCE_NUMBER
     if (instanceNum) {
       const num = parseInt(instanceNum, 10)
       if (!isNaN(num) && num > 0) {
@@ -925,7 +925,7 @@ app.whenReady().then(async () => {
       ...(process.env.VITE_DEV_SERVER_URL ? [process.env.VITE_DEV_SERVER_URL] : []),
     ], { allowUnboundWorkspace: true })
     nativeAppAuthority = assertNativeAppWindow
-    if (!process.env.CRAFT_HEADLESS) birdCompanionManager = new BirdCompanionManager(assertNativeAppWindow)
+    if (!process.env.TOKENBIRD_HEADLESS) birdCompanionManager = new BirdCompanionManager(assertNativeAppWindow)
     registerNativeCredentialIpcHandlers(ipcMain, {
       vault: credentialVault,
       assertSender: assertNativeWindow,
@@ -956,16 +956,16 @@ app.whenReady().then(async () => {
       return
     }
 
-    // When CRAFT_SERVER_URL is set, this Electron instance is a thin client —
+    // When TOKENBIRD_SERVER_URL is set, this Electron instance is a thin client —
     // it only creates windows whose preload connects to the remote server.
     // Skip server-side initialization (SessionManager, model refresh, platform injection).
-    const isClientOnly = !!process.env.CRAFT_SERVER_URL
-    const isHeadless = !!process.env.CRAFT_HEADLESS
+    const isClientOnly = !!process.env.TOKENBIRD_SERVER_URL
+    const isHeadless = !!process.env.TOKENBIRD_HEADLESS
 
     nativeRemoteTransport = registerNativeRemoteTransport(ipcMain, {
       assertSender: assertNativeAppWindow,
       resolveTarget: async authority => {
-        if (process.env.CRAFT_SERVER_URL && startupRemoteTarget) {
+        if (process.env.TOKENBIRD_SERVER_URL && startupRemoteTarget) {
           const current = await resolveRemoteProfile(startupRemoteTarget.profileId)
           // A stored edit invalidates this startup generation. Reopening the
           // saved server is explicit; never silently retarget an existing tab.
@@ -1023,7 +1023,7 @@ app.whenReady().then(async () => {
     })
 
     if (isClientOnly) {
-      mainLog.info(`Client-only mode: CRAFT_SERVER_URL=${process.env.CRAFT_SERVER_URL} (server initialization skipped)`)
+      mainLog.info(`Client-only mode: TOKENBIRD_SERVER_URL=${process.env.TOKENBIRD_SERVER_URL} (server initialization skipped)`)
     }
 
     // Initialize notification service (always — triggered by server push events)
@@ -1122,9 +1122,9 @@ app.whenReady().then(async () => {
     })
 
     // Only user-selected files are sent to the requesting remote session.
-    ipcMain.handle('__client:request-files', async (event, input: import('@craft-agent/core/types').ClientFileRequest) => {
+    ipcMain.handle('__client:request-files', async (event, input: import('@tokenbird/core/types').ClientFileRequest) => {
       const assertCurrent = pinNativeApp(event)
-      const { validateClientFileRequest } = await import('@craft-agent/core/types')
+      const { validateClientFileRequest } = await import('@tokenbird/core/types')
       const { readSelectedClientFiles } = await import('./client-files')
       const request = validateClientFileRequest(input)
       const win = BrowserWindow.fromWebContents(event.sender)
@@ -1144,7 +1144,7 @@ app.whenReady().then(async () => {
 
     // `localbash` executes on this client machine.
     ipcMain.handle('__shell:run', async (_event, req: { command: string; cwd?: string; timeoutMs?: number }) => {
-      const { executeShell } = await import('@craft-agent/session-tools-core')
+      const { executeShell } = await import('@tokenbird/session-tools-core')
       return await executeShell({
         command: String(req.command ?? ''),
         cwd: typeof req.cwd === 'string' ? req.cwd : undefined,
@@ -1212,7 +1212,7 @@ app.whenReady().then(async () => {
     if (!isClientOnly) {
       // Restore persisted Git Bash path on Windows (must happen before any SDK subprocess spawn)
       if (process.platform === 'win32') {
-        const { getGitBashPath, clearGitBashPath } = await import('@craft-agent/shared/config')
+        const { getGitBashPath, clearGitBashPath } = await import('@tokenbird/shared/config')
         const gitBashPath = getGitBashPath()
         if (gitBashPath) {
           const validation = await validateGitBashPath(gitBashPath)
@@ -1242,9 +1242,9 @@ app.whenReady().then(async () => {
         const vcCheck = checkVCRedistInstalled()
         if (!vcCheck.installed) {
           mainLog.warn('[vcredist]', vcCheck.message)
-          process.env.CRAFT_VCREDIST_MISSING = '1'
+          process.env.TOKENBIRD_VCREDIST_MISSING = '1'
           if (vcCheck.downloadUrl) {
-            process.env.CRAFT_VCREDIST_URL = vcCheck.downloadUrl
+            process.env.TOKENBIRD_VCREDIST_URL = vcCheck.downloadUrl
           }
         } else if (isDebugMode) {
           mainLog.info('[vcredist]', vcCheck.message)
@@ -1259,7 +1259,7 @@ app.whenReady().then(async () => {
       const resolveClientId = (wcId: number) => clientMap.get(wcId)
 
       // Read embedded server config (Server settings page)
-      const { getServerConfig, setServerConfig } = await import('@craft-agent/shared/config')
+      const { getServerConfig, setServerConfig } = await import('@tokenbird/shared/config')
       const embeddedServerConfig = getServerConfig()
       const serverModeEnabled = embeddedServerConfig.enabled && !isClientOnly
 
@@ -1270,14 +1270,14 @@ app.whenReady().then(async () => {
       // token setting so enabling remote access works without another setup
       // step.
       const serverToken = embeddedServerConfig.token ?? randomUUID()
-      const rpcHost = process.env.CRAFT_RPC_HOST
+      const rpcHost = process.env.TOKENBIRD_RPC_HOST
         ?? (serverModeEnabled ? '0.0.0.0' : '127.0.0.1')
-      const rpcPort = process.env.CRAFT_RPC_PORT
-        ? parseInt(process.env.CRAFT_RPC_PORT, 10)
+      const rpcPort = process.env.TOKENBIRD_RPC_PORT
+        ? parseInt(process.env.TOKENBIRD_RPC_PORT, 10)
         : (serverModeEnabled ? embeddedServerConfig.port : 0)
 
       // Load TLS certificates if configured
-      let tls: import('@craft-agent/server-core/transport').WsRpcTlsOptions | undefined
+      let tls: import('@tokenbird/server-core/transport').WsRpcTlsOptions | undefined
       if (serverModeEnabled && embeddedServerConfig.tlsCertPath && embeddedServerConfig.tlsKeyPath) {
         try {
           tls = {
@@ -1390,10 +1390,10 @@ app.whenReady().then(async () => {
               },
               status: () => credentialVault.status(),
               listMetadata: () => credentialVault.listMetadata(),
-              apply: (changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialChange[]) => credentialVault.apply(changes),
-              onApplied: async (changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialChange[]) => {
+              apply: (changes: import('@tokenbird/shared/credentials/native-types').NativeCredentialChange[]) => credentialVault.apply(changes),
+              onApplied: async (changes: import('@tokenbird/shared/credentials/native-types').NativeCredentialChange[]) => {
                 const applied = changes.map(change => ({ op: change.op, id: change.id,
-                  ...(change.op === 'upsert' ? { fields: Object.keys(change.credential) as import('@craft-agent/shared/credentials/native-types').NativeCredentialAppliedChange['fields'] } : {}) }))
+                  ...(change.op === 'upsert' ? { fields: Object.keys(change.credential) as import('@tokenbird/shared/credentials/native-types').NativeCredentialAppliedChange['fields'] } : {}) }))
                 const notified = await sm.notifyStoredCredentialChanges(applied)
                 const reconciled = await reconcileSourceCredentialChanges(applied, id => workspaceForSourceCredentialId(id, getWorkspaces()) ?? null)
                 const reloads = await Promise.allSettled(reconciled.workspaceIds.map(id => sm.reloadMcpServers(id)))
@@ -1420,7 +1420,7 @@ app.whenReady().then(async () => {
         initializeSessionManager: (sm) => sm.initialize(),
         refreshStartupModels: refreshTokenNestModelsAtStartup,
         initModelRefreshService: () => initModelRefreshService(async (slug: string) => {
-          const { getCredentialManager } = await import('@craft-agent/shared/credentials')
+          const { getCredentialManager } = await import('@tokenbird/shared/credentials')
           const manager = getCredentialManager()
           const [apiKey, oauth] = await Promise.all([
             manager.getLlmApiKey(slug).catch(() => null),
@@ -1500,7 +1500,7 @@ app.whenReady().then(async () => {
 
       // Remove workspace from config (cleanup stale entries)
       ipcMain.handle('workspace:remove', async (_event, workspaceId: string) => {
-        const { removeWorkspace: remove } = await import('@craft-agent/shared/config')
+        const { removeWorkspace: remove } = await import('@tokenbird/shared/config')
         return remove(workspaceId)
       })
 
@@ -1524,7 +1524,7 @@ app.whenReady().then(async () => {
       ipcMain.handle('session:transferToWorkspace', async (_event, sessionId: string, targetWorkspaceId: string, sessionIndex?: number, sessionCount?: number) => {
         const idx = sessionIndex ?? 0
         const count = sessionCount ?? 1
-        const { getWorkspaceByNameOrId } = await import('@craft-agent/shared/config')
+        const { getWorkspaceByNameOrId } = await import('@tokenbird/shared/config')
         const { connectToRemote } = await import('./handlers/workspace')
         const { CHUNKED_TRANSFER_THRESHOLD, getChunkCount, invokeChunked, prepareChunkedPayload } = await import('./chunked-rpc')
 
@@ -1661,7 +1661,7 @@ app.whenReady().then(async () => {
         const code = lang as LanguageCode
         await i18n.changeLanguage(code)
         setPersistedUiLanguage(code)
-        if (!process.env.CRAFT_APP_NAME) {
+        if (!process.env.TOKENBIRD_APP_NAME) {
           app.setName(getLocalizedProductName(code))
           windowManager?.refreshLocalizedAppName()
         }
@@ -1698,13 +1698,13 @@ app.whenReady().then(async () => {
       }
 
       instance.wsServer.handle(RPC_CHANNELS.settings.GET_SERVER_CONFIG, async () => {
-        const { getServerConfig: getConfig } = await import('@craft-agent/shared/config')
+        const { getServerConfig: getConfig } = await import('@tokenbird/shared/config')
         return getConfig()
       })
 
       instance.wsServer.handle(RPC_CHANNELS.settings.SET_SERVER_CONFIG, async (_ctx: unknown, config: unknown) => {
-        const { setServerConfig: setConfig } = await import('@craft-agent/shared/config')
-        const cfg = config as import('@craft-agent/shared/config/server-config').ServerConfig
+        const { setServerConfig: setConfig } = await import('@tokenbird/shared/config')
+        const cfg = config as import('@tokenbird/shared/config/server-config').ServerConfig
         // Validate port range
         if (cfg.port < 1024 || cfg.port > 65535) {
           throw new Error(`Port must be between 1024 and 65535, got ${cfg.port}`)
@@ -1720,7 +1720,7 @@ app.whenReady().then(async () => {
       })
 
       instance.wsServer.handle(RPC_CHANNELS.settings.GET_SERVER_STATUS, async () => {
-        const { getServerConfig: getConfig } = await import('@craft-agent/shared/config')
+        const { getServerConfig: getConfig } = await import('@tokenbird/shared/config')
         const saved = getConfig()
         const protocol = runningServerState.tls ? 'wss' : 'ws'
 
@@ -1785,8 +1785,8 @@ app.whenReady().then(async () => {
 
       // Headless: print connection details
       if (isHeadless) {
-        console.log(`CRAFT_SERVER_URL=${instance.protocol}://${instance.host}:${instance.port}`)
-        console.log(`CRAFT_SERVER_TOKEN=${instance.token}`)
+        console.log(`TOKENBIRD_SERVER_URL=${instance.protocol}://${instance.host}:${instance.port}`)
+        console.log(`TOKENBIRD_SERVER_TOKEN=${instance.token}`)
       }
     }
 
@@ -1796,7 +1796,7 @@ app.whenReady().then(async () => {
       registerNativeWorkspaceSwitch(ipcMain, {
         assertSender: assertNativeAppWindow,
         getWorkspace: async id => {
-          if (!process.env.CRAFT_SERVER_URL) {
+          if (!process.env.TOKENBIRD_SERVER_URL) {
             const workspace = getWorkspaceByNameOrId(id)
             return workspace ? redactWorkspaceRemoteCredentials(workspace) : null
           }
@@ -1814,7 +1814,7 @@ app.whenReady().then(async () => {
         updateWindowWorkspace: (id, workspaceId) => windowManager?.updateWindowWorkspace(id, workspaceId) ?? false,
         getAllWindowsForWorkspace: id => windowManager?.getAllWindowsForWorkspace(id) ?? [],
         clearActiveViewingSession: id => {
-          if (!process.env.CRAFT_SERVER_URL) sessionManager?.clearActiveViewingSession(id)
+          if (!process.env.TOKENBIRD_SERVER_URL) sessionManager?.clearActiveViewingSession(id)
         },
         setupConfigWatcher: (rootPath, workspaceId) => sessionManager?.setupConfigWatcher(rootPath, workspaceId),
       })
@@ -1835,7 +1835,7 @@ app.whenReady().then(async () => {
     // Skip in thin-client mode — credentials are managed by the remote server.
     if (!isClientOnly) {
       try {
-        const { getCredentialManager } = await import('@craft-agent/shared/credentials')
+        const { getCredentialManager } = await import('@tokenbird/shared/credentials')
         const credentialManager = getCredentialManager()
         const health = await credentialManager.checkHealth()
         if (!health.healthy) {
@@ -1860,7 +1860,7 @@ app.whenReady().then(async () => {
     // Runs after init so config and auth state are available.
     // Derives values from the default LLM connection instead of legacy config fields.
     try {
-      const { getLlmConnection, getDefaultLlmConnection } = await import('@craft-agent/shared/config')
+      const { getLlmConnection, getDefaultLlmConnection } = await import('@tokenbird/shared/config')
       const workspaces = getWorkspaces()
       const defaultConnSlug = getDefaultLlmConnection()
       const defaultConn = defaultConnSlug ? getLlmConnection(defaultConnSlug) : null
@@ -1938,7 +1938,7 @@ app.whenReady().then(async () => {
     // server lock conflict). Surface the failure explicitly instead:
     // packaged builds quit after the dialog (nothing else can render);
     // dev builds stay alive so the watcher can hot-restart once fixed.
-    if (!process.env.CRAFT_HEADLESS && BrowserWindow.getAllWindows().length === 0) {
+    if (!process.env.TOKENBIRD_HEADLESS && BrowserWindow.getAllWindows().length === 0) {
       const detail = error instanceof Error ? error.message : String(error)
       try {
         dialog.showMessageBoxSync({
@@ -1956,7 +1956,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.env.CRAFT_HEADLESS) return  // headless server stays alive
+  if (process.env.TOKENBIRD_HEADLESS) return  // headless server stays alive
   if (!isQuitting && systemTray?.isAvailable) return
   // On macOS, apps typically stay active until explicitly quit
   if (process.platform !== 'darwin') {

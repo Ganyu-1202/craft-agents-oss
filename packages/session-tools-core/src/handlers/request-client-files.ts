@@ -1,4 +1,4 @@
-import type { ClientFileRequest } from '@craft-agent/core/types';
+import type { ClientFileRequest } from '@tokenbird/core/types';
 import type { SessionToolContext } from '../context.ts';
 import { errorResponse, successResponse } from '../response.ts';
 

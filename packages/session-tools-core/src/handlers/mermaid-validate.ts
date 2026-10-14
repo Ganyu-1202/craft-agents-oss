@@ -30,7 +30,7 @@ export async function handleMermaidValidate(
   const { code } = args;
 
   try {
-    if (process.env.CRAFT_ANDROID === 'true') {
+    if (process.env.TOKENBIRD_ANDROID === 'true') {
       // ELK is several megabytes of generated JavaScript. Parsing it as part of
       // Android's local-server bootstrap can stall Bun on some vendor builds.
       // The WebView still renders Mermaid normally; only the server-side tool

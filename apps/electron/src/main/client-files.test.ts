@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readSelectedClientFiles } from './client-files';
-import { CLIENT_FILE_MAX_BYTES } from '@craft-agent/core/types';
+import { CLIENT_FILE_MAX_BYTES } from '@tokenbird/core/types';
 const roots: string[] = [];
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
 test('selected binary content is returned without local paths; stale workspace prevents disclosure', async () => {

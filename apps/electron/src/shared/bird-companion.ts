@@ -1,4 +1,4 @@
-import type { SessionEvent } from '@craft-agent/shared/protocol'
+import type { SessionEvent } from '@tokenbird/shared/protocol'
 
 export interface BirdCompanionPreferences {
   alwaysVisible: boolean

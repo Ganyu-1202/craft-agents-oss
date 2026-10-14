@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
-import { WsRpcServer } from '@craft-agent/server-core/transport'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { WsRpcServer } from '@tokenbird/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { localCloudApi } from './local-cloud'
 
 test('remote viewing discovers devices and renews tickets using the phone local RPC identity', async () => {
@@ -14,13 +14,13 @@ test('remote viewing discovers devices and renews tickets using the phone local 
   try {
     Object.assign(globalThis, { window: {
       electronAPI: { listCloudDevices: () => { throw new Error('Must not use the viewed PC account') } },
-      CraftAgentAndroid: { getLocalServerConnection: () => JSON.stringify({ url: `ws://127.0.0.1:${server.port}`, token: 'phone-local-secret' }) },
+      TokenBirdAgentAndroid: { getLocalServerConnection: () => JSON.stringify({ url: `ws://127.0.0.1:${server.port}`, token: 'phone-local-secret' }) },
     } })
     local = localCloudApi('remote')
     expect((await local.api.listCloudDevices())[0]?.name).toBe('My PC')
     expect((await local.api.connectCloudDevice('pc-a')).token).toBe('ticket-1')
     expect((await local.api.connectCloudDevice('pc-a')).token).toBe('ticket-2')
-    Object.assign(window.CraftAgentAndroid!, { getLocalServerConnection: () => '{}' })
+    Object.assign(window.TokenBirdAgentAndroid!, { getLocalServerConnection: () => '{}' })
     expect(() => localCloudApi('remote')).toThrow('请先进入本机服务器')
   } finally {
     local?.close()

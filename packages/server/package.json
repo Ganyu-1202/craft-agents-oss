@@ -1,11 +1,11 @@
 {
-  "name": "@craft-agent/server",
-  "version": "26.10.13",
+  "name": "@tokenbird/server",
+  "version": "26.10.14",
   "description": "Standalone headless TokenBird server (Bun runtime)",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
-    "craft-server": "src/index.ts"
+    "tokenbird-server": "src/index.ts"
   },
   "files": [
     "src/"
@@ -14,21 +14,20 @@
     "bun": ">=1.0.0"
   },
   "author": {
-    "name": "Craft Docs Ltd.",
-    "email": "support@craft.do"
+    "name": "TokenNest"
   },
   "license": "Apache-2.0",
-  "homepage": "https://thecraftagents.com",
+  "homepage": "https://openai.goldgom.top",
   "scripts": {
     "start": "bun run src/index.ts",
     "generate-token": "bun run src/index.ts --generate-token",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@craft-agent/core": "workspace:*",
-    "@craft-agent/messaging-gateway": "workspace:*",
-    "@craft-agent/server-core": "workspace:*",
-    "@craft-agent/shared": "workspace:*"
+    "@tokenbird/core": "workspace:*",
+    "@tokenbird/messaging-gateway": "workspace:*",
+    "@tokenbird/server-core": "workspace:*",
+    "@tokenbird/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

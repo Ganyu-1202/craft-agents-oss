@@ -20,31 +20,31 @@ import {
 } from '../backend/internal/runtime-resolver.ts';
 import type { BackendHostRuntimeContext } from '../backend/types.ts';
 
-const SAVED_ANDROID = process.env.CRAFT_ANDROID;
+const SAVED_ANDROID = process.env.TOKENBIRD_ANDROID;
 
 afterEach(() => {
-  if (SAVED_ANDROID === undefined) delete process.env.CRAFT_ANDROID;
-  else process.env.CRAFT_ANDROID = SAVED_ANDROID;
+  if (SAVED_ANDROID === undefined) delete process.env.TOKENBIRD_ANDROID;
+  else process.env.TOKENBIRD_ANDROID = SAVED_ANDROID;
 });
 
 describe('Android runtime guard', () => {
-  it('reports the Android runtime when CRAFT_ANDROID=true', () => {
-    process.env.CRAFT_ANDROID = 'true';
+  it('reports the Android runtime when TOKENBIRD_ANDROID=true', () => {
+    process.env.TOKENBIRD_ANDROID = 'true';
     expect(isAndroidRuntime()).toBe(true);
   });
 
-  it('reports a non-Android runtime when CRAFT_ANDROID is unset', () => {
-    delete process.env.CRAFT_ANDROID;
+  it('reports a non-Android runtime when TOKENBIRD_ANDROID is unset', () => {
+    delete process.env.TOKENBIRD_ANDROID;
     expect(isAndroidRuntime()).toBe(false);
   });
 
   it('fails fast in getDefaultOptions instead of spawning the glibc binary', () => {
-    process.env.CRAFT_ANDROID = 'true';
+    process.env.TOKENBIRD_ANDROID = 'true';
     expect(() => getDefaultOptions()).toThrow(ANDROID_CLAUDE_UNSUPPORTED_MESSAGE);
   });
 
   it('fails fast in strict runtime bootstrap', () => {
-    process.env.CRAFT_ANDROID = 'true';
+    process.env.TOKENBIRD_ANDROID = 'true';
     const hostRuntime: BackendHostRuntimeContext = {
       appRootPath: '/android/app',
       resourcesPath: '/android/app/resources',
@@ -57,7 +57,7 @@ describe('Android runtime guard', () => {
   });
 
   it('skips silently in non-strict runtime bootstrap on Android', () => {
-    process.env.CRAFT_ANDROID = 'true';
+    process.env.TOKENBIRD_ANDROID = 'true';
     const hostRuntime: BackendHostRuntimeContext = {
       appRootPath: '/android/app',
       resourcesPath: '/android/app/resources',

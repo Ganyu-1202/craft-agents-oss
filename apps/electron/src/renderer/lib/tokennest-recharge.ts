@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
-import { i18n } from '@craft-agent/shared/i18n'
-import { getProviderRechargeTarget, isInsufficientBalanceError, TOKENNEST_RECHARGE_URL } from '@craft-agent/shared/utils/billing'
+import { i18n } from '@tokenbird/shared/i18n'
+import { getProviderRechargeTarget, isInsufficientBalanceError, TOKENNEST_RECHARGE_URL } from '@tokenbird/shared/utils/billing'
 import { resolveEffectiveConnectionSlug, type LlmConnectionWithStatus } from '@config/llm-connections'
 
 export const TOKENNEST_BALANCE_REFRESH_EVENT = 'tokenbird:tokennest-balance-refresh'

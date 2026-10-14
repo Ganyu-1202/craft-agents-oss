@@ -355,7 +355,7 @@ describe('ChatGPTBackendSearchProvider', () => {
     expect(callCount).toBe(1);
   });
 
-  // Regression: craft-agents-oss#1023 — the search model must come from the active
+  // Regression: tokenbird#1023 — the search model must come from the active
   // connection, not a hardcoded (potentially retired) constant.
   it('uses the plumbed active model instead of the default', async () => {
     let calledBody: any = null;
@@ -387,7 +387,7 @@ describe('ChatGPTBackendSearchProvider', () => {
     expect(calledBody.model).toBe('gpt-5.6-terra');
   });
 
-  // Regression: craft-agents-oss#1023 — an "unsupported model" 400 must fail over to the next
+  // Regression: tokenbird#1023 — an "unsupported model" 400 must fail over to the next
   // candidate model, not burn the tool-type retry on the same dead model and cascade to Bing.
   it('retries with the next candidate model when the account rejects the model', async () => {
     const attempts: Array<{ model: unknown; tool: unknown }> = [];

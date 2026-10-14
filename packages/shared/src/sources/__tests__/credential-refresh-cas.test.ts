@@ -7,7 +7,7 @@ import { SecureStorageBackend } from '../../credentials/backends/secure-storage.
 import { SourceCredentialManager } from '../credential-manager.ts';
 import { TokenRefreshManager } from '../token-refresh-manager.ts';
 import { isSourceUsable } from '../storage.ts';
-import { CraftOAuth } from '../../auth/oauth.ts';
+import { TokenBirdOAuth } from '../../auth/oauth.ts';
 import type { LoadedSource } from '../types.ts';
 import type { CredentialId } from '../../credentials/types.ts';
 const originalFetch = globalThis.fetch;
@@ -41,7 +41,7 @@ for (const provider of ['renew', 'google', 'slack', 'microsoft', 'generic', 'mcp
       const f = fixture(provider); await f.backend.set(f.id, f.credential);
       const entered = gate(), release = gate(); let requests = 0;
       const remote = async () => { requests++; entered.resolve(); await release.promise; if (mutation === 'failed-old-grant') throw new Error('invalid_grant dummy-provider-secret'); return { accessToken: 'dummy-refreshed', refreshToken: 'dummy-refreshed-refresh', tokenType: 'Bearer', expiresAt: Date.now() + 3600000 }; };
-      if (provider === 'mcp') { const mock = spyOn(CraftOAuth.prototype, 'refreshAccessToken').mockImplementation(remote); cleanup.push(() => mock.mockRestore()); }
+      if (provider === 'mcp') { const mock = spyOn(TokenBirdOAuth.prototype, 'refreshAccessToken').mockImplementation(remote); cleanup.push(() => mock.mockRestore()); }
       else globalThis.fetch = (async () => { const value = await remote(); return Response.json({ ok: true, access_token: value.accessToken, refresh_token: value.refreshToken, expires_in: 3600, token_type: 'Bearer' }); }) as unknown as typeof fetch;
       const pending = f.sources.refresh(f.source).then(value => value, error => error);
       await entered.promise;
@@ -57,7 +57,7 @@ for (const provider of ['renew', 'google', 'slack', 'microsoft', 'generic', 'mcp
 
 test('MCP legacy fallback refresh writes the actual bearer slot and never creates an OAuth alias', async () => {
   const f = fixture('mcp', 'dummy-workspace', true); await f.backend.set(f.id, f.credential);
-  const remote = spyOn(CraftOAuth.prototype, 'refreshAccessToken').mockResolvedValue({ accessToken: 'dummy-updated', refreshToken: 'dummy-rotated', tokenType: 'Bearer', expiresAt: Date.now() + 3600000 }); cleanup.push(() => remote.mockRestore());
+  const remote = spyOn(TokenBirdOAuth.prototype, 'refreshAccessToken').mockResolvedValue({ accessToken: 'dummy-updated', refreshToken: 'dummy-rotated', tokenType: 'Bearer', expiresAt: Date.now() + 3600000 }); cleanup.push(() => remote.mockRestore());
   expect(await f.sources.refresh(f.source)).toBe('dummy-updated');
   expect((await f.backend.get(f.id))?.value).toBe('dummy-updated');
   expect(await f.backend.get({ ...f.id, type: 'source_oauth' })).toBeNull();

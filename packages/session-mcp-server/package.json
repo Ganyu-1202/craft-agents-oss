@@ -1,6 +1,6 @@
 {
-  "name": "@craft-agent/session-mcp-server",
-  "version": "26.10.13",
+  "name": "@tokenbird/session-mcp-server",
+  "version": "26.10.14",
   "license": "Apache-2.0",
   "description": "MCP server that provides session-scoped tools (SubmitPlan, config_validate, etc.) to Codex via stdio transport",
   "type": "commonjs",
@@ -13,8 +13,8 @@
     "dev": "bun run src/index.ts"
   },
   "dependencies": {
-    "@craft-agent/session-tools-core": "workspace:*",
-    "@craft-agent/shared": "workspace:*",
+    "@tokenbird/session-tools-core": "workspace:*",
+    "@tokenbird/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.0.0"
   },

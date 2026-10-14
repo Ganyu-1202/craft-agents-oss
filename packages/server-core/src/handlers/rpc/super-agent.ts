@@ -1,5 +1,5 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { SuperAgentCommand, SuperAgentConfig } from '@craft-agent/shared/super-agent'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import type { SuperAgentCommand, SuperAgentConfig } from '@tokenbird/shared/super-agent'
 import type { RequestContext, RpcServer } from '../../transport'
 import type { HandlerDeps } from '../handler-deps'
 import { getSuperAgentService, restoreSuperAgents } from '../../super-agent/registry'

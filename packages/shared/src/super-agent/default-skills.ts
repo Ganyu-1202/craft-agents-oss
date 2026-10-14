@@ -1,4 +1,4 @@
-import { SUPER_AGENT_COLLABORATION_SKILL } from '@craft-agent/session-tools-core/super-agent-tools'
+import { SUPER_AGENT_COLLABORATION_SKILL } from '@tokenbird/session-tools-core/super-agent-tools'
 import type { SuperAgentNode } from './types'
 
 // Supporting roles cover cross-scenario workflows. The coding preset uses

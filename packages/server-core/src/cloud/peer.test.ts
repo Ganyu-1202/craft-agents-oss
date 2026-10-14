@@ -4,7 +4,7 @@ import { CLOUD_MAX_MESSAGE_BYTES, validateCloudIceServers } from '../../../share
 import { CloudHostStream } from './host-stream'
 import { WsRpcServer } from '../transport/server'
 import type { CloudPeerEvents } from './peer'
-import { PROTOCOL_VERSION } from '@craft-agent/shared/protocol'
+import { PROTOCOL_VERSION } from '@tokenbird/shared/protocol'
 
 test('fragments preserve UTF-8 around boundaries and reject malformed/oversized messages', () => {
   const packets: string[] = [], messages: string[] = []

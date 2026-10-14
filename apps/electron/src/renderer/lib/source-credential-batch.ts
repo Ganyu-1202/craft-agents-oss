@@ -1,4 +1,4 @@
-import type { SourceCredentialUpdate } from '@craft-agent/shared/sources'
+import type { SourceCredentialUpdate } from '@tokenbird/shared/sources'
 
 /** Parse locally, without putting malformed secret text into error messages. */
 export function parseSourceCredentialBatch(text: string): SourceCredentialUpdate[] {

@@ -34,7 +34,7 @@ export function networkErrorChain(error: unknown): Record<string, string>[] {
 
 export function writeNetworkDiagnostic(record: Record<string, unknown>): void {
   try {
-    const dir = process.env.CRAFT_SESSION_DIR || join(
+    const dir = process.env.TOKENBIRD_SESSION_DIR || join(
       process.env.TOKENBIRD_CONFIG_DIR || join(homedir(), '.tokenbird'), 'logs',
     );
     mkdirSync(dir, { recursive: true });

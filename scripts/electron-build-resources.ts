@@ -2,8 +2,9 @@
  * Cross-platform resources copy script
  */
 
-import { existsSync, cpSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
+import { syncResourceDirectory } from './build/resource-sync';
 import { installWindowsAgentFramework } from './build/agent-framework';
 import {
   copyPiAgentServer,
@@ -64,7 +65,7 @@ async function main(): Promise<void> {
   await installWindowsAgentFramework(buildConfig);
 
   if (existsSync(srcDir)) {
-    cpSync(srcDir, destDir, { recursive: true, force: true });
+    syncResourceDirectory(srcDir, destDir);
     console.log("📦 Copied resources to dist");
   } else {
     console.log("⚠️ No resources directory found");

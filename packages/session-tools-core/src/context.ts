@@ -214,7 +214,7 @@ export interface SessionToolContext {
   canvasToolFn?: (args: Record<string, unknown>) => Promise<unknown>;
 
   /** Transfer files through the connected desktop client's configured SFTP profile. */
-  requestClientFilesFn?: (args: import('@craft-agent/core/types').ClientFileRequest) => Promise<import('@craft-agent/core/types').SavedClientFiles>;
+  requestClientFilesFn?: (args: import('@tokenbird/core/types').ClientFileRequest) => Promise<import('@tokenbird/core/types').SavedClientFiles>;
 
   transferSftpFileFn?: (args: SftpTransferArgs) => Promise<SftpTransferResult>;
 
@@ -565,7 +565,7 @@ export interface ResolvedLabelsResult {
   available: string[];
   /**
    * Optional per-input rejection reason, keyed by the original input string.
-   * Populated by `resolveSessionLabels()` from `@craft-agent/shared/labels`.
+   * Populated by `resolveSessionLabels()` from `@tokenbird/shared/labels`.
    * Handlers use this to build clearer errors (e.g. "label X doesn't accept a value").
    */
   reasons?: Record<string, string>;
@@ -624,7 +624,7 @@ export interface CreateTaskResult {
 // ============================================================
 // Pages Types
 // ============================================================
-// Plain JSON shapes mirroring @craft-agent/core page types — duplicated here
+// Plain JSON shapes mirroring @tokenbird/core page types — duplicated here
 // on purpose so this package stays dependency-free (same rule as
 // CreateTaskInput). The backend maps real PageConfig/LoadedPage onto these.
 

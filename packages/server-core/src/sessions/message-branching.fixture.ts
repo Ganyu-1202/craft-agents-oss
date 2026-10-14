@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { SessionManager, createManagedSession } from './SessionManager'
-import { createSession, saveSession, loadSession, listSessions, getSessionPath, deleteSession } from '@craft-agent/shared/sessions'
+import { createSession, saveSession, loadSession, listSessions, getSessionPath, deleteSession } from '@tokenbird/shared/sessions'
 
 const root = process.env.TOKENBIRD_CONFIG_DIR!
 const workspaceRoot = join(root, 'workspace')

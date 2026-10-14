@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * craft-cli — Terminal client for TokenBird server.
+ * tokenbird-cli — Terminal client for TokenBird server.
  *
  * Connects over WebSocket (ws:// or wss://) to a running TokenBird server
  * and provides commands for listing resources, managing sessions, sending
@@ -156,15 +156,15 @@ export function parseArgs(argv: string[]): CliArgs {
   }
 
   // Env var fallbacks
-  if (!url) url = process.env.CRAFT_SERVER_URL ?? ''
-  if (!token) token = process.env.CRAFT_SERVER_TOKEN ?? ''
-  if (!tlsCa) tlsCa = process.env.CRAFT_TLS_CA
+  if (!url) url = process.env.TOKENBIRD_SERVER_URL ?? ''
+  if (!token) token = process.env.TOKENBIRD_SERVER_TOKEN ?? ''
+  if (!tlsCa) tlsCa = process.env.TOKENBIRD_TLS_CA
   if (!provider) provider = process.env.LLM_PROVIDER ?? 'anthropic'
   if (!model) model = process.env.LLM_MODEL ?? ''
   if (!apiKey) apiKey = process.env.LLM_API_KEY ?? ''
   if (!baseUrl) baseUrl = process.env.LLM_BASE_URL ?? ''
   if (!agentRuntime) agentRuntime = process.env.LLM_AGENT_RUNTIME ?? ''
-  if (!codexLogin) codexLogin = process.env.CRAFT_CODEX_USE_LOGIN === '1'
+  if (!codexLogin) codexLogin = process.env.TOKENBIRD_CODEX_USE_LOGIN === '1'
   if (agentRuntime && !['pi', 'codex', 'claude-code'].includes(agentRuntime)) {
     throw new Error(`Invalid runtime "${agentRuntime}". Expected pi, codex, or claude-code.`)
   }
@@ -1098,7 +1098,7 @@ export function getValidateSteps(): ValidateStep[] {
         // Auto-bootstrap a temp workspace for CI environments
         const { mkdtemp } = await import('fs/promises')
         const { tmpdir } = await import('os')
-        const tmpDir = await mkdtemp(`${tmpdir()}/craft-validate-`)
+        const tmpDir = await mkdtemp(`${tmpdir()}/tokenbird-validate-`)
         const ws = (await client.invoke('workspaces:create', tmpDir, 'validate-workspace')) as { id: string }
         ctx.workspaceId = ws.id
         ctx.workspaceRootPath = tmpDir
@@ -1397,17 +1397,17 @@ export function getValidateSteps(): ValidateStep[] {
     },
     // ----- MCP source validation (pre-committed in .github/agents/sources/) -----
     {
-      name: 'mcp:craft-public (auth:none)',
+      name: 'mcp:tokenbird-public (auth:none)',
       fn: async (client, ctx) => {
         if (!ctx.createdSessionId) return 'skipped (no session)'
-        // Enable the pre-committed craft-public MCP source on the session
-        const enableSlugs = [ctx.createdSourceSlug, 'craft-public'].filter(Boolean) as string[]
+        // Enable the pre-committed tokenbird-public MCP source on the session
+        const enableSlugs = [ctx.createdSourceSlug, 'tokenbird-public'].filter(Boolean) as string[]
         await client.invoke('sessions:command', ctx.createdSessionId, {
           type: 'setSources',
           sourceSlugs: enableSlugs,
         })
         return await waitForSendEvents(client, ctx.createdSessionId,
-          `[source:craft-public] List the documents under the "CraftAgents E2E Test" folder inside the "CraftAgents" folder. Just list their names.`,
+          `[source:tokenbird-public] List the documents under the "TokenBird E2E Test" folder inside the "TokenBird" folder. Just list their names.`,
           180_000, false, undefined, ctx.onEvent)
       },
     },
@@ -1420,7 +1420,7 @@ export function getValidateSteps(): ValidateStep[] {
         // Inject credential into store (multi-header JSON format, same as API headerNames)
         await client.invoke('sources:saveCredentials', ctx.workspaceId, 'stitch-mcp', JSON.stringify({ 'X-Goog-Api-Key': apiKey }))
         // Enable stitch-mcp + existing sources on session
-        const enableSlugs = [ctx.createdSourceSlug, 'craft-public', 'stitch-mcp'].filter(Boolean) as string[]
+        const enableSlugs = [ctx.createdSourceSlug, 'tokenbird-public', 'stitch-mcp'].filter(Boolean) as string[]
         await client.invoke('sessions:command', ctx.createdSessionId, {
           type: 'setSources',
           sourceSlugs: enableSlugs,
@@ -1444,7 +1444,7 @@ export function getValidateSteps(): ValidateStep[] {
 mkdir -p "${skillDir}" && cat > "${skillDir}/SKILL.md" << 'SKILLEOF'
 ---
 name: "CLI Validate Skill"
-description: "Validation skill created by craft-cli"
+description: "Validation skill created by tokenbird-cli"
 requiredSources:
   - "${sourceSlug}"
 ---
@@ -1971,13 +1971,13 @@ export async function runValidation(
 // ---------------------------------------------------------------------------
 
 function printHelp(): void {
-  process.stdout.write(`craft-cli — Terminal client for TokenBird server
+  process.stdout.write(`tokenbird-cli — Terminal client for TokenBird server
 
-Usage: craft-cli [options] <command> [args...]
+Usage: tokenbird-cli [options] <command> [args...]
 
 Connection:
-  --url <ws[s]://...>    Server URL (default: $CRAFT_SERVER_URL)
-  --token <secret>       Auth token (default: $CRAFT_SERVER_TOKEN)
+  --url <ws[s]://...>    Server URL (default: $TOKENBIRD_SERVER_URL)
+  --token <secret>       Auth token (default: $TOKENBIRD_SERVER_TOKEN)
   --workspace <id>       Workspace ID (auto-detected if omitted)
   --timeout <ms>         Request timeout (default: 10000)
   --tls-ca <path>        Custom CA cert for self-signed TLS
@@ -1990,7 +1990,7 @@ LLM Configuration (for 'run' command):
   --api-key <key>        API key (or $LLM_API_KEY, or provider-specific e.g. $OPENAI_API_KEY)
   --base-url <url>       Custom API endpoint (or $LLM_BASE_URL)
   --runtime <protocol>   Agent runtime: pi, codex, or claude-code (or $LLM_AGENT_RUNTIME)
-  --codex-login          Reuse local \`codex login\` auth (requires --runtime codex; or $CRAFT_CODEX_USE_LOGIN=1)
+  --codex-login          Reuse local \`codex login\` auth (requires --runtime codex; or $TOKENBIRD_CODEX_USE_LOGIN=1)
 
 Commands:
   run <message>          Spawn server, send message, stream response, exit
@@ -2018,22 +2018,22 @@ Commands:
                          --verbose, -v       Show server stderr output
 
 Examples:
-  craft-cli run "What files are in the current directory?"
-  craft-cli run --source craft-kb "Summarize today's daily note"
-  craft-cli run --workspace-dir .github/agents --source craft-public "Read the doc"
-  craft-cli run --provider openai --model gpt-4o "Summarize this repo"
-  craft-cli run --provider openai --runtime codex --codex-login "Inspect this server"
-  OPENAI_API_KEY=sk-... craft-cli run --provider openai "Hello"
-  GOOGLE_API_KEY=... craft-cli run --provider google --model gemini-2.0-flash "Hello"
-  DEEPSEEK_API_KEY=sk-... craft-cli run --provider deepseek --model deepseek-v4-flash "Hello"
-  echo "Analyze this code" | craft-cli run
-  craft-cli ping
-  craft-cli sessions
-  craft-cli send abc-123 "What files are in the current directory?"
-  echo "Summarize this" | craft-cli send abc-123
-  craft-cli --validate-server
-  craft-cli invoke system:homeDir
-  craft-cli --json workspaces | jq '.[].name'
+  tokenbird-cli run "What files are in the current directory?"
+  tokenbird-cli run --source tokenbird-kb "Summarize today's daily note"
+  tokenbird-cli run --workspace-dir .github/agents --source tokenbird-public "Read the doc"
+  tokenbird-cli run --provider openai --model gpt-4o "Summarize this repo"
+  tokenbird-cli run --provider openai --runtime codex --codex-login "Inspect this server"
+  OPENAI_API_KEY=sk-... tokenbird-cli run --provider openai "Hello"
+  GOOGLE_API_KEY=... tokenbird-cli run --provider google --model gemini-2.0-flash "Hello"
+  DEEPSEEK_API_KEY=sk-... tokenbird-cli run --provider deepseek --model deepseek-v4-flash "Hello"
+  echo "Analyze this code" | tokenbird-cli run
+  tokenbird-cli ping
+  tokenbird-cli sessions
+  tokenbird-cli send abc-123 "What files are in the current directory?"
+  echo "Summarize this" | tokenbird-cli send abc-123
+  tokenbird-cli --validate-server
+  tokenbird-cli invoke system:homeDir
+  tokenbird-cli --json workspaces | jq '.[].name'
 `)
 }
 
@@ -2074,7 +2074,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
 
   // All other commands need a server URL
   if (!args.url) {
-    err('No server URL. Use --url <ws://...> or set $CRAFT_SERVER_URL')
+    err('No server URL. Use --url <ws://...> or set $TOKENBIRD_SERVER_URL')
     process.exit(1)
   }
 

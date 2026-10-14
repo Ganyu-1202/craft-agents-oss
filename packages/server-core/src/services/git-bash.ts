@@ -5,11 +5,11 @@ const BUNDLED_GIT_BASH_RELATIVE_PATH = ['vendor', 'git-bash', 'bin', 'bash.exe']
 
 /**
  * Resolve the Git Bash runtime shipped with the desktop app.
- * CRAFT_RESOURCES_BASE points at resources/app in packages and apps/electron
+ * TOKENBIRD_RESOURCES_BASE points at resources/app in packages and apps/electron
  * during development. Returning undefined keeps headless/non-Electron runtimes
  * independent from the desktop resource layout.
  */
-export function getBundledGitBashPath(resourcesBase = process.env.CRAFT_RESOURCES_BASE): string | undefined {
+export function getBundledGitBashPath(resourcesBase = process.env.TOKENBIRD_RESOURCES_BASE): string | undefined {
   const trimmedBase = resourcesBase?.trim()
   if (!trimmedBase) return undefined
   return join(trimmedBase, ...BUNDLED_GIT_BASH_RELATIVE_PATH)

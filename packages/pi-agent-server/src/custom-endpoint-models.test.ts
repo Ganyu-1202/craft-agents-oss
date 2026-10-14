@@ -93,7 +93,7 @@ describe('buildCustomEndpointModelDef', () => {
     expect(model.contextWindow).toBe(262_144)
   })
 
-  // Regression: craft-agents-oss#1022 — strict OpenAI-compatible gateways 400 on the
+  // Regression: tokenbird#1022 — strict OpenAI-compatible gateways 400 on the
   // `store` param. supportsStore:false makes the pi-ai driver omit it entirely.
   it('disables the store param for openai-completions endpoints', () => {
     const model = buildCustomEndpointModelDef('gpt-model', undefined, undefined, 'openai-completions')

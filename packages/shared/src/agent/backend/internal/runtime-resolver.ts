@@ -19,7 +19,7 @@ import { loadBackendFrameworkConfiguration, setDetectedFrameworkLocation } from 
  * interceptor, and bun in the monorepo / on the system PATH.
  * Intended for local `electron:dist:mac` builds that skip `build-dmg.sh`.
  */
-const IS_DEV_RUNTIME = !!process.env.CRAFT_DEV_RUNTIME;
+const IS_DEV_RUNTIME = !!process.env.TOKENBIRD_DEV_RUNTIME;
 
 export interface ResolvedBackendRuntimePaths {
   /**
@@ -204,7 +204,7 @@ function preparePackagedBunEntry(
 function stageWindowsRuntimeFile(sourcePath: string, cacheStem: string): string {
   const source = readFileSync(sourcePath);
   const contentHash = createHash('sha256').update(source).digest('hex').slice(0, 16);
-  const cacheDir = join(process.env.LOCALAPPDATA || tmpdir(), 'Craft Agents', 'runtime');
+  const cacheDir = join(process.env.LOCALAPPDATA || tmpdir(), 'TokenBird', 'runtime');
   const cachedPath = join(cacheDir, `${cacheStem}-${contentHash}${extname(sourcePath)}`);
 
   if (existsSync(cachedPath)) return cachedPath;

@@ -1,4 +1,4 @@
-import type { SuperAgentDocument, SuperAgentNode, SuperAgentPendingTurn } from '@craft-agent/shared/super-agent'
+import type { SuperAgentDocument, SuperAgentNode, SuperAgentPendingTurn } from '@tokenbird/shared/super-agent'
 import type { SessionCompletionEvent } from '../sessions/SessionManager'
 
 export const finiteUsage = (value: number | undefined) => Number.isFinite(value) && value! >= 0 ? value! : 0

@@ -169,14 +169,14 @@ export async function verifySha256(filePath: string, expectedHash: string): Prom
  * Resolve a GitHub download URL, optionally through a mirror for
  * environments with poor connectivity to github.com.
  *
- * Set CRAFT_GITHUB_MIRROR to any proxy prefix that accepts the full URL
+ * Set TOKENBIRD_GITHUB_MIRROR to any proxy prefix that accepts the full URL
  * appended after it, e.g.:
- *   CRAFT_GITHUB_MIRROR=https://ghproxy.net/
- *   CRAFT_GITHUB_MIRROR=https://ghfast.top/
- *   CRAFT_GITHUB_MIRROR=https://mirror.ghproxy.com/
+ *   TOKENBIRD_GITHUB_MIRROR=https://ghproxy.net/
+ *   TOKENBIRD_GITHUB_MIRROR=https://ghfast.top/
+ *   TOKENBIRD_GITHUB_MIRROR=https://mirror.ghproxy.com/
  */
 export function githubUrl(url: string): string {
-  const mirror = process.env.CRAFT_GITHUB_MIRROR;
+  const mirror = process.env.TOKENBIRD_GITHUB_MIRROR;
   if (!mirror) return url;
   const prefix = mirror.endsWith('/') ? mirror : `${mirror}/`;
   return `${prefix}${url}`;

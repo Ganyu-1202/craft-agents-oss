@@ -1,7 +1,7 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
-import { listAgents, loadAgentsConfig, saveAgentsConfig, type CustomAgentDefinition } from '@craft-agent/shared/agents'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
+import { listAgents, loadAgentsConfig, saveAgentsConfig, type CustomAgentDefinition } from '@tokenbird/shared/agents'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 export const HANDLED_CHANNELS = [RPC_CHANNELS.agents.LIST, RPC_CHANNELS.agents.SAVE, RPC_CHANNELS.agents.DELETE, RPC_CHANNELS.agents.GENERATE] as const

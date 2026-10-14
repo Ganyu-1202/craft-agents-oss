@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@tokenbird/shared/super-agent'
 import { buildSuperAgentNodePrompt } from './SuperAgentPrompt'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 

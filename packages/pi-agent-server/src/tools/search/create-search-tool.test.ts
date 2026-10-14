@@ -33,9 +33,9 @@ describe('createSearchTool', () => {
     // The SDK only coerces model-emitted argument types (e.g. "3" -> 3) for schemas
     // built with its own TypeBox; a schema from a second TypeBox copy would be
     // validated strictly and reject this call instead.
-    expect(call({ query: 'craft', count: '3' })).toEqual({ query: 'craft', count: 3 });
+    expect(call({ query: 'tokenbird', count: '3' })).toEqual({ query: 'tokenbird', count: 3 });
     expect(() => call({ count: 3 })).toThrow(/Validation failed/);
-    expect(() => call({ query: 'craft', count: 99 })).toThrow(/Validation failed/);
+    expect(() => call({ query: 'tokenbird', count: 99 })).toThrow(/Validation failed/);
   });
 
   it('clamps count to [1, 10] and formats results', async () => {
@@ -49,7 +49,7 @@ describe('createSearchTool', () => {
     };
 
     const tool = createSearchTool(provider);
-    const result = await tool.execute('tool-1', { query: 'craft', count: 99 });
+    const result = await tool.execute('tool-1', { query: 'tokenbird', count: 99 });
 
     expect(capturedCount).toBe(10);
     expect(result.details?.isError).toBeUndefined();
@@ -73,7 +73,7 @@ describe('createSearchTool', () => {
     };
 
     const tool = createSearchTool(provider, fallbackProvider);
-    const result = await tool.execute('tool-2', { query: 'craft', count: 5 });
+    const result = await tool.execute('tool-2', { query: 'tokenbird', count: 5 });
 
     expect(result.details?.isError).toBeUndefined();
     expect((result.content[0] as any).text).toContain('automatically fell back to Bing');
@@ -97,7 +97,7 @@ describe('createSearchTool', () => {
     };
 
     const tool = createSearchTool(provider, fallbackProvider);
-    const result = await tool.execute('tool-3', { query: 'craft', count: -1 });
+    const result = await tool.execute('tool-3', { query: 'tokenbird', count: -1 });
 
     expect(result.details?.isError).toBe(true);
     expect((result.content[0] as any).text).toContain('primary (OpenAI) failed');
@@ -122,7 +122,7 @@ describe('createSearchTool', () => {
     };
 
     const tool = createSearchTool(provider, fallbackProvider);
-    const result = await tool.execute('tool-5', { query: 'craft' });
+    const result = await tool.execute('tool-5', { query: 'tokenbird' });
 
     const text = (result.content[0] as any).text as string;
     expect(result.details?.isError).toBe(true);
@@ -142,7 +142,7 @@ describe('createSearchTool', () => {
     };
 
     const tool = createSearchTool(bingProvider, bingProvider);
-    const result = await tool.execute('tool-4', { query: 'craft' });
+    const result = await tool.execute('tool-4', { query: 'tokenbird' });
 
     expect(result.details?.isError).toBe(true);
     expect((result.content[0] as any).text).toContain('Search failed');

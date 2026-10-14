@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test'
-import * as config from '@craft-agent/shared/config'
+import * as config from '@tokenbird/shared/config'
 import { SessionManager, createManagedSession } from './SessionManager'
 
 afterEach(() => mock.restore())

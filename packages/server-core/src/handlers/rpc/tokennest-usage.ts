@@ -1,4 +1,4 @@
-import { fetchTokenNestUsageRecords, fetchTokenNestUsageSummary, type TokenNestUsageRecord } from '@craft-agent/shared/auth'
+import { fetchTokenNestUsageRecords, fetchTokenNestUsageSummary, type TokenNestUsageRecord } from '@tokenbird/shared/auth'
 
 /** Keep authoritative totals even when the detail scan reaches the RPC's time budget. */
 export async function fetchTokenNestUsage(

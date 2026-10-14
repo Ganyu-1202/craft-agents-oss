@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CloudConfig, CloudDevice } from '@craft-agent/shared/cloud'
+import type { CloudConfig, CloudDevice } from '@tokenbird/shared/cloud'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../electron/src/renderer/components/ui/dialog'
 import { Button } from '../../electron/src/renderer/components/ui/button'
 import { localCloudApi } from './adapter/local-cloud'
@@ -48,17 +48,17 @@ export function CloudServerPicker({ open, onOpenChange, connectionMode }: {
     const local = localRef.current
     setConnecting(device.id); setError('')
     try {
-      if (!window.CraftAgentAndroid?.connectRemoteServer) throw new Error('请更新手机客户端以连接同账号设备。')
+      if (!window.TokenBirdAgentAndroid?.connectRemoteServer) throw new Error('请更新手机客户端以连接同账号设备。')
       // Tickets expire: obtain one at every click, never reuse a saved ticket.
       const grant = await local.api.connectCloudDevice(device.id)
       if (localRef.current !== local) return
-      window.CraftAgentAndroid.connectRemoteServer(grant.url, grant.token)
+      window.TokenBirdAgentAndroid.connectRemoteServer(grant.url, grant.token)
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); setConnecting(undefined) }
   }
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[85dvh] overflow-y-auto">
       <DialogHeader><DialogTitle>服务器列表</DialogTitle><DialogDescription>登录相同 TokenNest 账号后，已开启云端远程访问的电脑会自动出现在这里。</DialogDescription></DialogHeader>
-      <Button variant="outline" disabled={!!connecting} onClick={() => window.CraftAgentAndroid?.connectLocalServer?.()}>本机服务器</Button>
+      <Button variant="outline" disabled={!!connecting} onClick={() => window.TokenBirdAgentAndroid?.connectLocalServer?.()}>本机服务器</Button>
       {config && accounts.length > 0 && <label className="space-y-1 text-sm">TokenNest 账号
         <select className="w-full rounded border bg-background p-2" value={config.connectionSlug || accounts[0]?.slug} disabled={loading || !!connecting} onChange={event => {
           const next = { ...config, connectionSlug: event.target.value }
@@ -66,7 +66,7 @@ export function CloudServerPicker({ open, onOpenChange, connectionMode }: {
           void localRef.current?.api.setCloudConfig(next).then(async () => { setConfig(next); await refreshRef.current() }).catch(err => setError(String(err))).finally(() => setLoading(false))
         }}>{accounts.map(account => <option key={account.slug} value={account.slug}>{account.name}</option>)}</select>
       </label>}
-      {config && !accounts.length && <Button variant="outline" onClick={() => { onOpenChange(false); window.CraftAgentAndroid?.connectLocalServer?.() }}>进入本机服务器登录 TokenNest</Button>}
+      {config && !accounts.length && <Button variant="outline" onClick={() => { onOpenChange(false); window.TokenBirdAgentAndroid?.connectLocalServer?.() }}>进入本机服务器登录 TokenNest</Button>}
       <div className="flex items-center justify-between"><span className="text-sm">TokenNest 设备</span><Button size="sm" variant="ghost" disabled={loading || !!connecting} onClick={() => refreshRef.current()}>{loading ? '正在刷新…' : '刷新'}</Button></div>
       {error && <p role="alert" className="text-sm text-destructive break-words">{error}</p>}
       {!error && !loading && !devices.length && <p className="text-sm text-muted-foreground">暂无设备，请在电脑端开启云端远程访问并保存。</p>}
@@ -74,7 +74,7 @@ export function CloudServerPicker({ open, onOpenChange, connectionMode }: {
         <div className="min-w-0"><p className="truncate text-sm font-medium">{device.name}</p><p className="text-xs text-muted-foreground">{device.online ? '在线' : '离线'}</p></div>
         <Button size="sm" disabled={!device.online || !!connecting} onClick={() => void connect(device)}>{connecting === device.id ? '正在连接…' : '连接'}</Button>
       </div>)}
-      <Button variant="outline" disabled={!!connecting} onClick={() => { onOpenChange(false); window.CraftAgentAndroid?.configureServer() }}>手动添加服务器</Button>
+      <Button variant="outline" disabled={!!connecting} onClick={() => { onOpenChange(false); window.TokenBirdAgentAndroid?.configureServer() }}>手动添加服务器</Button>
     </DialogContent>
   </Dialog>
 }

@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import * as config from '@craft-agent/shared/config'
-import * as credentials from '@craft-agent/shared/credentials'
-import * as auth from '@craft-agent/shared/auth'
+import * as config from '@tokenbird/shared/config'
+import * as credentials from '@tokenbird/shared/credentials'
+import * as auth from '@tokenbird/shared/auth'
 import { runStudioImageToolAction } from './studio-image-tool'
 
 const originalFetch = globalThis.fetch

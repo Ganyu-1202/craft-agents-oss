@@ -215,7 +215,7 @@ export function processEvent(
       return handleAuthCompleted(state, event)
 
     case 'source_activated':
-      // Server-side handles the auto-retry now (craft-agents-oss#804); the renderer
+      // Server-side handles the auto-retry now (tokenbird#804); the renderer
       // shows the activation as a small centered notice (role: 'info').
       return handleSourceActivated(state, event)
 

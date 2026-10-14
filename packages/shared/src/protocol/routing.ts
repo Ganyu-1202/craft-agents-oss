@@ -107,6 +107,7 @@ export const LOCAL_ONLY_CHANNELS = new Set<string>([
   RPC_CHANNELS.theme.GET_SELECTED_PACK,
   RPC_CHANNELS.theme.SET_SELECTED_PACK,
   RPC_CHANNELS.theme.GET_PACK_ASSET,
+  RPC_CHANNELS.theme.IMPORT_PACK,
   RPC_CHANNELS.theme.IMPORT_PACK_FOLDER,
   RPC_CHANNELS.theme.DELETE_PACK,
   RPC_CHANNELS.theme.BROADCAST_PACK_CHANGE,
@@ -564,7 +565,7 @@ export const REMOTE_ELIGIBLE_CHANNELS = new Set<string>([
   RPC_CHANNELS.pages.EXECUTE_ACTION,
   RPC_CHANNELS.pages.CANCEL_ACTION,
   // Sharing runs on the workspace server: it holds the page files, the vault
-  // token, and evaluates the CRAFT_FEATURE_PAGES_SHARING flag.
+  // token, and evaluates the TOKENBIRD_FEATURE_PAGES_SHARING flag.
   RPC_CHANNELS.pages.GET_SHARE_CAPABILITIES,
   RPC_CHANNELS.pages.GET_SHARE_DATA_SCAN,
   RPC_CHANNELS.pages.PUBLISH,

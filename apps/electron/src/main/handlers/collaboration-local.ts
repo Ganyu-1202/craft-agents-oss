@@ -1,7 +1,7 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { HandlerDeps } from '@craft-agent/server-core/handlers'
-import type { HandlerFn, RequestContext, RpcServer } from '@craft-agent/server-core/transport'
-import { registerCollaborationHandlers } from '@craft-agent/server-core/handlers/rpc/collaborations'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import type { HandlerDeps } from '@tokenbird/server-core/handlers'
+import type { HandlerFn, RequestContext, RpcServer } from '@tokenbird/server-core/transport'
+import { registerCollaborationHandlers } from '@tokenbird/server-core/handlers/rpc/collaborations'
 import type { CollaborationIpcRegistrar } from './collaboration-remote'
 import type { NativeAuthorityEvent } from '../native-window-authority'
 

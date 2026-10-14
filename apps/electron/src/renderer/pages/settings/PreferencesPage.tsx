@@ -15,12 +15,13 @@ import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { HeaderMenu } from '@/components/ui/HeaderMenu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { routes } from '@/lib/navigate'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import {
   SettingsSection,
   SettingsCard,
   SettingsInput,
   SettingsTextarea,
+  SettingsToggle,
 } from '@/components/settings'
 import { EditPopover, EditButton, getEditConfig } from '@/components/ui/EditPopover'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
@@ -205,6 +206,18 @@ export default function PreferencesPage() {
                 onChange={(value) => updateField('preferredProxy', value)}
                 placeholder="http://127.0.0.1:7890"
                 type="url"
+                inCard
+              />
+            </SettingsCard>
+          </SettingsSection>
+
+          <SettingsSection title={t('settings.preferences.gitAttribution')}>
+            <SettingsCard divided={false}>
+              <SettingsToggle
+                label={t('settings.preferences.includeCoAuthoredBy')}
+                description={t('settings.preferences.includeCoAuthoredByDesc')}
+                checked={formState.includeCoAuthoredBy}
+                onCheckedChange={(checked) => updateField('includeCoAuthoredBy', checked)}
                 inCard
               />
             </SettingsCard>

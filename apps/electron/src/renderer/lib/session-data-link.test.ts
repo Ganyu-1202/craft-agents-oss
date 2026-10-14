@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { SessionFile } from '@craft-agent/shared/protocol'
+import type { SessionFile } from '@tokenbird/shared/protocol'
 import { findSessionDataLink } from './session-data-link'
 
 const files: SessionFile[] = [{

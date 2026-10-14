@@ -3,7 +3,7 @@ import type { ComponentEntry } from './types'
 import { AppShellProvider, useAppShellContext } from '../../context/AppShellContext'
 import SuperAgentPage from '../../pages/super-agent/SuperAgentPage'
 import type { LlmConnectionWithStatus, LoadedSource, SessionEvent } from '../../../shared/types'
-import type { SuperAgentCommand, SuperAgentConfig, SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import type { SuperAgentCommand, SuperAgentConfig, SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 
 const connection: LlmConnectionWithStatus = {
   slug: 'demo-tokennest', name: 'TokenNest · 演示账户', providerType: 'pi_compat', authType: 'oauth',

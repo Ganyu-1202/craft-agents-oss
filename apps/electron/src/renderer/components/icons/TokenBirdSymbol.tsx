@@ -1,13 +1,13 @@
 import tokenBirdIcon from '@/assets/branding/tokenbird.png'
 
-interface CraftAgentsSymbolProps {
+interface TokenBirdSymbolProps {
   className?: string
 }
 
 /**
- * TokenBird symbol. The legacy component name is kept for import compatibility.
+ * TokenBird symbol.
  */
-export function CraftAgentsSymbol({ className }: CraftAgentsSymbolProps) {
+export function TokenBirdSymbol({ className }: TokenBirdSymbolProps) {
   return (
     <img
       src={tokenBirdIcon}

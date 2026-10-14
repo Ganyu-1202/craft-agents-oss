@@ -1,4 +1,4 @@
-package com.craftagents.mobile;
+package com.tokenbird.mobile;
 
 import android.app.Activity;
 import android.content.Intent;

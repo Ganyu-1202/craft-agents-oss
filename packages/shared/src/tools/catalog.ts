@@ -1,4 +1,4 @@
-import { getSessionToolDefs } from '@craft-agent/session-tools-core';
+import { getSessionToolDefs } from '@tokenbird/session-tools-core';
 import { FEATURE_FLAGS } from '../feature-flags.ts';
 import { proxyToolName } from '../mcp/proxy-tool-name.ts';
 
@@ -20,7 +20,7 @@ const CORE_TOOLS: readonly BuiltinToolCatalogEntry[] = [
   { name: 'Agent', description: 'Delegate a bounded task to a specialized subagent.', category: 'core' },
   { name: 'WebSearch', description: 'Search the web using the active model provider.', category: 'core' },
   { name: 'WebFetch', description: 'Fetch and extract content from a web page.', category: 'core' },
-  { name: 'mcp__craft-agents-docs__SearchCraftAgents', description: 'Search the built-in TokenBird feature documentation.', category: 'session' },
+  { name: 'mcp__tokenbird-docs__SearchTokenBird', description: 'Search the built-in TokenBird feature documentation.', category: 'session' },
 ];
 
 /** Return the built-in tools that TokenBird can expose to a workspace session. */

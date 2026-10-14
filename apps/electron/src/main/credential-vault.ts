@@ -1,8 +1,8 @@
-import { getCredentialManager, type CredentialManager } from '@craft-agent/shared/credentials';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import { CredentialVaultError, type CredentialKeyProtection } from '@craft-agent/shared/credentials/backends/vault-protection';
-import { NATIVE_CREDENTIAL_FIELDS, type NativeCredentialChange, type NativeCredentialMetadata, type NativeCredentialVaultStatus, type NativeManagedCredentialMetadata } from '@craft-agent/shared/credentials/native-types';
-import { validateNativeCredentialId } from '@craft-agent/shared/credentials/native-validation';
+import { getCredentialManager, type CredentialManager } from '@tokenbird/shared/credentials';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import { CredentialVaultError, type CredentialKeyProtection } from '@tokenbird/shared/credentials/backends/vault-protection';
+import { NATIVE_CREDENTIAL_FIELDS, type NativeCredentialChange, type NativeCredentialMetadata, type NativeCredentialVaultStatus, type NativeManagedCredentialMetadata } from '@tokenbird/shared/credentials/native-types';
+import { validateNativeCredentialId } from '@tokenbird/shared/credentials/native-validation';
 
 /** Pinned Electron exposes the synchronous API; only main supplies this adapter. */
 export interface SafeStorageAdapter {

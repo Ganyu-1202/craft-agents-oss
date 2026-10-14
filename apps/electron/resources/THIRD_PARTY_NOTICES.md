@@ -2,7 +2,7 @@
 
 ## Git for Windows (Windows packages only)
 
-Craft Agents Windows packages include the official PortableGit distribution
+TokenBird Windows packages include the official PortableGit distribution
 from Git for Windows `v2.55.0.windows.3` so agent Bash sessions work without a
 separate system installation.
 
@@ -13,4 +13,4 @@ separate system installation.
   `mingw64/share/licenses` and `usr/share/licenses`.
 
 Git for Windows and its bundled components retain their own copyrights and
-licenses. They are not relicensed under the Craft Agents license.
+licenses. They are not relicensed under the TokenBird license.

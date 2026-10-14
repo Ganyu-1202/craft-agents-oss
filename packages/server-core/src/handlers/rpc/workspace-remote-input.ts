@@ -1,4 +1,4 @@
-import type { RemoteServerConfig, Workspace } from '@craft-agent/core/types'
+import type { RemoteServerConfig, Workspace } from '@tokenbird/core/types'
 
 /** Renderer/network input can supply new bytes, never choose encrypted refs. */
 export function validateRemoteWorkspaceInput(value: unknown, existing?: RemoteServerConfig): RemoteServerConfig {

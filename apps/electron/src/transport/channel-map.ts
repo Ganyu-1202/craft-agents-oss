@@ -342,6 +342,7 @@ export const CHANNEL_MAP = {
   getSelectedThemePack: invoke(RPC_CHANNELS.theme.GET_SELECTED_PACK),
   setSelectedThemePack: invoke(RPC_CHANNELS.theme.SET_SELECTED_PACK),
   getThemePackAsset: invoke(RPC_CHANNELS.theme.GET_PACK_ASSET),
+  importThemePack: invoke(RPC_CHANNELS.theme.IMPORT_PACK),
   importThemePackFolder: invoke(RPC_CHANNELS.theme.IMPORT_PACK_FOLDER),
   deleteThemePack: invoke(RPC_CHANNELS.theme.DELETE_PACK),
   onThemePackChange: listener(RPC_CHANNELS.theme.PACK_CHANGED),

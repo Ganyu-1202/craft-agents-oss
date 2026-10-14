@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { pagesAtom } from '@/atoms/pages'
-import type { LoadedPage } from '@craft-agent/shared/pages/types'
+import type { LoadedPage } from '@tokenbird/shared/pages/types'
 
 export interface UsePagesResult {
   pages: LoadedPage[]

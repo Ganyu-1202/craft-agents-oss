@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { validateSkillContent, validateSlug } from '@craft-agent/session-tools-core'
-import { invalidateSkillsCache, loadSkill } from '@craft-agent/shared/skills'
+import { validateSkillContent, validateSlug } from '@tokenbird/session-tools-core'
+import { invalidateSkillsCache, loadSkill } from '@tokenbird/shared/skills'
 
 async function packageFiles(directory: string) {
   const files = new Map<string, Buffer>(); let bytes = 0; let entries = 0

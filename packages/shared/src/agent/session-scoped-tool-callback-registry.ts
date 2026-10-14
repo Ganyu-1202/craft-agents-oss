@@ -13,7 +13,7 @@
 import type { LLMQueryRequest, LLMQueryResult } from './llm-tool.ts';
 import type { SpawnSessionFn } from './spawn-session-tool.ts';
 import type { BrowserPaneFns } from './browser-tools.ts';
-import type { AuthRequest } from '@craft-agent/session-tools-core';
+import type { AuthRequest } from '@tokenbird/session-tools-core';
 import { debug } from '../utils/debug.ts';
 
 /** Per-channel outcome summary returned by messaging send bridges. */
@@ -58,7 +58,7 @@ export interface MessagingToolBridge {
  * Callbacks that can be registered per-session
  */
 export interface SessionScopedToolCallbacks {
-  savedCredentialsFn?: import('@craft-agent/session-tools-core').SessionToolContext['savedCredentialsFn'];
+  savedCredentialsFn?: import('@tokenbird/session-tools-core').SessionToolContext['savedCredentialsFn'];
   /**
    * Called when a plan is submitted via SubmitPlan tool.
    * Receives the path to the plan markdown file.
@@ -97,26 +97,26 @@ export interface SessionScopedToolCallbacks {
    * back to host execution otherwise.
    */
   runLocalShellFn?: (
-    args: import('@craft-agent/session-tools-core').ShellExecArgs,
-  ) => Promise<import('@craft-agent/session-tools-core').ShellExecResult>;
+    args: import('@tokenbird/session-tools-core').ShellExecArgs,
+  ) => Promise<import('@tokenbird/session-tools-core').ShellExecResult>;
 
   canvasToolFn?: (args: Record<string, unknown>) => Promise<unknown>;
 
   /** Client-owned SFTP bridge for transferring files without exposing credentials to the server. */
-  requestClientFilesFn?: (args: import('@craft-agent/core/types').ClientFileRequest) => Promise<import('@craft-agent/core/types').SavedClientFiles>;
+  requestClientFilesFn?: (args: import('@tokenbird/core/types').ClientFileRequest) => Promise<import('@tokenbird/core/types').SavedClientFiles>;
 
   transferSftpFileFn?: (
-    args: import('@craft-agent/session-tools-core').SftpTransferArgs,
-  ) => Promise<import('@craft-agent/session-tools-core').SftpTransferResult>;
+    args: import('@tokenbird/session-tools-core').SftpTransferArgs,
+  ) => Promise<import('@tokenbird/session-tools-core').SftpTransferResult>;
 
   /** Connected Android client's allowlisted runtime permission bridge. */
   androidPermissionFn?: (
-    args: import('@craft-agent/session-tools-core').AndroidPermissionArgs,
+    args: import('@tokenbird/session-tools-core').AndroidPermissionArgs,
   ) => Promise<unknown>;
 
   /** Connected Android client's opt-in, per-command-confirmed network ADB bridge. */
   androidAdbFn?: (
-    args: import('@craft-agent/session-tools-core').AndroidAdbArgs,
+    args: import('@tokenbird/session-tools-core').AndroidAdbArgs,
   ) => Promise<unknown>;
 
   /** Set labels on a session (defaults to current). */
@@ -126,18 +126,18 @@ export interface SessionScopedToolCallbacks {
   /** Archive (archived=true) or unarchive (archived=false) a session by ID. */
   archiveSessionFn?: (sessionId: string, archived: boolean) => void | Promise<void>;
   /** Get detailed info about a session (defaults to current). */
-  getSessionInfoFn?: (sessionId?: string) => import('@craft-agent/session-tools-core').SessionInfo | null;
+  getSessionInfoFn?: (sessionId?: string) => import('@tokenbird/session-tools-core').SessionInfo | null;
   /** List sessions in the workspace with pagination. */
-  listSessionsFn?: (options?: import('@craft-agent/session-tools-core').ListSessionsOptions) => import('@craft-agent/session-tools-core').ListSessionsResult;
+  listSessionsFn?: (options?: import('@tokenbird/session-tools-core').ListSessionsOptions) => import('@tokenbird/session-tools-core').ListSessionsResult;
   /** List background tasks (running + terminal) for a session from the main-process registry. */
-  listBackgroundTasksFn?: (sessionId?: string) => import('@craft-agent/session-tools-core').BackgroundTaskInfo[];
+  listBackgroundTasksFn?: (sessionId?: string) => import('@tokenbird/session-tools-core').BackgroundTaskInfo[];
   /** Resolve label display names to IDs. */
-  resolveLabelsFn?: (labels: string[]) => import('@craft-agent/session-tools-core').ResolvedLabelsResult;
+  resolveLabelsFn?: (labels: string[]) => import('@tokenbird/session-tools-core').ResolvedLabelsResult;
   /** Resolve a status display name to its ID. */
-  resolveStatusFn?: (status: string) => import('@craft-agent/session-tools-core').ResolvedStatusResult;
+  resolveStatusFn?: (status: string) => import('@tokenbird/session-tools-core').ResolvedStatusResult;
   /** Send a message to another session (inter-session messaging). Resolves with delivery status. */
-  sendAgentMessageFn?: (sessionId: string, message: string, attachments?: Array<{ path: string; name?: string }>, originalMessage?: string) => Promise<import('@craft-agent/session-tools-core').SendAgentMessageResult>;
-  sendCollaborationMessageFn?: (targetMemberId: string, message: string) => Promise<import('@craft-agent/session-tools-core').SendAgentMessageResult>;
+  sendAgentMessageFn?: (sessionId: string, message: string, attachments?: Array<{ path: string; name?: string }>, originalMessage?: string) => Promise<import('@tokenbird/session-tools-core').SendAgentMessageResult>;
+  sendCollaborationMessageFn?: (targetMemberId: string, message: string) => Promise<import('@tokenbird/session-tools-core').SendAgentMessageResult>;
   /** Read the invoking session's collaboration snapshot. */
   getCollaborationFn?: (query?: { goalId?: string; taskId?: string; itemIds?: string[]; offset?: number; limit?: number }) => Promise<unknown>;
   superAgentActionFn?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -178,14 +178,14 @@ export interface SessionScopedToolCallbacks {
   }) => Promise<MessagingSendResult>;
   /** Create a TokenBird Task (board card + task.yaml + orchestrator session) without running it. */
   createTaskFn?: (
-    input: import('@craft-agent/session-tools-core').CreateTaskInput
-  ) => Promise<import('@craft-agent/session-tools-core').CreateTaskResult>;
+    input: import('@tokenbird/session-tools-core').CreateTaskInput
+  ) => Promise<import('@tokenbird/session-tools-core').CreateTaskResult>;
   /**
    * Pages tools (list/get/create/update/write data/delete) — grouped in one
    * object because the six operations always ship together. Wired by
    * SessionManager to the invoking session's workspace.
    */
-  pages?: import('@craft-agent/session-tools-core').PagesToolCallbacks;
+  pages?: import('@tokenbird/session-tools-core').PagesToolCallbacks;
 }
 
 // Registry of callbacks keyed by sessionId

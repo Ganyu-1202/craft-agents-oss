@@ -3,7 +3,7 @@ import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
-import { emptySuperAgentState, superAgentPermissionEnvironmentKey, type SuperAgentConfig, type SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import { emptySuperAgentState, superAgentPermissionEnvironmentKey, type SuperAgentConfig, type SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 import type { AppShellContextType } from '../../context/AppShellContext'
 
 mock.module('@/components/markdown', () => ({ Markdown: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children) }))

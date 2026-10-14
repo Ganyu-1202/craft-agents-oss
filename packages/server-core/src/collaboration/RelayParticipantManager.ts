@@ -2,11 +2,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { getConfigDir } from '@craft-agent/shared/config/paths';
-import type { SessionCollaboration } from '@craft-agent/shared/sessions';
+import { getConfigDir } from '@tokenbird/shared/config/paths';
+import type { SessionCollaboration } from '@tokenbird/shared/sessions';
 import type { ISessionManager } from '../handlers/session-manager-interface';
-import type { CollaborationRelayDelivery as Delivery, CollaborationRelayForward as Forward, CollaborationRelayGroup as Group, CollaborationRelayInfo, CollaborationRelayMember as Member, CollaborationRelayOperation as Operation, CollaborationRelayOperationInput as OperationInput, CollaborationRelayPrepareInput as Prepare, CollaborationRelayReceipt as Receipt, CollaborationRelayScope as Scope } from '@craft-agent/shared/protocol';
-import { COLLABORATION_RELAY_CAPABILITY } from '@craft-agent/shared/protocol';
+import type { CollaborationRelayDelivery as Delivery, CollaborationRelayForward as Forward, CollaborationRelayGroup as Group, CollaborationRelayInfo, CollaborationRelayMember as Member, CollaborationRelayOperation as Operation, CollaborationRelayOperationInput as OperationInput, CollaborationRelayPrepareInput as Prepare, CollaborationRelayReceipt as Receipt, CollaborationRelayScope as Scope } from '@tokenbird/shared/protocol';
+import { COLLABORATION_RELAY_CAPABILITY } from '@tokenbird/shared/protocol';
 const LIMIT = 256;
 const MAX_FILE = 8 * 1024 * 1024;
 const MAX_GROUP = 6 * 1024 * 1024;

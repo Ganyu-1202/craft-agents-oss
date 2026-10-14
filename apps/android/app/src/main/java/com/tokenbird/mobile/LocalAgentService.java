@@ -1,4 +1,4 @@
-package com.craftagents.mobile;
+package com.tokenbird.mobile;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -42,7 +42,7 @@ public final class LocalAgentService extends Service {
     private final Runnable checkTasks = new Runnable() {
         @Override public void run() {
             boolean running = false;
-            File state = new File(getFilesDir(), "craft-agent-server/android-task-state.json");
+            File state = new File(getFilesDir(), "tokenbird-server/android-task-state.json");
             try {
                 if (server(LocalAgentService.this).isRunning() && state.isFile()) {
                     JSONObject status = new JSONObject(new String(Files.readAllBytes(state.toPath()), StandardCharsets.UTF_8));

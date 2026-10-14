@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { superAgentScriptOperation } from '@craft-agent/shared/super-agent';
+import { superAgentScriptOperation } from '@tokenbird/shared/super-agent';
 import { superAgentFixture, until } from './SuperAgentTestSupport';
 
 test('production dispatch carries mandatory gates and original user intent without exposing hidden rules', async () => {

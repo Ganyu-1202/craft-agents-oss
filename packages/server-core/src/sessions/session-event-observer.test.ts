@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test'
-import type { SessionEvent } from '@craft-agent/shared/protocol'
+import type { SessionEvent } from '@tokenbird/shared/protocol'
 import { SessionManager } from './SessionManager'
 
 type EventHarness = {

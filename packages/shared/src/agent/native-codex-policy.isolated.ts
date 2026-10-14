@@ -40,9 +40,9 @@ afterAll(() => {
     requests.push(await request.json() as (typeof requests)[number]);
     const index = requests.length;
     const item = index === 1
-      ? { type: 'function_call', id: 'fc-1', call_id: 'write-1', name: 'craft__Write', arguments: JSON.stringify({ file_path: written, content: 'native loop, approved host write' }) }
+      ? { type: 'function_call', id: 'fc-1', call_id: 'write-1', name: 'tokenbird__Write', arguments: JSON.stringify({ file_path: written, content: 'native loop, approved host write' }) }
       : index === 2
-        ? { type: 'function_call', id: 'fc-2', call_id: 'write-2', name: 'craft__Write', arguments: JSON.stringify({ file_path: join(root, 'outside.txt'), content: 'must be denied' }) }
+        ? { type: 'function_call', id: 'fc-2', call_id: 'write-2', name: 'tokenbird__Write', arguments: JSON.stringify({ file_path: join(root, 'outside.txt'), content: 'must be denied' }) }
         : { type: 'message', id: 'msg-1', role: 'assistant', content: [{ type: 'output_text', text: 'Finished native execution.', annotations: [] }] };
     const response = { id: `resp-${index}`, object: 'response', status: 'completed', output: [item],
       usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15, input_tokens_details: { cached_tokens: 0 } } };
@@ -92,7 +92,7 @@ afterAll(() => {
     expect(events.some(event => event.type === 'text_complete' && event.text.includes('Finished'))).toBe(true);
     expect(requests).toHaveLength(3);
     const names = requests.flatMap(request => request.tools?.flatMap(tool => tool.type === 'namespace' ? tool.tools?.map(child => child.name) ?? [] : [tool.name ?? tool.type]) ?? []);
-    expect(names).toContain('craft__Write');
+    expect(names).toContain('tokenbird__Write');
     for (const forbidden of ['exec_command', 'write_stdin', 'shell', 'shell_command', 'apply_patch', 'view_image', 'web_search', 'spawn_agent']) expect(names).not.toContain(forbidden);
     expect(readFileSync(written, 'utf8')).toBe('native loop, approved host write');
     expect(existsSync(join(root, 'outside.txt'))).toBe(false);

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import i18next from 'i18next'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
 import en from '../../../../../../packages/shared/src/i18n/locales/en.json'
-import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import type { StudioWorkEvent } from '@tokenbird/shared/protocol'
 import StudioMindMap from './StudioMindMap'
 
 declare global { interface Window { runMindMapWorkChecks: () => Promise<string[]> } }

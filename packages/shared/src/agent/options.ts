@@ -6,7 +6,7 @@ import { debug } from "../utils/debug";
 import { getProxyEnvVars } from "../config/proxy-env.ts";
 import { getGitBashPath } from "../config/storage.ts";
 
-declare const CRAFT_AGENT_CLI_VERSION: string | undefined;
+declare const TOKENBIRD_CLI_VERSION: string | undefined;
 
 let customPathToClaudeCodeExecutable: string | null = null;
 let claudeConfigChecked = false;
@@ -191,7 +191,7 @@ export function buildClaudeSubprocessEnv(
         ...getProxyEnvVars(),
         ...envOverrides,
         // Propagate debug mode from argv flag OR existing env var
-        CRAFT_DEBUG: (process.argv.includes('--debug') || process.env.CRAFT_DEBUG === '1') ? '1' : '0',
+        TOKENBIRD_DEBUG: (process.argv.includes('--debug') || process.env.TOKENBIRD_DEBUG === '1') ? '1' : '0',
     };
 
     // Windows: point the SDK's Bash tool at the user-configured Git Bash if set.
@@ -226,7 +226,7 @@ function nativeBinaryName(): string {
  * agent is unsupported on-device.
  */
 export function isAndroidRuntime(): boolean {
-    return process.env.CRAFT_ANDROID === 'true';
+    return process.env.TOKENBIRD_ANDROID === 'true';
 }
 
 /**
@@ -258,9 +258,9 @@ export function getDefaultOptions(envOverrides?: Record<string, string>): Partia
     }
 
     // Standalone CLI distribution (`scripts/install.sh`) lays the per-version
-    // SDK out at ~/.local/share/craft/versions/<version>/claude-agent-sdk/<binary>
-    if (typeof CRAFT_AGENT_CLI_VERSION !== 'undefined' && CRAFT_AGENT_CLI_VERSION != null) {
-        const baseDir = join(homedir(), '.local', 'share', 'craft', 'versions', CRAFT_AGENT_CLI_VERSION);
+    // SDK out at ~/.local/share/tokenbird/versions/<version>/claude-agent-sdk/<binary>
+    if (typeof TOKENBIRD_CLI_VERSION !== 'undefined' && TOKENBIRD_CLI_VERSION != null) {
+        const baseDir = join(homedir(), '.local', 'share', 'tokenbird', 'versions', TOKENBIRD_CLI_VERSION);
         return {
             pathToClaudeCodeExecutable: join(baseDir, 'claude-agent-sdk', nativeBinaryName()),
             env,

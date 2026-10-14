@@ -2,14 +2,14 @@
 
 This guide explains how to configure sources (MCP servers, APIs, local filesystems) in TokenBird.
 
-> **CLI-first workflow (recommended):** Use `craft-agent source ...` commands instead of editing source config files directly.
-> - `craft-agent source --help`
-> - Canonical command reference: [craft-cli.md](./craft-cli.md)
+> **CLI-first workflow (recommended):** Use `tokenbird source ...` commands instead of editing source config files directly.
+> - `tokenbird source --help`
+> - Canonical command reference: [tokenbird-cli.md](./tokenbird-cli.md)
 
 ## Integration Bundles (打包存档 / 一键导入)
 
 MCP and API integrations can be packaged into a portable JSON archive
-(`*.craft-resources.json`) and imported into another workspace with one click —
+(`*.tokenbird-resources.json`) and imported into another workspace with one click —
 manually or by asking the agent.
 
 ### Export / import manually
@@ -30,7 +30,7 @@ same archive format as the UI.
 
 ### Archive format & security
 
-- The archive is an envelope `{ format: "craft-resource-bundle", version: 1, bundle: … }`.
+- The archive is an envelope `{ format: "tokenbird-resource-bundle", version: 1, bundle: … }`.
 - Source configs are sanitized on export: auth headers, `mcp.env`, OAuth client
   secrets, and runtime auth state are stripped. Imported sources that need auth
   will prompt for credentials again.
@@ -43,7 +43,7 @@ When a user wants to add a new source, follow this conversational setup process 
 
 **Before doing anything else**, read the bundled documentation under `~/.tokenbird/docs/`, starting with `product-guide.md` and `sources.md`, for setup guidance.
 
-**Available guides:** GitHub, Linear, Slack, Gmail, Google Calendar, Google Drive, Google Docs, Google Sheets, Outlook, Microsoft Calendar, Teams, SharePoint, Craft, Filesystem, Brave Search, Memory
+**Available guides:** GitHub, Linear, Slack, Gmail, Google Calendar, Google Drive, Google Docs, Google Sheets, Outlook, Microsoft Calendar, Teams, SharePoint, TokenBird, Filesystem, Brave Search, Memory
 
 **If a guide exists for the service:**
 1. **Read the guide content** carefully
@@ -216,7 +216,7 @@ What data/functionality this provides. Include:
 ## Examples
 
 Concrete examples tailored to the user's workflow:
-- "To find issues in the Craft iOS project: ..."
+- "To find issues in the TokenBird iOS project: ..."
 - "To search for recent commits by the mobile team: ..."
 ```
 
@@ -240,23 +240,23 @@ Agent: I found the Linear setup guide! A few questions:
 2. Are there specific teams or projects you want to focus on?
 3. Should I set it up for read-only exploration or full access?
 
-User: Issue tracking for my iOS team, project called "Craft iOS"
+User: Issue tracking for my iOS team, project called "TokenBird iOS"
 
 Agent: [Uses WebSearch to verify current Linear MCP URL]
 Agent: [Creates config.json with:
         - icon: (searches web for app icon or uses favicon)
-        - tagline: "Issue tracking for the Craft iOS team"
+        - tagline: "Issue tracking for the TokenBird iOS team"
         - OAuth authentication]
-Agent: [Writes guide.md mentioning "Craft iOS" project and iOS team context]
+Agent: [Writes guide.md mentioning "TokenBird iOS" project and iOS team context]
 Agent: [Sets up permissions.json for read-only listing in Explore mode]
 Agent: [MANDATORY: Runs source_test to validate]
        mcp__session__source_test({ sourceSlug: "linear" })
 Agent: [Triggers source_oauth_trigger for authentication]
        mcp__session__source_oauth_trigger({ sourceSlug: "linear" })
 
-Agent: Linear is now set up! I've configured it to focus on the "Craft iOS" project.
+Agent: Linear is now set up! I've configured it to focus on the "TokenBird iOS" project.
 You can use it to:
-- Search and view issues in Craft iOS
+- Search and view issues in TokenBird iOS
 - Track sprint progress for the iOS team
 - Create and update issues
 

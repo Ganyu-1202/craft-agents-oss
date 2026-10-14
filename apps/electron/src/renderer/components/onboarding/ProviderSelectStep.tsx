@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import { Key, Monitor, Settings2 } from "lucide-react"
-import { Spinner } from "@craft-agent/ui"
-import { CraftAgentsSymbol } from "@/components/icons/CraftAgentsSymbol"
+import { Spinner } from "@tokenbird/ui"
+import { TokenBirdSymbol } from "@/components/icons/TokenBirdSymbol"
 import { BackButton, StepFormLayout } from "./primitives"
 
 import claudeIcon from "@/assets/provider-icons/claude.svg"
@@ -116,7 +116,7 @@ export function ProviderSelectStep({
     <StepFormLayout
       iconElement={
         <div className="flex size-16 items-center justify-center">
-          <CraftAgentsSymbol className="size-10 text-accent" />
+          <TokenBirdSymbol className="size-10 text-accent" />
         </div>
       }
       title={t(variant === 'primary' ? "onboarding.providerSelect.title" : "onboarding.providerSelect.otherTitle")}

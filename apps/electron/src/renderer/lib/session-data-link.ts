@@ -1,4 +1,4 @@
-import type { SessionFile } from '@craft-agent/shared/protocol'
+import type { SessionFile } from '@tokenbird/shared/protocol'
 import { isAbsolutePath } from './drafts'
 
 /** Resolve against the owning session, independent of the client's OS/home. */

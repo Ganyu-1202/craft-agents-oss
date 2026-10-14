@@ -1,4 +1,4 @@
-import { SessionManager } from '@craft-agent/server-core/sessions';
+import { SessionManager } from '@tokenbird/server-core/sessions';
 
 /** Named credentials belong to the execution host, including headless servers. */
 export function createHeadlessSessionManager(): SessionManager {

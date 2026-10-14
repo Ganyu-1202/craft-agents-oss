@@ -39,7 +39,7 @@ export class MicrosoftAgentWorkflow implements SuperAgentWorkflow {
   private pending = new Map<string, PendingRun>()
   private closed = false
 
-  constructor(private readonly python = process.env.TOKENBIRD_AGENT_FRAMEWORK_PYTHON || process.env.CRAFT_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')) {}
+  constructor(private readonly python = process.env.TOKENBIRD_AGENT_FRAMEWORK_PYTHON || process.env.TOKENBIRD_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')) {}
 
   private start(): Promise<void> {
     if (this.closed) return Promise.reject(new Error('Agent Framework is shutting down'))

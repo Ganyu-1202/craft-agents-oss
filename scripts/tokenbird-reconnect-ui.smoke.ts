@@ -26,7 +26,7 @@ const React = await import('react')
 // Keep the real Spinner while avoiding unrelated PDF viewer worker imports in
 // the UI barrel, which require Vite's ?url transform.
 const { Spinner } = await import('../packages/ui/src/components/ui/LoadingIndicator')
-mock.module('@craft-agent/ui', () => ({ Spinner }))
+mock.module('@tokenbird/ui', () => ({ Spinner }))
 const { createRoot } = await import('react-dom/client')
 const { act } = React
 const { AddWorkspaceStep_ConnectRemote } = await import('../apps/electron/src/renderer/components/workspace/AddWorkspaceStep_ConnectRemote')

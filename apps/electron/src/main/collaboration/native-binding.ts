@@ -1,4 +1,4 @@
-import type { RemoteServerConfig } from '@craft-agent/core/types'
+import type { RemoteServerConfig } from '@tokenbird/core/types'
 import type { NativeAuthorityEvent } from '../native-window-authority'
 import type { RelayResolvedServer, RelayWindowBinding } from './CollaborationRelayManager'
 

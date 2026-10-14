@@ -5,11 +5,22 @@
   let model;
   try {
     const settings = JSON.parse(document.getElementById('model-data').textContent);
+    // Decode preloaded resources in memory. This avoids XHR entirely and also
+    // works under the host application's stricter inherited connect-src CSP.
+    PIXI.live2d.Live2DLoader.middlewares.unshift(async context => {
+      const match = /^data:[\w/+.-]+;base64,([A-Za-z0-9+/=]+)$/.exec(context.url);
+      if (!match) throw new Error('Live2D accepts preloaded local data only');
+      const bytes = Uint8Array.from(atob(match[1]), c => c.charCodeAt(0));
+      context.result = context.type === 'arraybuffer' ? bytes.buffer
+        : context.type === 'json' ? JSON.parse(new TextDecoder().decode(bytes))
+        : new TextDecoder().decode(bytes);
+    });
     PIXI.live2d.config.idleMotionGroup = 'idle';
     app = new PIXI.Application({view: document.querySelector('canvas'), width: innerWidth, height: innerHeight, backgroundAlpha: 0, antialias: true, resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true});
     app.ticker.maxFPS = 30;
-    model = await PIXI.live2d.Live2DModel.from(settings, {autoInteract: false, autoUpdate: true});
+    model = await PIXI.live2d.Live2DModel.from(settings, {autoInteract: false, autoUpdate: false});
     app.stage.addChild(model);
+    app.ticker.add(() => model.update(app.ticker.deltaMS));
     const fit = () => {
       app.renderer.resize(innerWidth, innerHeight);
       model.scale.set(1);

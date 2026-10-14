@@ -1,4 +1,4 @@
-import type { SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
+import type { SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
 import { formatTimestamp, useSuperAgentText } from './super-agent-ui'
 
 export function SuperAgentStatistics({ snapshot }: { snapshot: SuperAgentSnapshot }) {

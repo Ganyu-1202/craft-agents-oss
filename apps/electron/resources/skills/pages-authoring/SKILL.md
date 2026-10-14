@@ -11,6 +11,6 @@ Use `list_pages`, `get_page`, `create_page`, `update_page`, and `write_page_data
 
 Choose `static`, `interactive`, or `live`. Supply a complete standalone HTML document with inline CSS and JavaScript and no external network dependencies. A live page reads only the generated `data/snapshot.json` containing KV values and timestamped numeric series.
 
-Implement the `craft-pages/v1` postMessage bridge: announce `ready`, then accept `init` and replacement `data` snapshots using the provided nonce. Copy the canonical snippet from the local Pages documentation.
+Implement the `tokenbird-pages/v1` postMessage bridge: announce `ready`, then accept `init` and replacement `data` snapshots using the provided nonce. Copy the canonical snippet from the local Pages documentation.
 
 Pages never contain credentials. Source actions must go through the bridge with user-approved, expiring grants bound to the exact content digest; changing content invalidates grants. Publishing is a user action.

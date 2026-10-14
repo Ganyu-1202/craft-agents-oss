@@ -1,6 +1,6 @@
 /**
  * Pages script executor: builds a ScriptAction from the grant invocation,
- * injects CRAFT_* env, never sets `page` (so it can't clobber the refresh
+ * injects TOKENBIRD_* env, never sets `page` (so it can't clobber the refresh
  * marker), returns process outcome on run, and throws on a blocked run.
  * The runner itself is injected — spawn behavior is covered by the automations
  * script-executor tests.
@@ -8,8 +8,8 @@
 
 import { describe, test, expect } from 'bun:test'
 import { createPagesScriptExecutor } from '../script-executor-bridge'
-import type { ScriptAction, ScriptActionResult } from '@craft-agent/shared/automations'
-import type { Logger } from '@craft-agent/server-core/runtime'
+import type { ScriptAction, ScriptActionResult } from '@tokenbird/shared/automations'
+import type { Logger } from '@tokenbird/server-core/runtime'
 
 const log: Logger = { debug() {}, info() {}, warn() {}, error() {} } as unknown as Logger
 const signal = new AbortController().signal
@@ -53,15 +53,15 @@ describe('createPagesScriptExecutor', () => {
     expect(seen[0].action.page).toBeUndefined()
   })
 
-  test('injects CRAFT_ workspace + page env for the triggering page', async () => {
+  test('injects TOKENBIRD_ workspace + page env for the triggering page', async () => {
     const { executor, seen } = makeExecutor({ exitCode: 0 })
     await executor({ pageSlug: 'dash', script: 'pages/dash/run.sh' }, { signal })
     const env = seen[0].ctx.env
-    expect(env.CRAFT_WORKSPACE_PATH).toBe('/tmp/ws')
-    expect(env.CRAFT_PAGE_SLUG).toBe('dash')
-    expect(env.CRAFT_PAGE_DIR).toBe('/tmp/ws/pages/dash')
-    expect(env.CRAFT_PAGE_DATA_DIR).toBe('/tmp/ws/pages/dash/data')
-    // never leaks non-CRAFT secrets
+    expect(env.TOKENBIRD_WORKSPACE_PATH).toBe('/tmp/ws')
+    expect(env.TOKENBIRD_PAGE_SLUG).toBe('dash')
+    expect(env.TOKENBIRD_PAGE_DIR).toBe('/tmp/ws/pages/dash')
+    expect(env.TOKENBIRD_PAGE_DATA_DIR).toBe('/tmp/ws/pages/dash/data')
+    // never leaks non-TOKENBIRD secrets
     expect(env.ANTHROPIC_API_KEY).toBeUndefined()
   })
 

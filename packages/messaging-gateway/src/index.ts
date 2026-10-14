@@ -1,5 +1,5 @@
 /**
- * @craft-agent/messaging-gateway
+ * @tokenbird/messaging-gateway
  *
  * Messaging gateway for TokenBird — Telegram & WhatsApp.
  */

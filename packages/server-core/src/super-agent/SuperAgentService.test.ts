@@ -3,9 +3,9 @@ import { access, mkdtemp, mkdir, readFile, rm, symlink, utimes, writeFile } from
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { spawn } from 'node:child_process'
-import type { CreateSessionOptions, PermissionRequest, Session, SessionEvent } from '@craft-agent/shared/protocol'
+import type { CreateSessionOptions, PermissionRequest, Session, SessionEvent } from '@tokenbird/shared/protocol'
 import type { SessionCompletionEvent } from '../sessions/SessionManager'
-import { loadSuperAgentDocument, saveSuperAgentDocument, validateSuperAgentConfig, type SuperAgentConfig, type SuperAgentSessionPolicy } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, saveSuperAgentDocument, validateSuperAgentConfig, type SuperAgentConfig, type SuperAgentSessionPolicy } from '@tokenbird/shared/super-agent'
 import { SuperAgentService, type SuperAgentSessionHost, type SuperAgentServiceDeps } from './SuperAgentService'
 import { buildSuperAgentNodePrompt } from './SuperAgentPrompt'
 

@@ -1,8 +1,8 @@
-import type { LlmConnection } from '@craft-agent/shared/config'
-import type { LlmConnectionBalance } from '@craft-agent/shared/protocol'
-import { TOKENNEST_OAUTH_CONFIG } from '@craft-agent/shared/auth'
+import type { LlmConnection } from '@tokenbird/shared/config'
+import type { LlmConnectionBalance } from '@tokenbird/shared/protocol'
+import { TOKENNEST_OAUTH_CONFIG } from '@tokenbird/shared/auth'
 
-export type { LlmConnectionBalance } from '@craft-agent/shared/protocol'
+export type { LlmConnectionBalance } from '@tokenbird/shared/protocol'
 
 type JsonRecord = Record<string, unknown>
 

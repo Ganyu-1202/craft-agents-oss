@@ -1,11 +1,11 @@
 /**
- * Pi SDK settings for Craft-embedded sessions.
+ * Pi SDK settings for TokenBird-embedded sessions.
  *
  * `createAgentSession` defaults to `SettingsManager.create(cwd, agentDir)`, which
  * merges the *working directory's* `.pi/settings.json` (project scope, trusted by
  * default) on top of `agentDir/settings.json`, and persists every SDK-side
  * settings write (e.g. `setModel` → defaultProvider/defaultModel) into the
- * session's `.pi-agent/` folder. Neither is wanted here: Craft owns model,
+ * session's `.pi-agent/` folder. Neither is wanted here: TokenBird owns model,
  * thinking level and compaction for its sessions, a repo checked out as the
  * working directory must not be able to flip retry/compaction/tool defaults,
  * and nothing should be written next to the session transcript.
@@ -20,14 +20,14 @@ import { resolveAutoCompactionTokenLimit } from '../../shared/src/config/llm-con
 
 type PiSettings = NonNullable<Parameters<typeof SettingsManager.inMemory>[0]>;
 
-export type CraftPiSessionPurpose = 'main' | 'ephemeral';
+export type TokenBirdPiSessionPurpose = 'main' | 'ephemeral';
 
 /**
  * Finish inside the host RPC timeout so the subprocess has time to serialize a
  * targeted result and the host can clear its pending request before its own
  * deadline fires.
  */
-export const CRAFT_PI_EPHEMERAL_QUERY_DEADLINE_MS = LLM_QUERY_TIMEOUT_MS - 5_000;
+export const TOKENBIRD_PI_EPHEMERAL_QUERY_DEADLINE_MS = LLM_QUERY_TIMEOUT_MS - 5_000;
 
 /**
  * Main-chat retry policy for transient provider/transport errors.
@@ -39,7 +39,7 @@ export const CRAFT_PI_EPHEMERAL_QUERY_DEADLINE_MS = LLM_QUERY_TIMEOUT_MS - 5_000
  * Disable provider-level retries in main chats so the total retry count stays
  * bounded at five and a risk-control 429 reaches the agent classifier at once.
  */
-export const CRAFT_PI_RETRY_SETTINGS = {
+export const TOKENBIRD_PI_RETRY_SETTINGS = {
   enabled: true,
   maxRetries: 5,
   baseDelayMs: 2_000,
@@ -56,7 +56,7 @@ export const CRAFT_PI_RETRY_SETTINGS = {
  * deadline. Agent backoff consumes at most 14 seconds, leaving headroom for
  * request and cleanup latency.
  */
-export const CRAFT_PI_EPHEMERAL_RETRY_SETTINGS = {
+export const TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS = {
   enabled: true,
   maxRetries: 3,
   baseDelayMs: 2_000,
@@ -66,21 +66,21 @@ export const CRAFT_PI_EPHEMERAL_RETRY_SETTINGS = {
   },
 } as const;
 
-export const CRAFT_PI_EPHEMERAL_MAX_BACKOFF_MS =
-  CRAFT_PI_EPHEMERAL_RETRY_SETTINGS.provider.maxRetries *
-    CRAFT_PI_EPHEMERAL_RETRY_SETTINGS.provider.maxRetryDelayMs *
-    (CRAFT_PI_EPHEMERAL_RETRY_SETTINGS.maxRetries + 1) +
-  CRAFT_PI_EPHEMERAL_RETRY_SETTINGS.baseDelayMs *
-    (2 ** CRAFT_PI_EPHEMERAL_RETRY_SETTINGS.maxRetries - 1);
+export const TOKENBIRD_PI_EPHEMERAL_MAX_BACKOFF_MS =
+  TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS.provider.maxRetries *
+    TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS.provider.maxRetryDelayMs *
+    (TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS.maxRetries + 1) +
+  TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS.baseDelayMs *
+    (2 ** TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS.maxRetries - 1);
 
 /** Settings applied to one Pi session, isolated from project/global Pi files. */
-export function buildCraftPiSettings(
-  purpose: CraftPiSessionPurpose = 'main',
+export function buildTokenBirdPiSettings(
+  purpose: TokenBirdPiSessionPurpose = 'main',
   compaction?: { tokenLimit?: number; contextWindow?: number },
 ): PiSettings {
   const retry = purpose === 'ephemeral'
-    ? CRAFT_PI_EPHEMERAL_RETRY_SETTINGS
-    : CRAFT_PI_RETRY_SETTINGS;
+    ? TOKENBIRD_PI_EPHEMERAL_RETRY_SETTINGS
+    : TOKENBIRD_PI_RETRY_SETTINGS;
   const limit = purpose === 'main'
     ? resolveAutoCompactionTokenLimit(
         { autoCompactionTokenLimit: compaction?.tokenLimit },
@@ -119,9 +119,9 @@ export function buildCraftPiSettings(
  * shared between the main session and `queryLlm` ephemeral sessions so a
  * `setModel` on one can never leak a "default model" into the other.
  */
-export function createCraftSettingsManager(
-  purpose: CraftPiSessionPurpose = 'main',
+export function createTokenBirdSettingsManager(
+  purpose: TokenBirdPiSessionPurpose = 'main',
   compaction?: { tokenLimit?: number; contextWindow?: number },
 ): SettingsManager {
-  return SettingsManager.inMemory(buildCraftPiSettings(purpose, compaction));
+  return SettingsManager.inMemory(buildTokenBirdPiSettings(purpose, compaction));
 }

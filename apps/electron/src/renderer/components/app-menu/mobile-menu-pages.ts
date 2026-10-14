@@ -149,7 +149,7 @@ export function buildMobileMenuPages({ hasNewWindow, isDebugMode }: BuildOptions
     })
 
   return [
-    { id: 'root', titleKey: 'menu.craftMenu', rows: rootRows },
+    { id: 'root', titleKey: 'menu.tokenBirdMenu', rows: rootRows },
     { id: 'settings', titleKey: 'sidebar.settings', rows: settingsRows },
     { id: 'help', titleKey: 'menu.help', rows: helpRows },
     { id: 'debug', titleKey: DEBUG_MENU.labelKey, rows: debugRows },

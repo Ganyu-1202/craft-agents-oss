@@ -21,7 +21,7 @@ import piIcon from '@/assets/provider-icons/pi.svg'
 import vercelIcon from '@/assets/provider-icons/vercel.svg'
 import tokenNestIcon from '@/assets/provider-icons/tokennest.png'
 
-import type { LlmProviderType } from '@craft-agent/shared/config/llm-connections'
+import type { LlmProviderType } from '@tokenbird/shared/config/llm-connections'
 
 /**
  * Icon URLs for each provider

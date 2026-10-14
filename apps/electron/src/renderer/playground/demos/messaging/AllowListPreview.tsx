@@ -251,7 +251,7 @@ export function AllowListPreview({
           <BindingRow
             icon={Hash}
             indent
-            title="GitHub Issue Triage (craft-agents-oss)"
+            title="GitHub Issue Triage (tokenbird)"
             subtitle="GithubIssues · Topic #16"
             access={topicAccess}
             workspaceOwners={owners}
@@ -289,7 +289,7 @@ function BotHeader() {
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">Telegram</div>
         <div className="mt-0.5 truncate text-xs text-foreground/50">
-          Bot API · Valid bot: @CraftAgentsBot
+          Bot API · Valid bot: @TokenBirdBot
         </div>
       </div>
       <button

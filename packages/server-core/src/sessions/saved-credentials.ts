@@ -1,9 +1,9 @@
-import { getCredentialManager } from '@craft-agent/shared/credentials';
-import { validateNativeCredentialId, validateNativeCredentialChanges } from '@craft-agent/shared/credentials/native-validation';
-import type { CredentialManager } from '@craft-agent/shared/credentials';
-import type { BrowserPaneFns } from '@craft-agent/shared/agent';
-import { executeShell } from '@craft-agent/session-tools-core';
-import type { SavedCredentialArgs } from '@craft-agent/session-tools-core';
+import { getCredentialManager } from '@tokenbird/shared/credentials';
+import { validateNativeCredentialId, validateNativeCredentialChanges } from '@tokenbird/shared/credentials/native-validation';
+import type { CredentialManager } from '@tokenbird/shared/credentials';
+import type { BrowserPaneFns } from '@tokenbird/shared/agent';
+import { executeShell } from '@tokenbird/session-tools-core';
+import type { SavedCredentialArgs } from '@tokenbird/session-tools-core';
 
 /** Host-only operations. Neither model nor renderer receives stored secrets. */
 export async function runSavedCredentialOperation(

@@ -13,7 +13,7 @@ import { successResponse, errorResponse } from '../response.ts';
 import { RESOURCE_BUNDLE_FILE_MARKER } from './resource-bundle-format.ts';
 
 export interface ExportResourcesArgs {
-  /** Absolute path of the archive file to write (e.g. /path/to/my-sources.craft-resources.json). */
+  /** Absolute path of the archive file to write (e.g. /path/to/my-sources.tokenbird-resources.json). */
   filePath: string;
   /** Source slugs to include, or 'all' (default) for every MCP/API source. */
   sources?: string[] | 'all';

@@ -13,7 +13,7 @@ import { useAppShellContext } from '@/context/AppShellContext'
 import { cn } from '@/lib/utils'
 import { formatCreditAmount as formatMoney, formatCreditBalance as balanceText } from '@/lib/format-credit'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
-import type { TokenNestUsagePoint, TokenNestUsageSnapshot } from '@craft-agent/shared/protocol'
+import type { TokenNestUsagePoint, TokenNestUsageSnapshot } from '@tokenbird/shared/protocol'
 import type { Session } from '../../../shared/types'
 
 export const meta: DetailsPageMeta = { navigator: 'settings', slug: 'usage' }

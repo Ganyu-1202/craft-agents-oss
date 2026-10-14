@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { superAgentFixture } from './SuperAgentTestSupport'
 
 test('specific blocker guidance persists, can change independently of notes, and clears when work resumes', async () => {

@@ -27,7 +27,7 @@ import { getSystemPrompt, getSystemPromptSources, formatProjectContextForPrompt 
 import type { ProjectPromptContext } from '../../projects/types.ts'
 
 const GIT_CONVENTIONS_HEADING = '## Git Conventions'
-const CO_AUTHOR_TRAILER = 'Co-Authored-By: TokenBird <agents-noreply@craft.do>'
+const CO_AUTHOR_TRAILER = 'Co-Authored-By: TokenBird <agents-noreply@tokenbird.invalid>'
 
 beforeEach(() => {
   mockPreferencesPrompt = ''
@@ -254,7 +254,7 @@ describe('runtime-specific prompt documents', () => {
 
     const runtimeSource = sources.find(source => source.id === 'runtime:codex')
     expect(runtimeSource?.content).toContain(runtimeHeadings.codex)
-    expect(sources.find(source => source.id === 'craft-agent-system')?.content).not.toContain(runtimeHeadings.codex)
+    expect(sources.find(source => source.id === 'tokenbird-system')?.content).not.toContain(runtimeHeadings.codex)
   })
 })
 
@@ -314,7 +314,7 @@ describe('includeCoAuthoredBy handling', () => {
     expect(prompt).not.toContain(CO_AUTHOR_TRAILER)
   })
 
-  it('falls back to getCoAuthorPreference() === true when the arg is omitted and the user has not opted out', () => {
+  it('falls back to getCoAuthorPreference() === true when the arg is omitted and the user has opted in', () => {
     mockIncludeCoAuthoredBy = true
 
     const prompt = getSystemPrompt(

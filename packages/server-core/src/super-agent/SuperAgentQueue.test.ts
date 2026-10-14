@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument, saveSuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, saveSuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 
 async function queued(reason: 'goal' | 'cancelled' | 'waiting' | 'ready') {

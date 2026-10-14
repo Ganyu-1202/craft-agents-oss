@@ -4,7 +4,7 @@ import {
   REQUEST_TIMEOUT_MS,
   STUDIO_IMAGE_HANDLER_TIMEOUT_MS,
   STUDIO_IMAGE_REQUEST_TIMEOUT_MS,
-} from '@craft-agent/shared/protocol'
+} from '@tokenbird/shared/protocol'
 import { WsRpcClient } from '../client'
 import { WsRpcServer } from '../server'
 

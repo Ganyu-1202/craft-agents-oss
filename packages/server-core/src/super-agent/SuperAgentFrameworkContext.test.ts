@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
-import { getConfiguredAgentFrameworkProfile, defaultFrameworkConfiguration } from '@craft-agent/shared/agent-plugins/frameworks'
-import { getAgentPluginDescriptor } from '@craft-agent/shared/agent-plugins/catalog'
+import { getConfiguredAgentFrameworkProfile, defaultFrameworkConfiguration } from '@tokenbird/shared/agent-plugins/frameworks'
+import { getAgentPluginDescriptor } from '@tokenbird/shared/agent-plugins/catalog'
 
 test('coordinator receives backend execution traits and workers retain their own framework identity', async () => {
   const workerProfile = { runtime: 'codex', execution: 'Pi compatibility loop', strengths: ['Multi-provider model transport'],

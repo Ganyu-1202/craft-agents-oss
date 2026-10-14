@@ -4,13 +4,13 @@ import { buildDarwinSandboxProfile } from './filesystem-isolation.ts';
 describe('buildDarwinSandboxProfile', () => {
   // macOS-only feature; session paths are Windows drive paths here.
   it.skipIf(process.platform === 'win32')('includes session subpath write allow', () => {
-    const profile = buildDarwinSandboxProfile('/tmp/craft-session');
-    expect(profile).toContain('(allow file-write* (subpath "/tmp/craft-session"))');
+    const profile = buildDarwinSandboxProfile('/tmp/tokenbird-session');
+    expect(profile).toContain('(allow file-write* (subpath "/tmp/tokenbird-session"))');
     expect(profile).not.toContain('(deny network*)');
   });
 
   it('includes deny network when requested', () => {
-    const profile = buildDarwinSandboxProfile('/tmp/craft-session', { includeNetworkDeny: true });
+    const profile = buildDarwinSandboxProfile('/tmp/tokenbird-session', { includeNetworkDeny: true });
     expect(profile).toContain('(deny network*)');
   });
 });

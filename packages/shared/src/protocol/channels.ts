@@ -178,6 +178,7 @@ export const RPC_CHANNELS = {
     GET_SELECTED_PACK: 'theme:getSelectedPack',
     SET_SELECTED_PACK: 'theme:setSelectedPack',
     GET_PACK_ASSET: 'theme:getPackAsset',
+    IMPORT_PACK: 'theme:importPack',
     IMPORT_PACK_FOLDER: 'theme:importPackFolder',
     DELETE_PACK: 'theme:deletePack',
     BROADCAST_PACK_CHANGE: 'theme:broadcastPackChange',

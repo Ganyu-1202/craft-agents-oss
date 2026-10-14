@@ -19,7 +19,7 @@ const profiles: Record<string, Omit<AgentFrameworkProfile, 'runtime'>> = {
     limitations: ['Requires an Anthropic connection', 'Super Agent delegation and tool execution follow node policy'] },
   codex: { key: 'codex', strengths: ['Native Codex reasoning and coding loop', 'Streaming steering', 'Native planning and context compaction'],
     suitableTasks: ['Code implementation', 'Debugging and review', 'Long coding sessions'],
-    limitations: ['Native execution requires a supported installed CLI and eligible OpenAI transport', 'Other transports use the explicit Pi compatibility loop', 'Super Agent file and command execution uses TokenBird tools'] },
+    limitations: ['Native execution requires a supported installed CLI and OpenAI or compatible Responses transport', 'Other transports use the explicit Pi compatibility loop', 'Super Agent file and command execution uses TokenBird tools'] },
   'plugin:hermes': { key: 'hermes', strengths: ['Native persistent memory', 'Native skills', 'Configurable toolsets', 'Session database and context compression', 'Streaming steering'],
     suitableTasks: ['Repeated workflows', 'Tasks benefiting from accumulated preferences and reusable skills'],
     limitations: ['Requires the configured Hermes Python runtime', 'Native toolsets still obey TokenBird node permissions', 'Auxiliary inference uses the model connection'] },
@@ -58,8 +58,16 @@ export function getConfiguredAgentFrameworkProfile(runtime: AgentPluginRuntime, 
 
 /** Shared by factory, coordinator context and selection UI so routing claims stay consistent. */
 export function nativeCodexTransportCompatible(input: {
-  piAuthProvider?: string; baseUrl?: string; customEndpoint?: unknown; authType?: LlmAuthType;
+  piAuthProvider?: string; baseUrl?: string; customEndpoint?: unknown; authType?: LlmAuthType; oauthProvider?: string;
 }): boolean {
+  if (input.baseUrl) {
+    const api = (input.customEndpoint as { api?: string } | undefined)?.api;
+    const responses = api === 'openai-responses'
+      || (input.oauthProvider === 'tokennest' && api !== 'anthropic-messages')
+      || (!input.customEndpoint && [undefined, 'openai'].includes(input.piAuthProvider));
+    return responses && (['api_key', 'api_key_with_endpoint', 'none'].includes(input.authType ?? '')
+      || (input.authType === 'oauth' && input.oauthProvider === 'tokennest'));
+  }
   return (!input.piAuthProvider || ['openai', 'openai-codex'].includes(input.piAuthProvider))
     && !input.baseUrl && !input.customEndpoint
     && [undefined, 'api_key', 'api_key_with_endpoint', 'oauth', 'none'].includes(input.authType);

@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from 'bun:test'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { registerCredentialHandlers, type RemoteCredentialHost } from '../credentials'
 import type { HandlerDeps } from '../../handler-deps'
 import type { RpcServer, HandlerFn } from '../../../transport'

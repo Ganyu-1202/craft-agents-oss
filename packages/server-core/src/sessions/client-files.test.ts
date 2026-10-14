@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { saveClientFiles } from './client-files';
-import { CLIENT_FILE_MAX_BYTES } from '@craft-agent/core/types';
+import { CLIENT_FILE_MAX_BYTES } from '@tokenbird/core/types';
 
 const roots: string[] = [];
 afterEach(async () => { for (const path of roots.splice(0)) await rm(path, { recursive: true, force: true }); });

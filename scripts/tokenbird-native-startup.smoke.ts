@@ -122,7 +122,7 @@ require(${JSON.stringify(main)});
 const env = { ...process.env, TOKENBIRD_CONFIG_DIR: configDir }
 delete env.ELECTRON_RUN_AS_NODE
 for (const key of Object.keys(env)) {
-  if (key.startsWith('CRAFT_SERVER_') || key === 'CRAFT_WORKSPACE_ID' || key === 'CRAFT_HEADLESS' || key === 'VITE_DEV_SERVER_URL') delete env[key]
+  if (key.startsWith('TOKENBIRD_SERVER_') || key === 'TOKENBIRD_WORKSPACE_ID' || key === 'TOKENBIRD_HEADLESS' || key === 'VITE_DEV_SERVER_URL') delete env[key]
 }
 const electron = (await import('electron')).default as unknown as string
 const child = Bun.spawn([electron, wrapper], { env, stdout: 'pipe', stderr: 'pipe' })

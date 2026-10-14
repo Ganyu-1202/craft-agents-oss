@@ -13,9 +13,10 @@
 
 import { cpSync, copyFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { syncResourceDirectory } from '../../../scripts/build/resource-sync';
 
 // Copy all resources (icons, themes, docs, permissions, tool-icons, etc.)
-cpSync('resources', 'dist/resources', { recursive: true });
+syncResourceDirectory('resources', 'dist/resources');
 
 // Harness-compatible theme packages live at the repository root (`themes/<id>`).
 // Preserve their complete package layout in the distributable; the runtime only

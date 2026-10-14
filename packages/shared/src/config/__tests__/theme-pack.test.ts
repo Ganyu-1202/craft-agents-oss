@@ -45,7 +45,7 @@ function makeDshSkinDir(): string {
   writeFileSync(join(dir, 'assets', 'maid-atelier-maid-right-v6.webp'), 'char-right');
   writeFileSync(join(dir, 'preview', 'light.webp'), 'light');
   writeFileSync(join(dir, 'preview', 'dark.webp'), 'dark');
-  // Plugin code that must NEVER be executed by Craft
+  // Plugin code that must NEVER be executed by TokenBird
   mkdirSync(join(dir, 'lib'), { recursive: true });
   writeFileSync(join(dir, 'lib', 'client.js'), 'throw new Error("must not run")');
   return dir;
@@ -136,7 +136,7 @@ describe('convertDshSkinToManifest', () => {
 describe('importThemePackFromFolder + loadThemePack (DSH layout)', () => {
   it('imports a dsh skin folder into the theme packs dir and re-reads it', () => {
     const originalConfigDir = process.env.TOKENBIRD_CONFIG_DIR;
-    const tempConfig = mkdtempSync(join(tmpdir(), 'craft-config-'));
+    const tempConfig = mkdtempSync(join(tmpdir(), 'tokenbird-config-'));
     process.env.TOKENBIRD_CONFIG_DIR = tempConfig;
     const skinDir = makeDshSkinDir();
     try {

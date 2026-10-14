@@ -1,13 +1,13 @@
 /** Main-process-only remote secret resolution. Never send resolved records to a renderer. */
 import { createHash, randomUUID } from 'node:crypto'
-import type { RemoteServerConfig } from '@craft-agent/core/types'
-import { getCredentialManager, type CredentialId, type CredentialWrite, type StoredCredential } from '@craft-agent/shared/credentials'
+import type { RemoteServerConfig } from '@tokenbird/core/types'
+import { getCredentialManager, type CredentialId, type CredentialWrite, type StoredCredential } from '@tokenbird/shared/credentials'
 import {
   loadRemoteServerProfiles, prepareRemoteServerProfile, publishRemoteServerProfiles, isRemoteSecretRef,
   type RemoteServerProfile, type RemoteServerProfileInput,
-} from '@craft-agent/shared/config/remote-servers'
-import { getWorkspaces, publishWorkspaceRemoteServerUpdates } from '@craft-agent/shared/config'
-import type { NativeManagedCredentialMetadata } from '@craft-agent/shared/credentials/native-types'
+} from '@tokenbird/shared/config/remote-servers'
+import { getWorkspaces, publishWorkspaceRemoteServerUpdates } from '@tokenbird/shared/config'
+import type { NativeManagedCredentialMetadata } from '@tokenbird/shared/credentials/native-types'
 
 type RemoteCredentialType = 'remote_server_token' | 'remote_workspace_token' | 'remote_sftp_password' | 'remote_sftp_passphrase'
 type Stub = { id: string; name: string; remoteServer?: RemoteServerConfig }

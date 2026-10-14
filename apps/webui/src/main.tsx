@@ -5,7 +5,7 @@ import App from './App'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { windowWorkspaceIdAtom } from '@/atoms/sessions'
 import { Toaster } from '@/components/ui/sonner'
-import { setupI18n } from '@craft-agent/shared/i18n'
+import { setupI18n } from '@tokenbird/shared/i18n'
 import { initReactI18next } from 'react-i18next'
 import { useTranslation } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
@@ -20,7 +20,7 @@ if (new URLSearchParams(window.location.search).get('embedded') === 'android') {
 
 // Initialize i18n before any React rendering
 const appI18n = setupI18n([LanguageDetector, initReactI18next])
-const savedLanguage = window.CraftAgentAndroid?.getLanguage?.()
+const savedLanguage = window.TokenBirdAgentAndroid?.getLanguage?.()
 if (savedLanguage) void appI18n.changeLanguage(savedLanguage)
 
 function CrashFallback() {

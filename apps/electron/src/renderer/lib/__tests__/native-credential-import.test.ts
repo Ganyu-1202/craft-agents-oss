@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { NATIVE_CREDENTIAL_FIELDS, NATIVE_CREDENTIAL_LIMITS, NATIVE_CREDENTIAL_TYPES, type NativeCredentialMetadata, type NativeCredentialChange } from '@craft-agent/shared/credentials/native-types'
+import { NATIVE_CREDENTIAL_FIELDS, NATIVE_CREDENTIAL_LIMITS, NATIVE_CREDENTIAL_TYPES, type NativeCredentialMetadata, type NativeCredentialChange } from '@tokenbird/shared/credentials/native-types'
 import { credentialIdentifierFields, nativeCredentialKey, parseNativeCredentialImport, previewNativeCredentialChanges } from '../native-credential-import'
 
 const scope = { workspaceId: 'local-workspace', sourceWorkspaceId: 'local-workspace', sourceScopeUnavailable: false, includesGlobal: true, includesLlm: true } as const

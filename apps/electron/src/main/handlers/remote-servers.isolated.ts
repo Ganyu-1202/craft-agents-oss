@@ -2,16 +2,16 @@ import { afterAll, afterEach, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { HandlerFn, RpcServer } from '@craft-agent/server-core/transport'
+import type { HandlerFn, RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from './handler-deps'
 
 // Import configuration consumers only after isolating all profile writes.
 const previousConfig = process.env.TOKENBIRD_CONFIG_DIR
 const directory = mkdtempSync(join(tmpdir(), 'tokenbird-profile-probe-'))
 process.env.TOKENBIRD_CONFIG_DIR = directory
-const { WsRpcServer } = await import('@craft-agent/server-core/transport')
-const { RPC_CHANNELS } = await import('@craft-agent/shared/protocol')
-const { upsertRemoteServerProfile, getRemoteServerProfile } = await import('@craft-agent/shared/config/remote-servers')
+const { WsRpcServer } = await import('@tokenbird/server-core/transport')
+const { RPC_CHANNELS } = await import('@tokenbird/shared/protocol')
+const { upsertRemoteServerProfile, getRemoteServerProfile } = await import('@tokenbird/shared/config/remote-servers')
 const { registerRemoteServersGuiHandlers } = await import('./remote-servers')
 
 const cleanup: Array<() => void | Promise<void>> = []

@@ -1,6 +1,6 @@
-import type { AgentProvider, AgentRuntimeProtocol, LlmAuthType } from '@craft-agent/shared/agent/backend'
-import { getModelPromptSettings, isCompatProvider, modelSupportsImages, type LlmConnection } from '@craft-agent/shared/config'
-import type { FileAttachment } from '@craft-agent/shared/protocol'
+import type { AgentProvider, AgentRuntimeProtocol, LlmAuthType } from '@tokenbird/shared/agent/backend'
+import { getModelPromptSettings, isCompatProvider, modelSupportsImages, type LlmConnection } from '@tokenbird/shared/config'
+import type { FileAttachment } from '@tokenbird/shared/protocol'
 
 export interface BackendRuntimeSignatureInput {
   connection: LlmConnection | null

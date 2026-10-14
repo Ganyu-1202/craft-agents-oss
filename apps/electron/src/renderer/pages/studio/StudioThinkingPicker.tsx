@@ -1,7 +1,7 @@
 import { WorkbenchSelect } from '@/components/ui/workbench-select'
 import { BrainCircuit } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { THINKING_LEVELS, isValidThinkingLevel, type ThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
+import { THINKING_LEVELS, isValidThinkingLevel, type ThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
 
 export type StudioThinkingLevel = ThinkingLevel | 'auto'
 

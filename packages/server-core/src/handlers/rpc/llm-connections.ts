@@ -1,25 +1,25 @@
-import { RPC_CHANNELS, type LlmConnectionSetup, type ListCustomModelsParams, type ListCustomModelsResult, type TokenNestUsagePoint, type TokenNestUsageRecordDto, type TokenNestUsageSnapshot } from '@craft-agent/shared/protocol'
-import { getLlmConnections, getLlmConnection, addLlmConnection, updateLlmConnection, deleteLlmConnection, getDefaultLlmConnection, setDefaultLlmConnection, touchLlmConnection, isCompatProvider, isAnthropicProvider, isImageGenerationModelId, getDefaultModelsForConnection, getDefaultModelForConnection, type LlmConnection, type LlmConnectionWithStatus, toBedrockNativeId, deriveBedrockRegionPrefix } from '@craft-agent/shared/config'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
+import { RPC_CHANNELS, type LlmConnectionSetup, type ListCustomModelsParams, type ListCustomModelsResult, type TokenNestUsagePoint, type TokenNestUsageRecordDto, type TokenNestUsageSnapshot } from '@tokenbird/shared/protocol'
+import { getLlmConnections, getLlmConnection, addLlmConnection, updateLlmConnection, deleteLlmConnection, getDefaultLlmConnection, setDefaultLlmConnection, touchLlmConnection, isCompatProvider, isAnthropicProvider, isImageGenerationModelId, getDefaultModelsForConnection, getDefaultModelForConnection, type LlmConnection, type LlmConnectionWithStatus, toBedrockNativeId, deriveBedrockRegionPrefix } from '@tokenbird/shared/config'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
 import { fetchDeepSeekPricing } from '../../services/deepseek-pricing'
-import { setSetupDeferred } from '@craft-agent/shared/config/storage'
+import { setSetupDeferred } from '@tokenbird/shared/config/storage'
 import {
   resolveSetupTestConnectionHint,
   testBackendConnection,
   validateStoredBackendConnection,
-} from '@craft-agent/shared/agent/backend'
-import { getModelRefreshService } from '@craft-agent/server-core/model-fetchers'
-import { parseTestConnectionError, createBuiltInConnection, validateModelList, piAuthProviderDisplayName, validateSetupTestInput, setupTestRequiresApiKey, resolveCustomEndpointSetup } from '@craft-agent/server-core/domain'
-import { getWorkspaceOrThrow, buildBackendHostRuntimeContext } from '@craft-agent/server-core/handlers'
-import { refreshAgentPluginCatalog } from '@craft-agent/shared/agent-plugins'
-import { getCompatibleAgentRuntimes } from '@craft-agent/shared/config'
-import { pushTyped, type RpcServer } from '@craft-agent/server-core/transport'
+} from '@tokenbird/shared/agent/backend'
+import { getModelRefreshService } from '@tokenbird/server-core/model-fetchers'
+import { parseTestConnectionError, createBuiltInConnection, validateModelList, piAuthProviderDisplayName, validateSetupTestInput, setupTestRequiresApiKey, resolveCustomEndpointSetup } from '@tokenbird/server-core/domain'
+import { getWorkspaceOrThrow, buildBackendHostRuntimeContext } from '@tokenbird/server-core/handlers'
+import { refreshAgentPluginCatalog } from '@tokenbird/shared/agent-plugins'
+import { getCompatibleAgentRuntimes } from '@tokenbird/shared/config'
+import { pushTyped, type RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import { randomUUID } from 'node:crypto'
-import { CLIENT_OPEN_EXTERNAL } from '@craft-agent/server-core/transport'
-import { fetchApiBalance, supportsApiBalance, type LlmConnectionBalance } from '@craft-agent/server-core/domain'
+import { CLIENT_OPEN_EXTERNAL } from '@tokenbird/server-core/transport'
+import { fetchApiBalance, supportsApiBalance, type LlmConnectionBalance } from '@tokenbird/server-core/domain'
 import { fetchTokenNestUsage } from './tokennest-usage'
-import { TOKENNEST_RECHARGE_URL } from '@craft-agent/shared/utils/billing'
+import { TOKENNEST_RECHARGE_URL } from '@tokenbird/shared/utils/billing'
 
 // Local OAuth state
 let copilotOAuthAbort: AbortController | null = null
@@ -185,7 +185,7 @@ export async function refreshConnectionModels(slug: string, deps: HandlerDeps): 
     }
 
     if (connection.oauthProvider === 'tokennest') {
-      const { getValidTokenNestCredentials, fetchTokenNestChannelGroups, fetchTokenNestProfile, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
+      const { getValidTokenNestCredentials, fetchTokenNestChannelGroups, fetchTokenNestProfile, TOKENNEST_OAUTH_CONFIG } = await import('@tokenbird/shared/auth')
       const credentialManager = getCredentialManager()
       let credentials = await getValidTokenNestCredentials(slug, credentialManager)
       if (!credentials) return { success: false, error: 'TokenNest authentication has expired. Please sign in again.' }
@@ -532,7 +532,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
 
   // Unified connection test — uses the agent factory to spawn a real agent subprocess
   // and validate credentials via runMiniCompletion(). Same code path as actual chat.
-  server.handle(RPC_CHANNELS.settings.TEST_LLM_CONNECTION_SETUP, async (_ctx, params: import('@craft-agent/shared/protocol').TestLlmConnectionParams): Promise<import('@craft-agent/shared/protocol').TestLlmConnectionResult> => {
+  server.handle(RPC_CHANNELS.settings.TEST_LLM_CONNECTION_SETUP, async (_ctx, params: import('@tokenbird/shared/protocol').TestLlmConnectionParams): Promise<import('@tokenbird/shared/protocol').TestLlmConnectionResult> => {
     const { provider, apiKey, baseUrl, model, piAuthProvider, customEndpoint } = params
     const trimmedKey = apiKey?.trim() ?? ''
     const allowEmptyApiKey = !setupTestRequiresApiKey(baseUrl)
@@ -591,12 +591,12 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
   // ============================================================
 
   server.handle(RPC_CHANNELS.pi.GET_API_KEY_PROVIDERS, async () => {
-    const { getPiApiKeyProviders } = await import('@craft-agent/shared/config')
+    const { getPiApiKeyProviders } = await import('@tokenbird/shared/config')
     return getPiApiKeyProviders()
   })
 
   server.handle(RPC_CHANNELS.pi.GET_PROVIDER_BASE_URL, async (_ctx, provider: string) => {
-    const { getPiProviderBaseUrl } = await import('@craft-agent/shared/config')
+    const { getPiProviderBaseUrl } = await import('@tokenbird/shared/config')
     return getPiProviderBaseUrl(provider)
   })
 
@@ -650,7 +650,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
   // Querying a balance is deliberately separate from listing connections: it is
   // optional, requires a network call, and must never delay normal chat startup.
   server.handle(RPC_CHANNELS.llmConnections.GET_BALANCES, async (_ctx, options?: { forceRefresh?: boolean }): Promise<LlmConnectionBalance[]> => {
-    const { getShowApiBalances } = await import('@craft-agent/shared/config/storage')
+    const { getShowApiBalances } = await import('@tokenbird/shared/config/storage')
     if (!getShowApiBalances()) return []
 
     const credentialManager = getCredentialManager()
@@ -660,7 +660,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       if (!options?.forceRefresh && cached && cached.expiresAt > now) return cached.value
       let credential: string | undefined
       if (connection.oauthProvider === 'tokennest') {
-        const { getValidTokenNestCredentials } = await import('@craft-agent/shared/auth')
+        const { getValidTokenNestCredentials } = await import('@tokenbird/shared/auth')
         credential = (await getValidTokenNestCredentials(connection.slug, credentialManager))?.accessToken
       } else {
         credential = (await credentialManager.getLlmApiKey(connection.slug)) ?? undefined
@@ -673,12 +673,12 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
   })
 
   server.handle(RPC_CHANNELS.llmConnections.GET_SHOW_BALANCES, async (): Promise<boolean> => {
-    const { getShowApiBalances } = await import('@craft-agent/shared/config/storage')
+    const { getShowApiBalances } = await import('@tokenbird/shared/config/storage')
     return getShowApiBalances()
   })
 
   server.handle(RPC_CHANNELS.llmConnections.SET_SHOW_BALANCES, async (_ctx, enabled: boolean): Promise<void> => {
-    const { setShowApiBalances } = await import('@craft-agent/shared/config/storage')
+    const { setShowApiBalances } = await import('@tokenbird/shared/config/storage')
     setShowApiBalances(enabled)
     if (!enabled) balanceCache.clear()
   })
@@ -847,7 +847,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       deps.platform.logger?.info(`[LLM_CONNECTION_TEST] Error for ${slug}: ${msg.slice(0, 500)}`)
-      const { parseValidationError } = await import('@craft-agent/shared/config')
+      const { parseValidationError } = await import('@tokenbird/shared/config')
       return { success: false, error: parseValidationError(msg) }
     }
   })
@@ -881,7 +881,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
         }
       }
 
-      const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@craft-agent/shared/workspaces')
+      const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@tokenbird/shared/workspaces')
       const config = loadWorkspaceConfig(workspace.rootPath)
       if (!config) {
         return { success: false, error: 'Failed to load workspace config' }
@@ -925,7 +925,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     if (!connection || connection.authType !== 'oauth' || connection.oauthProvider !== 'tokennest') {
       throw new Error('TokenNest OAuth connection not found')
     }
-    const { createTokenNestRechargeSession, getValidTokenNestCredentials, TokenNestRequestError } = await import('@craft-agent/shared/auth')
+    const { createTokenNestRechargeSession, getValidTokenNestCredentials, TokenNestRequestError } = await import('@tokenbird/shared/auth')
     const manager = getCredentialManager()
     let credentials = await getValidTokenNestCredentials(connectionSlug, manager)
     if (!credentials) throw new Error('TokenNest authentication has expired. Please sign in again.')
@@ -955,7 +955,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     const {
       getValidTokenNestCredentials,
       TokenNestRequestError,
-    } = await import('@craft-agent/shared/auth')
+    } = await import('@tokenbird/shared/auth')
     const credentialManager = getCredentialManager()
     let credentials = await getValidTokenNestCredentials(connection.slug, credentialManager)
     if (!credentials) throw new Error('TokenNest authentication has expired. Please sign in again.')
@@ -1030,7 +1030,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
   // ============================================================
 
   server.handle(RPC_CHANNELS.tokennest.CHECK_AUTH, async () => {
-    const { checkTokenNestAuthorization } = await import('@craft-agent/shared/auth')
+    const { checkTokenNestAuthorization } = await import('@tokenbird/shared/auth')
     const credentialManager = getCredentialManager()
     const accounts = getLlmConnections().filter(connection => connection.oauthProvider === 'tokennest')
     const results = await Promise.all(accounts.map(connection =>
@@ -1063,7 +1063,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     callbackUrl: string
   }): Promise<{ authUrl: string; state: string; flowId: string }> => {
     cleanupExpiredTokenNestFlows()
-    const { prepareTokenNestOAuth } = await import('@craft-agent/shared/auth')
+    const { prepareTokenNestOAuth } = await import('@tokenbird/shared/auth')
     const prepared = prepareTokenNestOAuth(args.callbackUrl)
     const flowId = randomUUID()
     pendingTokenNestFlows.set(prepared.state, {
@@ -1094,7 +1094,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     }
 
     try {
-      const { exchangeTokenNestTokens, fetchTokenNestChannelGroups, fetchTokenNestProfile, revokeTokenNestToken, TOKENNEST_OAUTH_CONFIG } = await import('@craft-agent/shared/auth')
+      const { exchangeTokenNestTokens, fetchTokenNestChannelGroups, fetchTokenNestProfile, revokeTokenNestToken, TOKENNEST_OAUTH_CONFIG } = await import('@tokenbird/shared/auth')
       const credentialManager = getCredentialManager()
       const tokens = await exchangeTokenNestTokens(args.code, flow.codeVerifier, flow.redirectUri)
       const discovered = await listCustomModels({
@@ -1212,7 +1212,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     flowId: string
   }> => {
     cleanupExpiredChatGptFlows()
-    const { prepareChatGptOAuth } = await import('@craft-agent/shared/auth')
+    const { prepareChatGptOAuth } = await import('@tokenbird/shared/auth')
 
     const prepared = prepareChatGptOAuth()
     const flowId = randomUUID()
@@ -1248,7 +1248,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     }
 
     try {
-      const { exchangeChatGptTokens } = await import('@craft-agent/shared/auth')
+      const { exchangeChatGptTokens } = await import('@tokenbird/shared/auth')
       const credentialManager = getCredentialManager()
 
       const tokens = await exchangeChatGptTokens(code, flow.codeVerifier)
@@ -1338,7 +1338,7 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
     error?: string
   }> => {
     try {
-      const { loginGitHubCopilot } = await import('@craft-agent/shared/auth')
+      const { loginGitHubCopilot } = await import('@tokenbird/shared/auth')
       const credentialManager = getCredentialManager()
 
       // Cancel any previous in-flight flow

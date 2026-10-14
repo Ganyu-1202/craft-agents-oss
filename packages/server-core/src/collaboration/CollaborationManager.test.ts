@@ -8,7 +8,7 @@ const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'craft-collaboration-'))
+  const root = await mkdtemp(join(tmpdir(), 'tokenbird-collaboration-'))
   const otherRoot = `${root}-other`
   roots.push(root, otherRoot)
   const manager = new CollaborationManager(id => id === 'main' ? root : otherRoot)

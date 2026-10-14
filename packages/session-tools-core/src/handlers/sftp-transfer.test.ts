@@ -9,7 +9,7 @@ describe('handleSftpTransfer', () => {
         success: true as const,
         direction: 'upload' as const,
         localPath: 'C:\\data\\backup.zip',
-        remotePath: '/srv/craft/backup.zip',
+        remotePath: '/srv/tokenbird/backup.zip',
         bytes: 128,
       }),
     } as unknown as SessionToolContext;
@@ -22,7 +22,7 @@ describe('handleSftpTransfer', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain('128 bytes');
-    expect(result.content[0]?.text).toContain('/srv/craft/backup.zip');
+    expect(result.content[0]?.text).toContain('/srv/tokenbird/backup.zip');
   });
 
   it('fails clearly when no desktop SFTP bridge is connected', async () => {

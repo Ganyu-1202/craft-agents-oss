@@ -180,8 +180,8 @@ irm https://openai.goldgom.top/tokenbird/install-app.ps1 | iex
 ```bash
 bun install
 bun run server:build:subprocess
-export CRAFT_SERVER_TOKEN="$(openssl rand -hex 32)"
-export CRAFT_RPC_HOST=0.0.0.0
+export TOKENBIRD_SERVER_TOKEN="$(openssl rand -hex 32)"
+export TOKENBIRD_RPC_HOST=0.0.0.0
 bun run server:start
 ```
 
@@ -199,7 +199,7 @@ bun run apps/cli/src/index.ts run "总结当前仓库的结构"
 bun run apps/cli/src/index.ts --help
 ```
 
-连接已有服务时设置 `CRAFT_SERVER_URL` 和 `CRAFT_SERVER_TOKEN`；CLI 精简发行版可用 `bun run cli:build` 构建。详见 [CLI 文档](docs/cli.md)。
+连接已有服务时设置 `TOKENBIRD_SERVER_URL` 和 `TOKENBIRD_SERVER_TOKEN`；CLI 精简发行版可用 `bun run cli:build` 构建。详见 [CLI 文档](docs/cli.md)。
 
 ## 权限与安全
 

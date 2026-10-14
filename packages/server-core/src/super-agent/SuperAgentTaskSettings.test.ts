@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, withSuperAgentOrchestrator } from '@tokenbird/shared/super-agent'
 import { join } from 'node:path'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 

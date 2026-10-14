@@ -82,7 +82,7 @@ describe('network diagnostics', () => {
   });
 
   it('does not resend an adapted POST after a transport failure', async () => {
-    process.env.CRAFT_INTERCEPTOR_DISABLE_AUTO_INSTALL = '1';
+    process.env.TOKENBIRD_INTERCEPTOR_DISABLE_AUTO_INSTALL = '1';
     const { interceptedFetch } = await import('../unified-network-interceptor.ts');
     const error = Object.assign(new Error('socket closed'), { code: 'ECONNRESET' });
     let calls = 0;

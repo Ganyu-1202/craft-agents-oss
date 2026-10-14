@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { emptySuperAgentState, type SuperAgentPlanItem, type SuperAgentTask } from '@craft-agent/shared/super-agent'
+import { emptySuperAgentState, type SuperAgentPlanItem, type SuperAgentTask } from '@tokenbird/shared/super-agent'
 import { superAgentBlockingReports } from './super-agent-blockers'
 import { SuperAgentBlockingCard } from './SuperAgentBlockingCard'
 import type { SuperAgentText } from './super-agent-ui'
-import zh from '@craft-agent/shared/i18n/locales/zh-Hans.json'
+import zh from '@tokenbird/shared/i18n/locales/zh-Hans.json'
 
 const text: SuperAgentText = (key, values) => {
   let value = (zh as Record<string, string>)[`superAgent.${key}`] ?? key

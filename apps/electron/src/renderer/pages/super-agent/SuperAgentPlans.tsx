@@ -1,7 +1,7 @@
 import { WorkbenchSelect } from '@/components/ui/workbench-select'
 import { useState } from 'react'
 import { ClipboardList, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
-import type { SuperAgentCommand, SuperAgentPlanItem } from '@craft-agent/shared/super-agent'
+import type { SuperAgentCommand, SuperAgentPlanItem } from '@tokenbird/shared/super-agent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'

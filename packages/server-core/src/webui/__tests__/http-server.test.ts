@@ -17,7 +17,7 @@ const logger = {
 } as any
 
 function createTestWebuiDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'craft-webui-test-'))
+  const dir = mkdtempSync(join(tmpdir(), 'tokenbird-webui-test-'))
   TEMP_DIRS.push(dir)
   writeFileSync(join(dir, 'login.html'), '<!doctype html><html><body>login</body></html>')
   writeFileSync(join(dir, 'index.html'), '<!doctype html><html><body>app</body></html>')
@@ -80,7 +80,7 @@ describe('startWebuiHttpServer', () => {
 
     expect(authRes.status).toBe(200)
     const setCookie = authRes.headers.get('set-cookie')
-    expect(setCookie).toContain('craft_session=')
+    expect(setCookie).toContain('tokenbird_session=')
     expect(setCookie).not.toContain('Secure')
 
     const configRes = await fetch(`${baseUrl}/api/config`, {
@@ -145,7 +145,7 @@ describe('startWebuiHttpServer', () => {
       headers: {
         'Content-Type': 'application/json',
         'X-Forwarded-Proto': 'https',
-        'X-Forwarded-Host': 'craft.example.com:3100',
+        'X-Forwarded-Host': 'tokenbird.example.com:3100',
       },
       body: JSON.stringify({ password: PASSWORD }),
     })
@@ -154,19 +154,19 @@ describe('startWebuiHttpServer', () => {
       headers: {
         cookie: extractSessionCookie(authRes),
         'X-Forwarded-Proto': 'https',
-        'X-Forwarded-Host': 'craft.example.com:3100',
+        'X-Forwarded-Host': 'tokenbird.example.com:3100',
       },
     })
 
     expect(configRes.status).toBe(200)
     expect(await configRes.json()).toEqual({
-      wsUrl: 'wss://craft.example.com:9100',
+      wsUrl: 'wss://tokenbird.example.com:9100',
     })
   })
 
   it('returns an explicit public websocket URL override from /api/config', async () => {
     const { baseUrl } = await createServer({
-      publicWsUrl: 'wss://craft.example.com/ws',
+      publicWsUrl: 'wss://tokenbird.example.com/ws',
       wsProtocol: 'wss',
       wsPort: 9100,
     })
@@ -185,7 +185,7 @@ describe('startWebuiHttpServer', () => {
 
     expect(configRes.status).toBe(200)
     expect(await configRes.json()).toEqual({
-      wsUrl: 'wss://craft.example.com/ws',
+      wsUrl: 'wss://tokenbird.example.com/ws',
     })
   })
 })

@@ -25,7 +25,7 @@ import type {
   ApiTestResult,
   SourceConfig,
   DeveloperFeedback,
-} from '@craft-agent/session-tools-core';
+} from '@tokenbird/session-tools-core';
 import {
   validateConfig,
   validateSource,
@@ -68,7 +68,7 @@ import {
 } from '../resources/resource-bundle.ts';
 import { updatePreferences as updatePreferencesImpl } from '../config/preferences.ts';
 // Re-export types that may be needed by consumers
-export type { SessionToolContext, SessionToolCallbacks } from '@craft-agent/session-tools-core';
+export type { SessionToolContext, SessionToolCallbacks } from '@tokenbird/session-tools-core';
 
 /**
  * Options for creating a Claude context

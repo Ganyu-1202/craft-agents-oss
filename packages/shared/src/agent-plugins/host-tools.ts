@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { SESSION_TOOL_REGISTRY } from '@craft-agent/session-tools-core';
+import { SESSION_TOOL_REGISTRY } from '@tokenbird/session-tools-core';
 import type { BaseAgent } from '../agent/base-agent.ts';
 import type { BackendConfig } from '../agent/backend/types.ts';
 import { createClaudeContext, type SessionToolContext } from '../agent/claude-context.ts';
@@ -15,7 +15,7 @@ import { extractWorkspaceSlug } from '../utils/workspace.ts';
 import { executeLocalAgentHostTool } from './local-tools.ts';
 import { claimSessionActionGateDispatch } from '../agent/core/session-execution-policy.ts';
 
-export interface HostToolResult { content: string; isError: boolean; images?: import('@craft-agent/session-tools-core').ToolImage[] }
+export interface HostToolResult { content: string; isError: boolean; images?: import('@tokenbird/session-tools-core').ToolImage[] }
 
 /** Composition service: native agent bridges call the same host policy and tools. */
 export class AgentPluginHostTools {

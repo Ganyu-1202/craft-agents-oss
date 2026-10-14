@@ -1,4 +1,4 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import type { RpcServer } from '../../transport'
 import type { HandlerDeps } from '../handler-deps'
 import { CloudClient, type LocalCloudTarget } from '../../cloud/client'

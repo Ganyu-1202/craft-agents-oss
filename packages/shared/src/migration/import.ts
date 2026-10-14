@@ -138,7 +138,7 @@ function moveDir(src: string, dest: string): void {
 export function moveFileIntoPlace(src: string, dest: string): void {
   const tempDest = join(
     dirname(dest),
-    `.${basename(dest)}.craft-import-${process.pid}-${randomUUID()}.tmp`,
+    `.${basename(dest)}.tokenbird-import-${process.pid}-${randomUUID()}.tmp`,
   );
   try {
     copyFileSync(src, tempDest);
@@ -202,7 +202,7 @@ export async function importAllData(
   mkdirSync(workspacesBaseDir, { recursive: true });
 
   // ---- Phase A: decompress into staging (validated, sandboxed) -------------
-  const staging = mkdtempSync(join(tmpdir(), 'craft-agent-import-'));
+  const staging = mkdtempSync(join(tmpdir(), 'tokenbird-import-'));
   try {
     const staged = extractToStaging(options.sourcePath, staging, options.onProgress);
     const warnings = [...staged.warnings];

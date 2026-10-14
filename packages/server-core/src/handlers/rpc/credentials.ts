@@ -1,7 +1,7 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { CredentialVaultError } from '@craft-agent/shared/credentials/backends/vault-protection'
-import { validateNativeCredentialChanges } from '@craft-agent/shared/credentials/native-validation'
-import type { NativeCredentialScope, NativeCredentialMetadata, NativeCredentialVaultStatus, NativeCredentialChange } from '@craft-agent/shared/credentials/native-types'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { CredentialVaultError } from '@tokenbird/shared/credentials/backends/vault-protection'
+import { validateNativeCredentialChanges } from '@tokenbird/shared/credentials/native-validation'
+import type { NativeCredentialScope, NativeCredentialMetadata, NativeCredentialVaultStatus, NativeCredentialChange } from '@tokenbird/shared/credentials/native-types'
 import type { RequestContext, RpcServer } from '../../transport'
 import type { HandlerDeps } from '../handler-deps'
 

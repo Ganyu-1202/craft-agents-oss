@@ -199,7 +199,7 @@ describe('processUpsertMessage', () => {
   })
 
   // -------------------------------------------------------------------------
-  // craft-agents-oss#1021: WhatsApp LID (Linked Identity) accounts.
+  // tokenbird#1021: WhatsApp LID (Linked Identity) accounts.
   // -------------------------------------------------------------------------
 
   test('fromMe LID self-chat emits when selfLid is resolved', async () => {

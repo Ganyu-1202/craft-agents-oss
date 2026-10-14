@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { HelpCircle } from 'lucide-react'
-import { DocumentFormattedMarkdownOverlay } from '@craft-agent/ui'
-import { getDocUrl, type DocFeature } from '@craft-agent/shared/docs/doc-links'
+import { DocumentFormattedMarkdownOverlay } from '@tokenbird/ui'
+import { getDocUrl, type DocFeature } from '@tokenbird/shared/docs/doc-links'
 import { cn } from '@/lib/utils'
 
 interface BuiltinDocHelpButtonProps {

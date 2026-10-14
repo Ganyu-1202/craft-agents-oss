@@ -17,7 +17,7 @@ import {
   CLIENT_ANDROID_PERMISSION,
   CLIENT_BROWSER_INVOKE,
 } from '../capabilities'
-import { CodedError } from '@craft-agent/shared/protocol'
+import { CodedError } from '@tokenbird/shared/protocol'
 
 const TEST_TOKEN = 'test-token-with-enough-entropy-to-pass'
 

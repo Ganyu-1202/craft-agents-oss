@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { loadSkillBySlug } from '@craft-agent/shared/skills'
-import { setBundledAssetsRoot } from '@craft-agent/shared/utils/paths'
-import { defaultNodeSkills, withSuperAgentOrchestrator } from '@craft-agent/shared/super-agent'
+import { loadSkillBySlug } from '@tokenbird/shared/skills'
+import { setBundledAssetsRoot } from '@tokenbird/shared/utils/paths'
+import { defaultNodeSkills, withSuperAgentOrchestrator } from '@tokenbird/shared/super-agent'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 
 test('the orchestrator sees only bound skill descriptions and workers receive actual skill instructions and unchanged source ceilings', async () => {

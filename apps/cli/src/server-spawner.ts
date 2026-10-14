@@ -1,8 +1,8 @@
 /**
  * Server spawner — start a headless TokenBird server as a child process.
  *
- * Spawns the server entry with the current Bun runtime, reads stdout for the `CRAFT_SERVER_URL=`
- * and `CRAFT_SERVER_TOKEN=` lines, and returns a handle to stop the server.
+ * Spawns the server entry with the current Bun runtime, reads stdout for the `TOKENBIRD_SERVER_URL=`
+ * and `TOKENBIRD_SERVER_TOKEN=` lines, and returns a handle to stop the server.
  */
 
 import { resolve, join } from 'node:path'
@@ -53,7 +53,7 @@ function findServerEntry(): string {
 // ---------------------------------------------------------------------------
 
 export async function spawnServer(opts?: SpawnServerOptions): Promise<SpawnedServer> {
-  const serverEntry = opts?.serverEntry ?? process.env.CRAFT_SERVER_ENTRY ?? findServerEntry()
+  const serverEntry = opts?.serverEntry ?? process.env.TOKENBIRD_SERVER_ENTRY ?? findServerEntry()
   const startupTimeout = opts?.startupTimeout ?? 30_000
   const token = crypto.randomUUID()
 
@@ -66,9 +66,9 @@ export async function spawnServer(opts?: SpawnServerOptions): Promise<SpawnedSer
     env: {
       ...parentEnv,
       ...opts?.env,
-      CRAFT_SERVER_TOKEN: token,
-      CRAFT_RPC_PORT: '0',
-      CRAFT_RPC_HOST: '127.0.0.1',
+      TOKENBIRD_SERVER_TOKEN: token,
+      TOKENBIRD_RPC_PORT: '0',
+      TOKENBIRD_RPC_HOST: '127.0.0.1',
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -91,7 +91,7 @@ export async function spawnServer(opts?: SpawnServerOptions): Promise<SpawnedSer
     })()
   }
 
-  // Read stdout line by line looking for CRAFT_SERVER_URL=
+  // Read stdout line by line looking for TOKENBIRD_SERVER_URL=
   return new Promise<SpawnedServer>((resolve, reject) => {
     const timer = setTimeout(() => {
       proc.kill()
@@ -105,10 +105,10 @@ export async function spawnServer(opts?: SpawnServerOptions): Promise<SpawnedSer
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? '' // keep incomplete last line in buffer
       for (const line of lines) {
-        if (line.startsWith('CRAFT_SERVER_URL=')) {
-          url = line.slice('CRAFT_SERVER_URL='.length).trim()
+        if (line.startsWith('TOKENBIRD_SERVER_URL=')) {
+          url = line.slice('TOKENBIRD_SERVER_URL='.length).trim()
         }
-        if (line.startsWith('CRAFT_SERVER_TOKEN=')) {
+        if (line.startsWith('TOKENBIRD_SERVER_TOKEN=')) {
           // Server echoes the token — we already have it but this confirms ready
         }
         // Once we have the URL, the server is ready
@@ -144,7 +144,7 @@ export async function spawnServer(opts?: SpawnServerOptions): Promise<SpawnedSer
       // If we get here without resolving, the process exited before printing the URL
       clearTimeout(timer)
       if (!url) {
-        reject(new Error('Server process exited before printing CRAFT_SERVER_URL'))
+        reject(new Error('Server process exited before printing TOKENBIRD_SERVER_URL'))
       }
     })()
   })

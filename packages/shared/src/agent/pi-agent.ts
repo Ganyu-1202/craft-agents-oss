@@ -17,7 +17,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
-import type { AgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent } from '@tokenbird/core/types';
 import type { FileAttachment } from '../utils/files.ts';
 import { getProxyEnvVars } from '../config/proxy-env.ts';
 
@@ -78,7 +78,7 @@ import {
   SESSION_BACKEND_TOOL_NAMES,
   SESSION_TOOL_REGISTRY,
   type ToolResult as SessionToolResult,
-} from '@craft-agent/session-tools-core';
+} from '@tokenbird/session-tools-core';
 import { createClaudeContext, type SessionToolContext } from './claude-context.ts';
 import { getPermissionModeDiagnostics } from './mode-manager.ts';
 import { listAgents } from '../agents/index.ts';
@@ -287,7 +287,7 @@ export class PiAgent extends BaseAgent {
     this.subprocessErrorRepeatCount = 0;
   }
 
-  // Ring buffer of recent subprocess stderr. Always on (independent of CRAFT_DEBUG)
+  // Ring buffer of recent subprocess stderr. Always on (independent of TOKENBIRD_DEBUG)
   // so that connection-test and other failures can surface what the subprocess
   // actually said, instead of a bare "timed out" with no context.
   private stderrBuffer: string[] = [];
@@ -606,9 +606,9 @@ export class PiAgent extends BaseAgent {
         ...this.config.envOverrides,
         ...awsEnv,
         // Pass session dir for cross-process toolMetadataStore
-        ...(sessionDir ? { CRAFT_SESSION_DIR: sessionDir } : {}),
+        ...(sessionDir ? { TOKENBIRD_SESSION_DIR: sessionDir } : {}),
         // Propagate debug mode
-        CRAFT_DEBUG: (process.argv.includes('--debug') || process.env.CRAFT_DEBUG === '1') ? '1' : '0',
+        TOKENBIRD_DEBUG: (process.argv.includes('--debug') || process.env.TOKENBIRD_DEBUG === '1') ? '1' : '0',
       },
     });
 
@@ -628,7 +628,7 @@ export class PiAgent extends BaseAgent {
 
     // Always capture stderr into a bounded ring buffer so callers (e.g. the
     // connection-test timeout path in factory.ts) can surface it on failure.
-    // Keep the CRAFT_DEBUG-gated log for interactive dev work.
+    // Keep the TOKENBIRD_DEBUG-gated log for interactive dev work.
     child.stderr?.on('data', (data: Buffer) => {
       const text = data.toString();
       this.recordStderr(text);
@@ -811,9 +811,9 @@ export class PiAgent extends BaseAgent {
    * Returns a provider-aware credential object for the subprocess,
    * or null if no piAuthProvider is configured (falls back to legacy getApiKey).
    *
-   * OAuth tokens from Craft (Claude Max, ChatGPT Plus, Copilot) are passed as
+   * OAuth tokens from TokenBird (Claude Max, ChatGPT Plus, Copilot) are passed as
    * api_key type because they function as bearer tokens that the Pi SDK's provider
-   * modules use directly. The OAuth exchange happens on the Craft side; by the time
+   * modules use directly. The OAuth exchange happens on the TokenBird side; by the time
    * it reaches Pi, it's just an access token.
    */
   private async getPiAuth(): Promise<{
@@ -1496,7 +1496,7 @@ export class PiAgent extends BaseAgent {
       }
     }
 
-    // Adapt event to CraftAgentEvents
+    // Adapt event to TokenBirdAgentEvents
     // The event adapter expects typed PiAgentEvent/AgentSessionEvent objects,
     // but since we're receiving plain JSON, we cast through unknown.
     for (const agentEvent of this.adapter.adaptEvent(adaptedEvent as any)) {
@@ -1814,7 +1814,7 @@ export class PiAgent extends BaseAgent {
     toolName: string,
     args: Record<string, unknown>,
     actionAuthorized = false,
-  ): Promise<{ content: string; isError: boolean; images?: import('@craft-agent/session-tools-core').ToolImage[] }> {
+  ): Promise<{ content: string; isError: boolean; images?: import('@tokenbird/session-tools-core').ToolImage[] }> {
     // Session-scoped tools — strip mcp__session__ prefix added by the Pi SDK
     // registration (tools are registered as mcp__session__SubmitPlan, etc.)
     const strippedName = toolName.startsWith('mcp__session__')
@@ -1869,13 +1869,13 @@ export class PiAgent extends BaseAgent {
 
   /**
    * Execute a session-scoped tool by name.
-   * Uses the canonical registry from @craft-agent/session-tools-core.
+   * Uses the canonical registry from @tokenbird/session-tools-core.
    */
   private async executeSessionTool(
     toolName: string,
     args: Record<string, unknown>,
     actionAuthorized = false,
-  ): Promise<{ content: string; isError: boolean; images?: import('@craft-agent/session-tools-core').ToolImage[] }> {
+  ): Promise<{ content: string; isError: boolean; images?: import('@tokenbird/session-tools-core').ToolImage[] }> {
     const nodePolicy = actionAuthorized ? { allowed: true as const } : checkSessionExecutionPolicy(this._sessionId, `mcp__session__${toolName}`, args, this.workingDirectory);
     if (!nodePolicy.allowed) return { content: nodePolicy.reason, isError: true };
     try {

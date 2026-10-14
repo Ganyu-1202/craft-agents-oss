@@ -1,27 +1,27 @@
-import type { EventSink, RpcServer } from '@craft-agent/server-core/transport'
-import { createAgentError, parseError } from '@craft-agent/shared/agent'
+import type { EventSink, RpcServer } from '@tokenbird/server-core/transport'
+import { createAgentError, parseError } from '@tokenbird/shared/agent'
 import { TurnClientContexts, type TurnClientContext } from './turn-client-context'
 import { saveClientFiles } from './client-files'
 import { MessageBranchGate, editedBranchMessages, branchSeedMessages, copyBranchAttachmentFiles } from './message-branching'
-import { CLIENT_FILE_TIMEOUT_MS, validateClientFileRequest, type ClientFileSelection } from '@craft-agent/core/types'
-import { CLIENT_REQUEST_FILES, CLIENT_ANDROID_ADB, CLIENT_ANDROID_PERMISSION, CLIENT_BROWSER_INVOKE, CLIENT_CANVAS_INVOKE, CLIENT_RUN_SHELL, CLIENT_SFTP_TRANSFER, type ClientShellResult, type ClientSftpTransferResult } from '@craft-agent/server-core/transport'
-import { executeShell, type AndroidAdbArgs, type AndroidPermissionArgs, type ShellExecArgs, type SftpTransferArgs } from '@craft-agent/session-tools-core'
-import type { ISessionManager, IBrowserPaneManager, ExecutePromptAutomationInput } from '@craft-agent/server-core/handlers'
+import { CLIENT_FILE_TIMEOUT_MS, validateClientFileRequest, type ClientFileSelection } from '@tokenbird/core/types'
+import { CLIENT_REQUEST_FILES, CLIENT_ANDROID_ADB, CLIENT_ANDROID_PERMISSION, CLIENT_BROWSER_INVOKE, CLIENT_CANVAS_INVOKE, CLIENT_RUN_SHELL, CLIENT_SFTP_TRANSFER, type ClientShellResult, type ClientSftpTransferResult } from '@tokenbird/server-core/transport'
+import { executeShell, type AndroidAdbArgs, type AndroidPermissionArgs, type ShellExecArgs, type SftpTransferArgs } from '@tokenbird/session-tools-core'
+import type { ISessionManager, IBrowserPaneManager, ExecutePromptAutomationInput } from '@tokenbird/server-core/handlers'
 import { RemoteBrowserPaneManager } from './RemoteBrowserPaneManager'
 import { runStudioImageToolAction } from './studio-image-tool'
 import { EMPTY_RESPONSE_ERROR_CODE, resolveSessionTurnCompletion } from './session-turn-completion'
-import { validateFilePath, getWorkspaceAllowedDirs } from '@craft-agent/server-core/handlers'
-import { createScopedLogger, CONSOLE_LOGGER, type PlatformServices, type Logger } from '@craft-agent/server-core/runtime'
+import { validateFilePath, getWorkspaceAllowedDirs } from '@tokenbird/server-core/handlers'
+import { createScopedLogger, CONSOLE_LOGGER, type PlatformServices, type Logger } from '@tokenbird/server-core/runtime'
 import { basename, dirname, join } from 'path'
 import { existsSync } from 'fs'
 import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { randomUUID } from 'node:crypto'
-import { setSessionExecutionPolicy, setSessionProgramExecutor, getSessionProgramExecutor, clearSessionExecutionPolicy, clearSessionPolicyGrants, setSessionPolicyPermissionHandler, setSessionActionReviewer, checkSessionExecutionPolicy, checkSessionPolicyPath, isSessionPolicyShellAutoAllowed, type SessionExecutionPolicy, type SessionPolicyPermissionRequest } from '@craft-agent/shared/agent'
-import { reviewActionGate, type ActionReviewRequest } from '@craft-agent/shared/agent'
-import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
-import type { SuperAgentSessionPolicy } from '@craft-agent/shared/super-agent'
+import { setSessionExecutionPolicy, setSessionProgramExecutor, getSessionProgramExecutor, clearSessionExecutionPolicy, clearSessionPolicyGrants, setSessionPolicyPermissionHandler, setSessionActionReviewer, checkSessionExecutionPolicy, checkSessionPolicyPath, isSessionPolicyShellAutoAllowed, type SessionExecutionPolicy, type SessionPolicyPermissionRequest } from '@tokenbird/shared/agent'
+import { reviewActionGate, type ActionReviewRequest } from '@tokenbird/shared/agent'
+import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
+import type { SuperAgentSessionPolicy } from '@tokenbird/shared/super-agent'
 import { cleanupSuperAgents, getSuperAgentService } from '../super-agent/registry'
-import { type AgentEvent, setPermissionMode, hydratePreviousPermissionMode, getPermissionModeDiagnostics, type PermissionMode, unregisterSessionScopedToolCallbacks, mergeSessionScopedToolCallbacks, type MessagingToolBridge, AbortReason, type AuthRequest, type AuthResult, type CredentialAuthRequest, type BrowserPaneFns, generateConversationSummary, resolveKeepBackgroundTasksAlive, isContentPolicyBlocked } from '@craft-agent/shared/agent'
+import { type AgentEvent, setPermissionMode, hydratePreviousPermissionMode, getPermissionModeDiagnostics, type PermissionMode, unregisterSessionScopedToolCallbacks, mergeSessionScopedToolCallbacks, type MessagingToolBridge, AbortReason, type AuthRequest, type AuthResult, type CredentialAuthRequest, type BrowserPaneFns, generateConversationSummary, resolveKeepBackgroundTasksAlive, isContentPolicyBlocked } from '@tokenbird/shared/agent'
 import {
   resolveSessionConnection,
   createBackendFromConnection,
@@ -32,13 +32,13 @@ import {
   type AgentBackend,
   type BackendHostRuntimeContext,
   type PostInitResult,
-} from '@craft-agent/shared/agent/backend'
-import { getLlmConnection, getLlmConnections, getDefaultLlmConnection, getDefaultThinkingLevel, resetManagedAnthropicAuthEnvVars, resolveMidStreamBehavior, getPersistedUiLanguage, resolveTitleLanguageName } from '@craft-agent/shared/config'
-import type { MidStreamBehavior } from '@craft-agent/shared/config'
-import { PrivilegedExecutionBroker } from '@craft-agent/server-core/services'
+} from '@tokenbird/shared/agent/backend'
+import { getLlmConnection, getLlmConnections, getDefaultLlmConnection, getDefaultThinkingLevel, resetManagedAnthropicAuthEnvVars, resolveMidStreamBehavior, getPersistedUiLanguage, resolveTitleLanguageName } from '@tokenbird/shared/config'
+import type { MidStreamBehavior } from '@tokenbird/shared/config'
+import { PrivilegedExecutionBroker } from '@tokenbird/server-core/services'
 import { isValidWorkingDirectory } from '../utils/path-validation'
-import { InitGate } from '@craft-agent/server-core/domain'
-import { i18n } from '@craft-agent/shared/i18n'
+import { InitGate } from '@tokenbird/server-core/domain'
+import { i18n } from '@tokenbird/shared/i18n'
 import {
   getWorkspaces,
   getWorkspaceByNameOrId,
@@ -50,9 +50,9 @@ import {
   MODEL_REGISTRY,
   type Workspace,
   type WorkspaceInfo,
-} from '@craft-agent/shared/config'
-import type { ActiveSessionInfo, SessionProcessingStatus } from '@craft-agent/core/types'
-import { loadWorkspaceConfig } from '@craft-agent/shared/workspaces'
+} from '@tokenbird/shared/config'
+import type { ActiveSessionInfo, SessionProcessingStatus } from '@tokenbird/core/types'
+import { loadWorkspaceConfig } from '@tokenbird/shared/workspaces'
 import {
   // Session persistence functions
   listSessions as listStoredSessions,
@@ -86,50 +86,50 @@ import {
   type SessionHeader,
   type SessionCollaboration,
   pickSessionFields,
-} from '@craft-agent/shared/sessions'
-import { loadWorkspaceSources, loadAllSources, getSourcesBySlugs, isSourceUsable, type LoadedSource, type McpServerConfig, getSourcesNeedingAuth, getSourceCredentialManager, TokenRefreshManager } from '@craft-agent/shared/sources'
-import { listTaskSlugs, parseTaskSpec, uniqueTaskSlug } from '@craft-agent/shared/tasks'
+} from '@tokenbird/shared/sessions'
+import { loadWorkspaceSources, loadAllSources, getSourcesBySlugs, isSourceUsable, type LoadedSource, type McpServerConfig, getSourcesNeedingAuth, getSourceCredentialManager, TokenRefreshManager } from '@tokenbird/shared/sources'
+import { listTaskSlugs, parseTaskSpec, uniqueTaskSlug } from '@tokenbird/shared/tasks'
 import { createTaskFromSpec, resolveCreateTaskProjectId } from '../tasks'
 import { buildPagesToolCallbacks } from '../pages/tool-callbacks'
 import { buildServersFromSources as buildServersFromSourcesShared } from '../sources/build-servers'
-import { ConfigWatcher, type ConfigWatcherCallbacks } from '@craft-agent/shared/config'
-import { getValidClaudeOAuthToken } from '@craft-agent/shared/auth'
-import { resolveAuthEnvVars } from '@craft-agent/shared/config'
-import { toolMetadataStore, getLastApiError } from '@craft-agent/shared/interceptor'
-import { isParentTaskTool } from '@craft-agent/shared/utils/toolNames'
-import { isRecoveryInfo } from '@craft-agent/shared/utils/recovery-info'
-import { restoreFiles } from '@craft-agent/shared/utils/bundle-files'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
+import { ConfigWatcher, type ConfigWatcherCallbacks } from '@tokenbird/shared/config'
+import { getValidClaudeOAuthToken } from '@tokenbird/shared/auth'
+import { resolveAuthEnvVars } from '@tokenbird/shared/config'
+import { toolMetadataStore, getLastApiError } from '@tokenbird/shared/interceptor'
+import { isParentTaskTool } from '@tokenbird/shared/utils/toolNames'
+import { isRecoveryInfo } from '@tokenbird/shared/utils/recovery-info'
+import { restoreFiles } from '@tokenbird/shared/utils/bundle-files'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
 import { runSavedCredentialOperation, saveRequestedCredential } from './saved-credentials'
-import { getSessionScopedToolCallbacks } from '@craft-agent/shared/agent'
-import { CraftMcpClient, McpClientPool, McpPoolServer, getProcessRssBytes, mcpRuntimeLimiter, resolveMcpRuntimeLimits, type McpRuntimeLimits } from '@craft-agent/shared/mcp'
-import { type Session, type SessionEvent, type FileAttachment, type SendMessageOptions, type UnreadSummary, type RemoteSessionTransferPayload, type ImportRemoteSessionTransferResult, type PerformanceSnapshot, type MemoryLeakCheckResult, type MemoryLeakCheckSample, RPC_CHANNELS, generateMessageId } from '@craft-agent/shared/protocol'
-import { messageToStored, storedToMessage, type Message, type StoredAttachment, type ToolDisplayMeta, type TokenUsage } from '@craft-agent/core/types'
-import { formatPathsToRelative, formatToolInputPaths, perf, encodeIconToDataUrlAsync, getEmojiIcon, resetSummarizationClient, resolveToolIcon, readFileAttachment, selectSpreadMessages, normalizePath } from '@craft-agent/shared/utils'
-import { loadAllSkills, loadSkillBySlug, invalidateSkillsCache, type LoadedSkill } from '@craft-agent/shared/skills'
-import { invalidateContextFileCache } from '@craft-agent/shared/prompts/system'
-import { getToolIconsDir, resolveMiniModel } from '@craft-agent/shared/config'
-import { listAgents, type AgentSessionSettings } from '@craft-agent/shared/agents'
-import { getDefaultSummarizationModel } from '@craft-agent/shared/config/models'
-import type { SummarizeCallback } from '@craft-agent/shared/sources'
-import { type ThinkingLevel, DEFAULT_THINKING_LEVEL, normalizeThinkingLevel } from '@craft-agent/shared/agent/thinking-levels'
-import { evaluateAutoLabels } from '@craft-agent/shared/labels/auto'
-import { listLabels, loadLabelConfig } from '@craft-agent/shared/labels/storage'
-import { extractLabelId, resolveSessionLabels, findTaskItemLabelId } from '@craft-agent/shared/labels'
-import { ensureLabelsExist, ensureTaskItemLabel } from '@craft-agent/shared/labels/crud'
-import { loadStatusConfig } from '@craft-agent/shared/statuses/storage'
-import { AutomationSystem, createPromptHistoryEntry, appendAutomationHistoryEntry, type AutomationSystemMetadataSnapshot } from '@craft-agent/shared/automations'
+import { getSessionScopedToolCallbacks } from '@tokenbird/shared/agent'
+import { TokenBirdMcpClient, McpClientPool, McpPoolServer, getProcessRssBytes, mcpRuntimeLimiter, resolveMcpRuntimeLimits, type McpRuntimeLimits } from '@tokenbird/shared/mcp'
+import { type Session, type SessionEvent, type FileAttachment, type SendMessageOptions, type UnreadSummary, type RemoteSessionTransferPayload, type ImportRemoteSessionTransferResult, type PerformanceSnapshot, type MemoryLeakCheckResult, type MemoryLeakCheckSample, RPC_CHANNELS, generateMessageId } from '@tokenbird/shared/protocol'
+import { messageToStored, storedToMessage, type Message, type StoredAttachment, type ToolDisplayMeta, type TokenUsage } from '@tokenbird/core/types'
+import { formatPathsToRelative, formatToolInputPaths, perf, encodeIconToDataUrlAsync, getEmojiIcon, resetSummarizationClient, resolveToolIcon, readFileAttachment, selectSpreadMessages, normalizePath } from '@tokenbird/shared/utils'
+import { loadAllSkills, loadSkillBySlug, invalidateSkillsCache, type LoadedSkill } from '@tokenbird/shared/skills'
+import { invalidateContextFileCache } from '@tokenbird/shared/prompts/system'
+import { getToolIconsDir, resolveMiniModel } from '@tokenbird/shared/config'
+import { listAgents, type AgentSessionSettings } from '@tokenbird/shared/agents'
+import { getDefaultSummarizationModel } from '@tokenbird/shared/config/models'
+import type { SummarizeCallback } from '@tokenbird/shared/sources'
+import { type ThinkingLevel, DEFAULT_THINKING_LEVEL, normalizeThinkingLevel } from '@tokenbird/shared/agent/thinking-levels'
+import { evaluateAutoLabels } from '@tokenbird/shared/labels/auto'
+import { listLabels, loadLabelConfig } from '@tokenbird/shared/labels/storage'
+import { extractLabelId, resolveSessionLabels, findTaskItemLabelId } from '@tokenbird/shared/labels'
+import { ensureLabelsExist, ensureTaskItemLabel } from '@tokenbird/shared/labels/crud'
+import { loadStatusConfig } from '@tokenbird/shared/statuses/storage'
+import { AutomationSystem, createPromptHistoryEntry, appendAutomationHistoryEntry, type AutomationSystemMetadataSnapshot } from '@tokenbird/shared/automations'
 import { buildBackendRuntimeSignature, buildRestartRequiredSignature, filterAttachmentsForModelInput } from './runtime-config'
 import { migrateAgentSessionRuntime } from './agent-runtime-migration'
 import { validateArchiveTarget } from './archive-guards'
 import { CollaborationConflictError, CollaborationManager, MAX_COLLABORATION_FILE_BYTES } from '../collaboration/CollaborationManager'
 import { buildCollaborationPrompt } from '../collaboration/prompt'
 import { RelayParticipantManager } from '../collaboration/RelayParticipantManager'
-import type { CollaborationChangeResult, CollaborationGroup } from '@craft-agent/shared/protocol'
+import type { CollaborationChangeResult, CollaborationGroup } from '@tokenbird/shared/protocol'
 
 // Import from server-core domain utilities
-import { sanitizeForTitle, shouldActivateBrowserOverlay, normalizeBrowserToolName, rollbackFailedBranchCreation, releaseBrowserOwnershipOnForcedStop } from '@craft-agent/server-core/domain'
-import { resizeImageForAPI, resizeIconBuffer } from '@craft-agent/server-core/services'
+import { sanitizeForTitle, shouldActivateBrowserOverlay, normalizeBrowserToolName, rollbackFailedBranchCreation, releaseBrowserOwnershipOnForcedStop } from '@tokenbird/server-core/domain'
+import { resizeImageForAPI, resizeIconBuffer } from '@tokenbird/server-core/services'
 export { sanitizeForTitle }
 
 // Module-level platform ref — set once during init via setSessionPlatform()
@@ -213,7 +213,7 @@ const METADATA_WRITE_GUARD_MS = 5000
  */
 const PLAN_APPROVAL_MESSAGE = 'Plan approved, please execute.'
 
-// validateSpawnAttachmentPath removed — use shared validateFilePath from @craft-agent/server-core/handlers
+// validateSpawnAttachmentPath removed — use shared validateFilePath from @tokenbird/server-core/handlers
 
 const PI_TURN_ANCHORS_VERSION = 1
 const PI_TURN_ANCHORS_FILE = 'pi-turn-anchors.json'
@@ -278,7 +278,7 @@ export async function savePiTurnAnchor(sessionPath: string, messageId: string, a
  * sidecar contains no anchors for messages copied from its own parent, so a
  * downstream branch falls back to "full-history fork" — discarding the
  * branch cutoff and producing a session whose visible history doesn't match
- * what the LLM sees. See craft-agents-oss#782.
+ * what the LLM sees. See tokenbird#782.
  */
 export async function copyPiTurnAnchorsForBranch(
   sourceSessionPath: string,
@@ -476,7 +476,7 @@ async function applyBridgeUpdates(
   agent: AgentInstance,
   sessionPath: string,
   enabledSources: LoadedSource[],
-  mcpServers: Record<string, import('@craft-agent/shared/agent/backend').SdkMcpServerConfig>,
+  mcpServers: Record<string, import('@tokenbird/shared/agent/backend').SdkMcpServerConfig>,
   sessionId: string,
   workspaceRootPath: string,
   context: string,
@@ -772,7 +772,7 @@ interface ManagedSession {
   // Used to detect if a follow-up message has superseded the current one (stale-request guard).
   processingGeneration: number
   // NOTE: Parent-child tracking state (pendingTools, parentToolStack, toolToParentMap,
-  // pendingTextParent) has been removed. CraftAgent now provides parentToolUseId
+  // pendingTextParent) has been removed. TokenBirdAgent now provides parentToolUseId
   // directly on all events using the SDK's authoritative parent_tool_use_id field.
   // See: packages/shared/src/agent/tool-matching.ts
   // Session name (user-defined or AI-generated)
@@ -794,7 +794,7 @@ interface ManagedSession {
   poolServer?: McpPoolServer
   // SDK session ID for conversation continuity
   sdkSessionId?: string
-  sdkSessionRuntime?: import('@craft-agent/shared/config').AgentRuntimeProtocol
+  sdkSessionRuntime?: import('@tokenbird/shared/config').AgentRuntimeProtocol
   agentRuntimeMigrationContext?: string
   // Token usage for display
   tokenUsage?: {
@@ -968,14 +968,14 @@ interface ManagedSession {
   // Ephemeral — not persisted to disk. Cleared after one-shot injection.
   wasInterrupted?: boolean
   /**
-   * Runtime-only: Pi SDK message id → Craft assistant message id.
+   * Runtime-only: Pi SDK message id → TokenBird assistant message id.
    * Populated when a `text_complete` arrives carrying `sdkMessageId`, and read
    * when the follow-up `pi_turn_anchor` event arrives (deferred by one microtask
-   * so the SDK's session-manager has updated its leaf — see craft-agents-oss#782).
+   * so the SDK's session-manager has updated its leaf — see tokenbird#782).
    * Capped at PI_SDK_MESSAGE_ID_CACHE_LIMIT to bound memory in long sessions.
    */
-  piSdkMessageToCraftMessage?: Map<string, string>
-  // Source-activation auto-retry (craft-agents-oss#804). When a source activates
+  piSdkMessageToTokenBirdMessage?: Map<string, string>
+  // Source-activation auto-retry (tokenbird#804). When a source activates
   // mid-turn, we re-send the original message with a "[<slug> activated]" suffix
   // after a short delay. The pending slot lets `sendMessage` dedup a duplicate
   // RPC from a legacy renderer that still ships the client-side auto_retry.
@@ -1217,12 +1217,12 @@ export interface SessionManagerOptions {
   /**
    * Maximum number of idle Agent + MCP runtimes retained process-wide.
    * `0` disposes a runtime as soon as its turn and message queue complete.
-   * Defaults to `CRAFT_MAX_WARM_RUNTIMES`, or 2 when unset/invalid.
+   * Defaults to `TOKENBIRD_MAX_WARM_RUNTIMES`, or 2 when unset/invalid.
    */
   maxWarmRuntimes?: number
 }
 
-export function resolveMaxWarmRuntimes(value = process.env.CRAFT_MAX_WARM_RUNTIMES): number {
+export function resolveMaxWarmRuntimes(value = process.env.TOKENBIRD_MAX_WARM_RUNTIMES): number {
   if (value === undefined || value.trim() === '') return 2
   const parsed = Number(value)
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 2
@@ -1256,7 +1256,7 @@ export class SessionManager implements ISessionManager {
   // Automation systems for workspace event automations - one per workspace (includes scheduler, diffing, and handlers)
   private automationSystems: Map<string, AutomationSystem> = new Map()
   // Pending credential request resolvers (keyed by requestId)
-  private pendingCredentialResolvers: Map<string, (response: import('@craft-agent/shared/protocol').CredentialResponse) => void> = new Map()
+  private pendingCredentialResolvers: Map<string, (response: import('@tokenbird/shared/protocol').CredentialResponse) => void> = new Map()
   private localCredentialAccessEnabled = false
   /** Enabled by desktop and standalone hosts for their own encrypted credential store. */
   setLocalCredentialAccessEnabled(enabled: boolean): void { this.localCredentialAccessEnabled = enabled }
@@ -1298,7 +1298,7 @@ export class SessionManager implements ISessionManager {
   // O(1) index: taskId → sessionId for background task output lookup (avoids O(n) session scan)
   private taskOutputIndex: Map<string, string> = new Map()
   /**
-   * WS2 keep-alive flag (default ON, opt-out via `CRAFT_KEEP_BG_AGENTS_ALIVE=0`).
+   * WS2 keep-alive flag (default ON, opt-out via `TOKENBIRD_KEEP_BG_AGENTS_ALIVE=0`).
    * When true, a persistent streaming query keeps the subprocess alive across
    * turns so background sub-agents survive, and orphaning is suppressed. When
    * false (kill-switch), sub-agents are bound to a single turn's subprocess and
@@ -1352,8 +1352,8 @@ export class SessionManager implements ISessionManager {
   }
   async getPerformanceSnapshot(): Promise<PerformanceSnapshot> {
     const memory = process.memoryUsage()
-    const processes: import('@craft-agent/shared/protocol').PerformanceProcessInfo[] = [{
-      id: 'server', kind: 'server', name: 'Craft server', pid: process.pid,
+    const processes: import('@tokenbird/shared/protocol').PerformanceProcessInfo[] = [{
+      id: 'server', kind: 'server', name: 'TokenBird server', pid: process.pid,
       rssBytes: memory.rss, heapUsedBytes: memory.heapUsed,
       pidStatus: 'measured', memoryStatus: 'measured', status: 'running',
     }]
@@ -1685,7 +1685,7 @@ export class SessionManager implements ISessionManager {
   private async runSessionLocalShell(managed: ManagedSession, args: ShellExecArgs): Promise<ClientShellResult> {
     let clientId: string | null
     if (managed.executionPolicy && !isSessionPolicyShellAutoAllowed(managed.id, 'mcp__session__localbash', { ...args }, managed.workingDirectory)) {
-      const { getSessionPolicyGrantTarget } = await import('@craft-agent/shared/agent')
+      const { getSessionPolicyGrantTarget } = await import('@tokenbird/shared/agent')
       const target = getSessionPolicyGrantTarget(managed.id, 'mcp__session__localbash', { ...args }, managed.workingDirectory)
       // The permission dialog names one execution target. Do not switch
       // to a different client or the host after the user approves it.
@@ -2055,7 +2055,7 @@ export class SessionManager implements ISessionManager {
       onSkillChange: async (slug, skill) => {
         sessionLog.info(`Skill '${slug}' changed:`, skill ? 'updated' : 'deleted')
         // Broadcast updated list to UI
-        const { loadAllSkills } = await import('@craft-agent/shared/skills')
+        const { loadAllSkills } = await import('@tokenbird/shared/skills')
         const skills = loadAllSkills(workspaceRootPath)
         this.broadcastSkillsChanged(workspaceId, skills)
       },
@@ -2203,7 +2203,7 @@ export class SessionManager implements ISessionManager {
    * Busy sessions are queued and reloaded after their message queue drains;
    * sessions without an agent naturally load fresh configuration on next use.
    */
-  async reloadMcpServers(workspaceId?: string): Promise<import('@craft-agent/core/types').McpReloadResult> {
+  async reloadMcpServers(workspaceId?: string): Promise<import('@tokenbird/core/types').McpReloadResult> {
     const workspaces = this.getWorkspaces()
     const targetWorkspaces = workspaceId
       ? workspaces.filter((workspace) => workspace.id === workspaceId)
@@ -2214,7 +2214,7 @@ export class SessionManager implements ISessionManager {
     }
 
     const targetIds = new Set(targetWorkspaces.map((workspace) => workspace.id))
-    const result: import('@craft-agent/core/types').McpReloadResult = {
+    const result: import('@tokenbird/core/types').McpReloadResult = {
       workspaceIds: Array.from(targetIds),
       reloadedSessionIds: [],
       deferredSessionIds: [],
@@ -2257,7 +2257,7 @@ export class SessionManager implements ISessionManager {
 
   /** Notify only explicitly edited credential identities. Agents defer any
    * consequence to a new-turn boundary; current/background work is untouched. */
-  async notifyStoredCredentialChanges(changes: import('@craft-agent/shared/credentials/native-types').NativeCredentialAppliedChange[]): Promise<{ sessionIdsNeedingRestart: string[] }> {
+  async notifyStoredCredentialChanges(changes: import('@tokenbird/shared/credentials/native-types').NativeCredentialAppliedChange[]): Promise<{ sessionIdsNeedingRestart: string[] }> {
     const sessionIdsNeedingRestart: string[] = []
     for (const managed of this.sessions.values()) {
       if (await managed.agent?.notifyStoredCredentialChanges?.(changes)) sessionIdsNeedingRestart.push(managed.id)
@@ -2288,7 +2288,7 @@ export class SessionManager implements ISessionManager {
     this.eventSink(RPC_CHANNELS.automations.CHANGED, { to: 'workspace', workspaceId }, workspaceId)
   }
 
-  private broadcastAppThemeChanged(theme: import('@craft-agent/shared/config').ThemeOverrides | null): void {
+  private broadcastAppThemeChanged(theme: import('@tokenbird/shared/config').ThemeOverrides | null): void {
     if (!this.eventSink) return
     sessionLog.info(`Broadcasting app theme changed`)
     this.eventSink(RPC_CHANNELS.theme.APP_CHANGED, { to: 'all' }, theme)
@@ -2300,13 +2300,13 @@ export class SessionManager implements ISessionManager {
     this.eventSink(RPC_CHANNELS.llmConnections.CHANGED, { to: 'all' })
   }
 
-  private broadcastSkillsChanged(workspaceId: string, skills: import('@craft-agent/shared/skills').LoadedSkill[]): void {
+  private broadcastSkillsChanged(workspaceId: string, skills: import('@tokenbird/shared/skills').LoadedSkill[]): void {
     if (!this.eventSink) return
     sessionLog.info(`Broadcasting skills changed (${skills.length} skills)`)
     this.eventSink(RPC_CHANNELS.skills.CHANGED, { to: 'workspace', workspaceId }, workspaceId, skills)
   }
 
-  private broadcastPagesChanged(workspaceId: string, pages: import('@craft-agent/shared/pages').LoadedPage[]): void {
+  private broadcastPagesChanged(workspaceId: string, pages: import('@tokenbird/shared/pages').LoadedPage[]): void {
     if (!this.eventSink) return
     sessionLog.info(`Broadcasting pages changed (${pages.length} pages)`)
     this.eventSink(RPC_CHANNELS.pages.CHANGED, { to: 'workspace', workspaceId }, workspaceId, pages)
@@ -2336,7 +2336,7 @@ export class SessionManager implements ISessionManager {
       await managed.mcpPool.disconnectAll()
     }
 
-    // Reload all sources from disk (craft-agents-docs is always available as MCP server)
+    // Reload all sources from disk (tokenbird-docs is always available as MCP server)
     const allSources = loadAllSources(workspaceRootPath)
     managed.agent.setAllSources(allSources)
 
@@ -2773,7 +2773,7 @@ export class SessionManager implements ISessionManager {
   async handleCredentialInput(
     sessionId: string,
     requestId: string,
-    response: import('@craft-agent/shared/protocol').CredentialResponse
+    response: import('@tokenbird/shared/protocol').CredentialResponse
   ): Promise<void> {
     const managed = this.sessions.get(sessionId)
     if (!managed?.pendingAuthRequest) {
@@ -2846,7 +2846,7 @@ export class SessionManager implements ISessionManager {
       }
 
       // Update source config to mark as authenticated
-      const { markSourceAuthenticated } = await import('@craft-agent/shared/sources')
+      const { markSourceAuthenticated } = await import('@tokenbird/shared/sources')
       markSourceAuthenticated(managed.workspace.rootPath, request.sourceSlug)
 
       // Mark source as unseen so fresh guide is injected on next message
@@ -3123,7 +3123,7 @@ export class SessionManager implements ISessionManager {
 
   async createSession(
     workspaceId: string,
-    options?: import('@craft-agent/shared/protocol').CreateSessionOptions,
+    options?: import('@tokenbird/shared/protocol').CreateSessionOptions,
     internal?: { emitCreatedEvent?: boolean; collaboration?: SessionCollaboration; callerClientId?: string },
   ): Promise<Session> {
     if (options?.editedMessageContent !== undefined && (!options.branchFromMessageId || !options.branchFromSessionId)) {
@@ -3153,7 +3153,7 @@ export class SessionManager implements ISessionManager {
 
   private async createSessionInternal(
     workspaceId: string,
-    options?: import('@craft-agent/shared/protocol').CreateSessionOptions,
+    options?: import('@tokenbird/shared/protocol').CreateSessionOptions,
     // Transport concern, deliberately NOT on the wire DTO: by default every created session is
     // announced to the renderer (see notifySessionCreated). Callers that register the session
     // themselves — the `sessions:create` RPC adds it from the return value — pass
@@ -3255,7 +3255,7 @@ export class SessionManager implements ISessionManager {
     const requestedProjectId = options?.projectId ?? inheritedProjectId
     let resolvedProjectId: string | undefined
     if (requestedProjectId) {
-      const { loadProjectById } = await import('@craft-agent/shared/projects')
+      const { loadProjectById } = await import('@tokenbird/shared/projects')
       const project = loadProjectById(workspaceRootPath, requestedProjectId)
       if (!project) {
         // An EXPLICIT binding to a missing project is a caller bug; an inherited one
@@ -3542,7 +3542,7 @@ export class SessionManager implements ISessionManager {
         // Propagate the Pi turn-anchor sidecar into the branch so a downstream
         // branch can still resolve anchors for messages copied here from the
         // source. Without this step, branch-of-branch silently falls back to
-        // full-history fork — see craft-agents-oss#782.
+        // full-history fork — see tokenbird#782.
         if (
           validatedBranch.branchContextStrategy === 'sdk-fork' &&
           validatedBranch.sourceProvider === 'pi'
@@ -4249,10 +4249,10 @@ export class SessionManager implements ISessionManager {
       }
 
       // Set session directory for tool metadata cross-process sharing.
-      // The SDK subprocess reads CRAFT_SESSION_DIR to write tool-metadata.json;
+      // The SDK subprocess reads TOKENBIRD_SESSION_DIR to write tool-metadata.json;
       // the main process reads it via toolMetadataStore.setSessionDir().
       const sessionDirForMetadata = getSessionStoragePath(managed.workspace.rootPath, managed.id)
-      process.env.CRAFT_SESSION_DIR = sessionDirForMetadata
+      process.env.TOKENBIRD_SESSION_DIR = sessionDirForMetadata
       toolMetadataStore.setSessionDir(sessionDirForMetadata)
 
       // Set up agentReady promise so title generation can await agent creation
@@ -4299,7 +4299,7 @@ export class SessionManager implements ISessionManager {
       // Per-session env overrides
       const miniModel = sigInput.miniModel
       const envOverrides: Record<string, string> = {
-        CRAFT_WORKSPACE_PATH: managed.workspace.rootPath,
+        TOKENBIRD_WORKSPACE_PATH: managed.workspace.rootPath,
         // Pass mini model to SDK subprocess so built-in tools like WebFetch
         // use the correct model for summarization (instead of hardcoded Haiku)
         ...(miniModel ? { ANTHROPIC_DEFAULT_HAIKU_MODEL: miniModel } : {}),
@@ -4452,7 +4452,7 @@ export class SessionManager implements ISessionManager {
         systemPromptPreset: managed.systemPromptPreset,
         agentPrompt: [managed.agentPrompt, managed.collaboration && buildCollaborationPrompt(managed.collaboration)].filter(Boolean).join('\n\n') || undefined,
         debugMode: _platform?.isDebugMode ? { enabled: true, logFilePath: _platform.getLogFilePath?.() } : undefined,
-        enable1MContext: await (async () => { const { getEnable1MContext } = await import('@craft-agent/shared/config/storage'); return getEnable1MContext(); })(),
+        enable1MContext: await (async () => { const { getEnable1MContext } = await import('@tokenbird/shared/config/storage'); return getEnable1MContext(); })(),
         // Image resize callback — prevents oversized images from entering conversation history
         onImageResize: async (filePath: string, maxSizeBytes: number): Promise<string | null> => {
           try {
@@ -4944,7 +4944,7 @@ export class SessionManager implements ISessionManager {
       }
 
       // Note: Credential requests now flow through onAuthRequest (unified auth flow)
-      // The legacy onCredentialRequest callback has been removed from CraftAgent
+      // The legacy onCredentialRequest callback has been removed from TokenBirdAgent
       // Auth refresh for mid-session token expiry is handled by the error handler in sendMessage
       // which destroys/recreates the agent to get fresh credentials
 
@@ -5269,7 +5269,7 @@ export class SessionManager implements ISessionManager {
         },
         // create_task — create a Task (board card + task.yaml + orchestrator session)
         // WITHOUT running it. Spec building happens here (not in session-tools-core,
-        // which must stay dependency-free of @craft-agent/shared); the creation flow
+        // which must stay dependency-free of @tokenbird/shared); the creation flow
         // itself is createTaskFromSpec, shared verbatim with the tasks:create RPC.
         createTaskFn: async (input) => {
           const ws = managed.workspace
@@ -5330,7 +5330,7 @@ export class SessionManager implements ISessionManager {
           log: (message: string) => sessionLog.info(message),
           onPagesMutated: async (pageSlug: string) => {
             this.notifyConfigFileChange(managed.workspace.rootPath, `pages/${pageSlug}/page.json`)
-            const { loadWorkspacePages } = await import('@craft-agent/shared/pages')
+            const { loadWorkspacePages } = await import('@tokenbird/shared/pages')
             this.broadcastPagesChanged(managed.workspace.id, loadWorkspacePages(managed.workspace.rootPath))
           },
           onContentChanged: (pageSlug: string) => {
@@ -5528,7 +5528,7 @@ export class SessionManager implements ISessionManager {
             const result = await this.getCollaborationRelayManager().readForSession(managed.id, fileId) as { file: { name: string; sha256: string; size: number }; dataBase64: string }
             const data = Buffer.from(result.dataBase64, 'base64')
             if (data.length !== result.file.size || data.length > MAX_COLLABORATION_FILE_BYTES || (await import('node:crypto')).createHash('sha256').update(data).digest('hex') !== result.file.sha256) throw new Error('Relay shared file integrity failed')
-            const destinationDir = join(managed.workspace.rootPath, '.craft-agent', 'collaboration-files', collaboration.groupId)
+            const destinationDir = join(managed.workspace.rootPath, '.tokenbird', 'collaboration-files', collaboration.groupId)
             await mkdir(destinationDir, { recursive: true })
             const destinationPath = join(destinationDir, basename(result.file.name))
             await writeFile(destinationPath, data)
@@ -5543,7 +5543,7 @@ export class SessionManager implements ISessionManager {
             throw new Error('Collaboration membership is stale or invalid')
           }
           const result = await this.collaborationManager.getFile(group.id, fileId)
-          const destinationDir = join(managed.workspace.rootPath, '.craft-agent', 'collaboration-files', group.id)
+          const destinationDir = join(managed.workspace.rootPath, '.tokenbird', 'collaboration-files', group.id)
           await mkdir(destinationDir, { recursive: true })
           const destinationPath = join(destinationDir, basename(result.file.name))
           await writeFile(destinationPath, Buffer.from(result.dataBase64, 'base64'))
@@ -5704,7 +5704,7 @@ export class SessionManager implements ISessionManager {
           // the next tool_result, yield source_activated, and forceAbort. The
           // `source_activated` handler in this class then schedules a server-side
           // resend of the original user message with a "[{slug} activated]" suffix —
-          // landing in a fresh turn with tools live (craft-agents-oss#804).
+          // landing in a fresh turn with tools live (tokenbird#804).
           const userMessage = managed.agent?.getCurrentTurnUserMessage?.() ?? ''
           if (userMessage) {
             managed.agent?.setPendingSourceActivationRestart({ sourceSlug, userMessage })
@@ -5991,7 +5991,7 @@ export class SessionManager implements ISessionManager {
     }
 
     // Validate connection exists
-    const { getLlmConnection } = await import('@craft-agent/shared/config/storage')
+    const { getLlmConnection } = await import('@tokenbird/shared/config/storage')
     const connection = getLlmConnection(connectionSlug)
     if (!connection) {
       sessionLog.warn(`setSessionConnection: connection "${connectionSlug}" not found`)
@@ -6907,7 +6907,7 @@ export class SessionManager implements ISessionManager {
     this.agentRefreshLocks.delete(sessionId)
     this.agentCreationLocks.delete(sessionId)
 
-    // Cancel any pending source-activation auto-retry timer (craft-agents-oss#804).
+    // Cancel any pending source-activation auto-retry timer (tokenbird#804).
     if (managed.autoRetryTimer) {
       clearTimeout(managed.autoRetryTimer)
       managed.autoRetryTimer = undefined
@@ -6991,7 +6991,7 @@ export class SessionManager implements ISessionManager {
       }
     }
 
-    // Source-activation auto-retry dedup (craft-agents-oss#804). When the server
+    // Source-activation auto-retry dedup (tokenbird#804). When the server
     // has just scheduled or committed a "[<slug> activated]" retry, drop a matching
     // duplicate that arrives from a legacy renderer still running the client-side
     // auto_retry. The first matching caller wins (server timer or legacy RPC,
@@ -8374,7 +8374,7 @@ export class SessionManager implements ISessionManager {
     requestId: string,
     allowed: boolean,
     alwaysAllow: boolean,
-    options?: import('@craft-agent/shared/protocol').PermissionResponseOptions,
+    options?: import('@tokenbird/shared/protocol').PermissionResponseOptions,
   ): boolean {
     const managed = this.sessions.get(sessionId)
     const requestMeta = this.pendingPermissionRequests.get(requestId)
@@ -8429,7 +8429,7 @@ export class SessionManager implements ISessionManager {
    * - New unified auth flow (via handleCredentialInput)
    * - Legacy callback flow (via pendingCredentialResolvers)
    */
-  async respondToCredential(sessionId: string, requestId: string, response: import('@craft-agent/shared/protocol').CredentialResponse): Promise<boolean> {
+  async respondToCredential(sessionId: string, requestId: string, response: import('@tokenbird/shared/protocol').CredentialResponse): Promise<boolean> {
     // First, check if this is a new unified auth flow request
     const managed = this.sessions.get(sessionId)
     // Named credential forms contain no secrets and survive app restarts.
@@ -8707,12 +8707,12 @@ export class SessionManager implements ISessionManager {
   }
 
   /** One durable inbox acceptance; model processing is deliberately not awaited. */
-  async acceptCollaborationRelayMessage(sessionId: string, delivery: import('@craft-agent/shared/protocol').CollaborationRelayDelivery): Promise<import('@craft-agent/shared/protocol').CollaborationRelayReceipt> {
+  async acceptCollaborationRelayMessage(sessionId: string, delivery: import('@tokenbird/shared/protocol').CollaborationRelayDelivery): Promise<import('@tokenbird/shared/protocol').CollaborationRelayReceipt> {
     const work = (this.relayMessageQueues.get(sessionId) ?? Promise.resolve()).catch(() => {}).then(async () => {
       const managed = this.sessions.get(sessionId), membership = managed?.collaboration
       if (!managed || managed.workspace.id !== delivery.target.workspaceId || membership?.groupId !== delivery.groupId || membership.memberId !== delivery.targetMemberId || membership.relay?.epoch !== delivery.epoch || membership.relay.phase !== 'active') throw new Error('Relay target membership is stale')
       await this.ensureMessagesLoaded(managed)
-      const match = (m: { relayDelivery?: import('@craft-agent/core/types').Message['relayDelivery'] }) => m.relayDelivery?.groupId === delivery.groupId && m.relayDelivery.epoch === delivery.epoch && m.relayDelivery.targetMemberId === delivery.targetMemberId && m.relayDelivery.sequence === delivery.sequence
+      const match = (m: { relayDelivery?: import('@tokenbird/core/types').Message['relayDelivery'] }) => m.relayDelivery?.groupId === delivery.groupId && m.relayDelivery.epoch === delivery.epoch && m.relayDelivery.targetMemberId === delivery.targetMemberId && m.relayDelivery.sequence === delivery.sequence
       // A previous process may have persisted the message before its receipt.
       const disk = loadStoredSession(managed.workspace.rootPath, sessionId)?.messages.find(match)
       let existing = managed.messages.find(match)
@@ -9231,15 +9231,15 @@ export class SessionManager implements ISessionManager {
             }
           }
 
-          // Pi branch-cutoff support: remember the SDK message id → Craft
+          // Pi branch-cutoff support: remember the SDK message id → TokenBird
           // assistant message id mapping. The actual anchor arrives as a
           // separate `pi_turn_anchor` event one microtask later — the SDK
           // updates its leaf only AFTER firing message_end (see #782).
           if (event.sdkMessageId) {
-            let cache = managed.piSdkMessageToCraftMessage
+            let cache = managed.piSdkMessageToTokenBirdMessage
             if (!cache) {
               cache = new Map()
-              managed.piSdkMessageToCraftMessage = cache
+              managed.piSdkMessageToTokenBirdMessage = cache
             }
             cache.set(event.sdkMessageId, assistantMessage.id)
             // Prune oldest entries when over the cap. Map preserves insertion
@@ -9262,17 +9262,17 @@ export class SessionManager implements ISessionManager {
         // Follow-up to a `text_complete` from the Pi backend, carrying the
         // correct leaf id captured AFTER the SDK appended its assistant entry
         // (the synchronous `message_end` listener could not see it — #782).
-        // Look up the Craft assistant message id by SDK message id and
+        // Look up the TokenBird assistant message id by SDK message id and
         // persist the anchor to the sidecar.
-        const cache = managed.piSdkMessageToCraftMessage
-        const craftMessageId = cache?.get(event.sdkMessageId)
-        if (!craftMessageId) {
+        const cache = managed.piSdkMessageToTokenBirdMessage
+        const tokenBirdMessageId = cache?.get(event.sdkMessageId)
+        if (!tokenBirdMessageId) {
           sessionLog.debug(`pi_turn_anchor for unknown sdkMessageId=${event.sdkMessageId}; ignoring`)
           break
         }
         const sessionPath = getSessionStoragePath(managed.workspace.rootPath, sessionId)
         try {
-          await savePiTurnAnchor(sessionPath, craftMessageId, event.sdkTurnAnchor)
+          await savePiTurnAnchor(sessionPath, tokenBirdMessageId, event.sdkTurnAnchor)
         } catch (error) {
           sessionLog.warn(`Failed to persist Pi turn anchor for session ${sessionId}:`, error)
         }
@@ -9311,7 +9311,7 @@ export class SessionManager implements ISessionManager {
         const existingStartMsg = managed.messages.find(m => m.toolUseId === event.toolUseId)
         const isDuplicateEvent = !!existingStartMsg
 
-        // Use parentToolUseId directly from the event — CraftAgent resolves this
+        // Use parentToolUseId directly from the event — TokenBirdAgent resolves this
         // from SDK's parent_tool_use_id (authoritative, handles parallel Tasks correctly).
         // No stack or map needed; the event carries the correct parent from the start.
         const parentToolUseId = event.parentToolUseId
@@ -9410,7 +9410,7 @@ export class SessionManager implements ISessionManager {
       }
 
       case 'tool_result': {
-        // toolName comes directly from CraftAgent (resolved via ToolIndex)
+        // toolName comes directly from TokenBirdAgent (resolved via ToolIndex)
         const toolName = event.toolName || 'unknown'
 
         // Format absolute paths to relative paths for better readability
@@ -9433,7 +9433,7 @@ export class SessionManager implements ISessionManager {
 
         sessionLog.info(`RESULT MATCH: toolUseId=${event.toolUseId}, found=${!!existingToolMsg}, toolName=${existingToolMsg?.toolName || toolName}, wasComplete=${wasAlreadyComplete}`)
 
-        // parentToolUseId comes from CraftAgent (SDK-authoritative) or existing message
+        // parentToolUseId comes from TokenBirdAgent (SDK-authoritative) or existing message
         const parentToolUseId = existingToolMsg?.parentToolUseId || event.parentToolUseId
 
         if (existingToolMsg) {
@@ -9930,7 +9930,7 @@ export class SessionManager implements ISessionManager {
       }
 
       case 'complete':
-        // Complete event from CraftAgent - accumulate usage from this turn
+        // Complete event from TokenBirdAgent - accumulate usage from this turn
         // Actual 'complete' sent to renderer comes from the finally block in sendMessage
         if (event.usage) {
           // Initialize tokenUsage if not set
@@ -10186,7 +10186,7 @@ export class SessionManager implements ISessionManager {
     // Test runs pass `waitForCompletion: false` so we return as soon as the
     // session exists and the prompt is dispatched — otherwise the RPC blocks
     // until the entire turn (including tool calls) finishes and trips the 30s
-    // client timeout (craft-agents-oss#943). The session streams live either
+    // client timeout (tokenbird#943). The session streams live either
     // way; a background failure surfaces in the session UI and is logged here.
     if (waitForCompletion === false) {
       void this.sendMessage(session.id, prompt, undefined, undefined, {
@@ -10261,7 +10261,7 @@ export class SessionManager implements ISessionManager {
       : getDefaultSummarizationModel()
 
     const envOverrides: Record<string, string> = {
-      CRAFT_WORKSPACE_PATH: workspaceRootPath,
+      TOKENBIRD_WORKSPACE_PATH: workspaceRootPath,
       ...(miniModel ? { ANTHROPIC_DEFAULT_HAIKU_MODEL: miniModel } : {}),
     }
 

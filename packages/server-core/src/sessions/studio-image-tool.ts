@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { getLlmConnections, isImageGenerationModelId, type LlmConnection } from '@craft-agent/shared/config'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
-import { getValidTokenNestCredentials } from '@craft-agent/shared/auth'
-import { getSessionPath } from '@craft-agent/shared/sessions'
+import { getLlmConnections, isImageGenerationModelId, type LlmConnection } from '@tokenbird/shared/config'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
+import { getValidTokenNestCredentials } from '@tokenbird/shared/auth'
+import { getSessionPath } from '@tokenbird/shared/sessions'
 import { generateStudioImage } from '../handlers/rpc/studio'
 
 type ImageOption = { connectionSlug: string; name: string; model: string; channelGroup?: string }

@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { PageActionGrant, PageActionRequest, PageConfig, PageRenderLease } from '@craft-agent/core';
+import type { PageActionGrant, PageActionRequest, PageConfig, PageRenderLease } from '@tokenbird/core';
 import {
   MAX_LIVE_LEASES,
   PAGE_ACTION_MAX_IN_FLIGHT_PER_LEASE,
@@ -76,7 +76,7 @@ describe('pages/action-bridge', () => {
       leaseId: lease.leaseId,
       nonce: lease.nonce,
       grantId: 'grant_test0001',
-      invocation: { kind: 'api', method: 'GET', path: '/repos/craft/agents' },
+      invocation: { kind: 'api', method: 'GET', path: '/repos/tokenbird/agents' },
       ...overrides,
     };
   }
@@ -111,7 +111,7 @@ describe('pages/action-bridge', () => {
       const executed = audit.find((e) => e.event === 'page_action_executed');
       expect(executed?.ok).toBe(true);
       expect(executed?.policyDecision).toBe('allow');
-      expect((executed?.invocation as { path: string }).path).toBe('/repos/craft/agents');
+      expect((executed?.invocation as { path: string }).path).toBe('/repos/tokenbird/agents');
     });
   });
 
@@ -148,11 +148,11 @@ describe('pages/action-bridge', () => {
       });
       const lease = broker.createLease({ pageSlug: 'dash', contentDigest: DIGEST_V1 });
       const ok = await broker.executeAction(makePage(), makeRequest(lease, {
-        invocation: { kind: 'api', method: 'GET', path: '/repos/craft/agents' },
+        invocation: { kind: 'api', method: 'GET', path: '/repos/tokenbird/agents' },
       }));
       expect(ok.ok).toBe(true);
       expect(calls).toHaveLength(1);
-      expect(calls[0]!.path).toBe('/repos/craft/agents');
+      expect(calls[0]!.path).toBe('/repos/tokenbird/agents');
     });
   });
 

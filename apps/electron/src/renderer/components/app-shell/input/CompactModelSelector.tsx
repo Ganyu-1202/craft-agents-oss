@@ -1,4 +1,4 @@
-import { getProviderRechargeTarget } from '@craft-agent/shared/utils/billing'
+import { getProviderRechargeTarget } from '@tokenbird/shared/utils/billing'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
 } from 'lucide-react'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import {
   Drawer,
   DrawerTrigger,
@@ -36,7 +36,7 @@ import {
 import {
   THINKING_LEVELS,
   type ThinkingLevel,
-} from '@craft-agent/shared/agent/thinking-levels'
+} from '@tokenbird/shared/agent/thinking-levels'
 import { ConnectionIcon } from '@/components/icons/ConnectionIcon'
 import { derivePickerMode } from './picker-mode'
 import {

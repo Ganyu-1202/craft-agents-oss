@@ -5,7 +5,7 @@ GitHub Actions 在各平台的原生构建机上生成安装包，再通过 GitC
 
 ## 首次配置
 
-在 GitHub 仓库 `Goldgom/craft-agents-oss` 的 **Settings → Secrets and variables → Actions** 中：
+在 GitHub 仓库 `Goldgom/tokenbird` 的 **Settings → Secrets and variables → Actions** 中：
 
 - 添加 Secret `GITCODE_TOKEN`：使用对目标 GitCode 仓库具有 Release 创建、附件上传和更新权限的个人访问令牌。
 - 如需更换发布仓库，添加 Variable `GITCODE_REPOSITORY`，格式为 `owner/repo`；默认 `Goldgom/token-bird`。
@@ -20,14 +20,14 @@ GitHub Actions 在各平台的原生构建机上生成安装包，再通过 GitC
 创建对应标签，先推送 GitCode，再推送 GitHub：
 
 ```powershell
-git tag v26.10.13
+git tag v26.10.14
 git push gitcode TokenBird
 git push origin TokenBird
-git push gitcode refs/tags/v26.10.13
-git push origin refs/tags/v26.10.13
+git push gitcode refs/tags/v26.10.14
+git push origin refs/tags/v26.10.14
 ```
 
-支持 `v26.10.13` 和 `26.10.13` 两种正式版本标签格式，标签去掉 `v` 后必须与包版本完全一致。
+支持 `v26.10.14` 和 `26.10.14` 两种正式版本标签格式，标签去掉 `v` 后必须与包版本完全一致。
 后续版本请使用新的标签，不复用已经正式发布的标签。
 
 也可在 GitHub **Actions → Publish binaries to GitCode → Run workflow** 中输入已有标签。
@@ -65,13 +65,13 @@ macOS/Linux 当前客户端仍使用 `electron-builder.yml` 中配置的通用�
 无需令牌即可检查版本：
 
 ```powershell
-bun run release:gitcode --check-version --tag v26.10.13
+bun run release:gitcode --check-version --tag v26.10.14
 ```
 
 将 Actions 中四份构建产物解压到 `dist/release-input/{win-x64,mac-x64,mac-arm64,linux-x64}`，可离线验证清单并合并校验值：
 
 ```powershell
-bun run release:gitcode --tag v26.10.13 --input dist/release-input --dry-run
+bun run release:gitcode --tag v26.10.14 --input dist/release-input --dry-run
 ```
 
 实际上传通过环境变量 `GITCODE_TOKEN` 传入令牌，去掉 `--dry-run`。

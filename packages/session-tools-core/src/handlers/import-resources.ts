@@ -12,7 +12,7 @@ import { successResponse, errorResponse } from '../response.ts';
 import { RESOURCE_BUNDLE_FILE_MARKER } from './resource-bundle-format.ts';
 
 export interface ImportResourcesArgs {
-  /** Absolute path of the archive file to import (e.g. /path/to/my-sources.craft-resources.json). */
+  /** Absolute path of the archive file to import (e.g. /path/to/my-sources.tokenbird-resources.json). */
   filePath: string;
   /** Conflict handling: 'skip' (default) keeps existing resources, 'overwrite' replaces them. */
   mode?: 'skip' | 'overwrite';
@@ -31,7 +31,7 @@ function unwrapBundle(text: string): unknown {
     raw === null ||
     (raw as Record<string, unknown>).format !== RESOURCE_BUNDLE_FILE_MARKER
   ) {
-    throw new Error(`Not a Craft resource bundle file (missing format marker "${RESOURCE_BUNDLE_FILE_MARKER}")`);
+    throw new Error(`Not a TokenBird resource bundle file (missing format marker "${RESOURCE_BUNDLE_FILE_MARKER}")`);
   }
   const envelope = raw as { version?: number; bundle?: unknown };
   if (envelope.version !== 1) {

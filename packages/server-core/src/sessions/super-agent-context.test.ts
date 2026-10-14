@@ -3,7 +3,7 @@ import { mkdtemp, rm, mkdir } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { SessionManager, createManagedSession } from './SessionManager'
-import { readSessionJsonl } from '@craft-agent/shared/sessions/jsonl'
+import { readSessionJsonl } from '@tokenbird/shared/sessions/jsonl'
 
 const fixtures: Array<{ root: string; manager: SessionManager }> = []
 afterEach(async () => {

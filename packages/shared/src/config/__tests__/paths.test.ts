@@ -8,20 +8,16 @@ import {
 } from '../paths.ts';
 
 const originalTokenBirdDir = process.env.TOKENBIRD_CONFIG_DIR;
-const originalCraftDir = process.env.CRAFT_CONFIG_DIR;
 
 afterEach(() => {
   if (originalTokenBirdDir === undefined) delete process.env.TOKENBIRD_CONFIG_DIR;
   else process.env.TOKENBIRD_CONFIG_DIR = originalTokenBirdDir;
 
-  if (originalCraftDir === undefined) delete process.env.CRAFT_CONFIG_DIR;
-  else process.env.CRAFT_CONFIG_DIR = originalCraftDir;
 });
 
 describe('TokenBird config path isolation', () => {
-  test('uses a TokenBird-owned default and ignores the legacy Craft override', () => {
+  test('uses the TokenBird-owned default when no override is set', () => {
     delete process.env.TOKENBIRD_CONFIG_DIR;
-    process.env.CRAFT_CONFIG_DIR = join(homedir(), '.craft-agent-test');
 
     expect(CONFIG_DIR_ENV).toBe('TOKENBIRD_CONFIG_DIR');
     expect(CONFIG_DIR_NAME).toBe('.tokenbird');

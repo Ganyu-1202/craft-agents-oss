@@ -1,4 +1,4 @@
-import type { SuperAgentConfig, SuperAgentMessage, SuperAgentPermissionRecord } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentMessage, SuperAgentPermissionRecord } from '@tokenbird/shared/super-agent'
 import type { SuperAgentApproval } from './super-agent-activity'
 
 export interface PermissionNotice {

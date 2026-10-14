@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { CredentialManager, CredentialChangedError } from '@craft-agent/shared/credentials';
-import { SecureStorageBackend } from '@craft-agent/shared/credentials/backends/secure-storage';
-import { checkTokenNestAuthorization, getValidTokenNestCredentials, TOKENNEST_OAUTH_CONFIG } from '@craft-agent/shared/auth/tokennest-oauth';
+import { CredentialManager, CredentialChangedError } from '@tokenbird/shared/credentials';
+import { SecureStorageBackend } from '@tokenbird/shared/credentials/backends/secure-storage';
+import { checkTokenNestAuthorization, getValidTokenNestCredentials, TOKENNEST_OAUTH_CONFIG } from '@tokenbird/shared/auth/tokennest-oauth';
 import { configureElectronCredentialVault } from '../credential-vault';
 import { nativeVaultFixture } from './fixtures/native-vault-harness';
 

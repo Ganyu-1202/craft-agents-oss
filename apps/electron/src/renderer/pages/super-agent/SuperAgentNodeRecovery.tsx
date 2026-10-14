@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { LoaderCircle, RefreshCw, Trash2 } from 'lucide-react'
-import type { SuperAgentCommand, SuperAgentNodeRuntime } from '@craft-agent/shared/super-agent'
+import type { SuperAgentCommand, SuperAgentNodeRuntime } from '@tokenbird/shared/super-agent'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatTimestamp, useSuperAgentText } from './super-agent-ui'

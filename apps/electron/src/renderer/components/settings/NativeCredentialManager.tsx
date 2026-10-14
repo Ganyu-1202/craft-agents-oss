@@ -15,8 +15,8 @@ import {
   type NativeCredentialApplyRequest, type NativeCredentialErrorCode,
   type NativeCredentialListResponse, type NativeCredentialMetadata,
   type NativeCredentialPatch, type NativeCredentialScope,
-} from '@craft-agent/shared/credentials/native-types'
-import type { CredentialType } from '@craft-agent/shared/credentials/types'
+} from '@tokenbird/shared/credentials/native-types'
+import type { CredentialType } from '@tokenbird/shared/credentials/types'
 import { credentialDomain, credentialIdentifierFields, nativeCredentialKey, parseNativeCredentialImport, previewNativeCredentialChanges, type CredentialDomain } from '@/lib/native-credential-import'
 
 const PREFIX = 'settings.credentials.'

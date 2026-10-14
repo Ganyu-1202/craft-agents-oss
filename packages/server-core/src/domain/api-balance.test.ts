@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import type { LlmConnection } from '@craft-agent/shared/config'
+import type { LlmConnection } from '@tokenbird/shared/config'
 import { fetchApiBalance, supportsApiBalance } from './api-balance'
 
 const originalFetch = globalThis.fetch

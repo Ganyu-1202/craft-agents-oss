@@ -39,12 +39,12 @@ import {
   type ActivityItem,
   type FileChange,
   type DiffViewerSettings,
-} from "@craft-agent/ui"
+} from "@tokenbird/ui"
 import { useFocusZone } from "@/hooks/keyboard"
 import { useTheme } from "@/hooks/useTheme"
 import type { Session, Message, FileAttachment, StoredAttachment, PermissionRequest, CredentialRequest, CredentialResponse, LoadedSource, LoadedSkill } from "../../../shared/types"
-import type { PermissionMode } from "@craft-agent/shared/agent/modes"
-import type { ThinkingLevel } from "@craft-agent/shared/agent/thinking-levels"
+import type { PermissionMode } from "@tokenbird/shared/agent/modes"
+import type { ThinkingLevel } from "@tokenbird/shared/agent/thinking-levels"
 import {
   TurnCard,
   UserMessageBubble,
@@ -63,7 +63,7 @@ import {
   type UserTurn,
   type SystemTurn,
   type AuthRequestTurn,
-} from "@craft-agent/ui"
+} from "@tokenbird/ui"
 import { MemoizedAuthRequestCard } from "@/components/chat/AuthRequestCard"
 import { ChatInputZone, type StructuredInputState, type StructuredResponse, type PermissionResponse, type AdminApprovalResponse } from "./input"
 import type { RichTextInputHandle } from "@/components/ui/rich-text-input"
@@ -80,7 +80,7 @@ import { isSessionTooSmallToCompact } from "./message-notice"
 import { useAtomValue } from 'jotai'
 import { sessionMetaMapAtom, sessionBranchesAtom } from '@/atoms/sessions'
 import { getRechargeConnection, openConnectionRecharge } from '@/lib/tokennest-recharge'
-import { isInsufficientBalanceError } from '@craft-agent/shared/utils/billing'
+import { isInsufficientBalanceError } from '@tokenbird/shared/utils/billing'
 import tokenBirdIcon from '../../../../resources/icon.png'
 
 // ============================================================================
@@ -195,7 +195,7 @@ interface ChatDisplayProps {
   skills?: LoadedSkill[]
   // Label selection (for #labels)
   /** Available label configs (tree) for label menu and badge display */
-  labels?: import('@craft-agent/shared/labels').LabelConfig[]
+  labels?: import('@tokenbird/shared/labels').LabelConfig[]
   /** Callback when labels change */
   onLabelsChange?: (labels: string[]) => void
   // State/status selection (for # menu and ActiveOptionBadges)
@@ -1436,7 +1436,7 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
 
     // Mimic pressing Send in the input after Save completes.
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('craft:submit-input', {
+      window.dispatchEvent(new CustomEvent('tokenbird:submit-input', {
         detail: { sessionId: session.id },
       }))
     }, 0)
@@ -1734,7 +1734,7 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
                             {['帮我整理今天的计划', '和我一起想个好点子', '帮我润色一段文字'].map(prompt => (
                               <button key={prompt} type="button" onClick={() => {
                                 onInputChange?.(prompt)
-                                window.dispatchEvent(new CustomEvent('craft:focus-input'))
+                                window.dispatchEvent(new CustomEvent('tokenbird:focus-input'))
                               }}>{prompt}<span aria-hidden="true">↗</span></button>
                             ))}
                           </div>
@@ -1978,7 +1978,7 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
                           const planMessage = session?.messages.findLast(m => m.role === 'plan')
                           const planPath = planMessage?.planPath
 
-                          window.dispatchEvent(new CustomEvent('craft:approve-plan', {
+                          window.dispatchEvent(new CustomEvent('tokenbird:approve-plan', {
                             detail: {
                               sessionId: session?.id,
                               planPath,
@@ -1991,7 +1991,7 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
                           const planMessage = session?.messages.findLast(m => m.role === 'plan')
                           const planPath = planMessage?.planPath
 
-                          window.dispatchEvent(new CustomEvent('craft:approve-plan-with-compact', {
+                          window.dispatchEvent(new CustomEvent('tokenbird:approve-plan-with-compact', {
                             detail: {
                               sessionId: session?.id,
                               planPath,

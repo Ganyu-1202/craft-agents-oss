@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
-import { validateSuperAgentConfig } from '@craft-agent/shared/super-agent'
-import { resolveSessionAgentRuntime, type LlmConnection } from '@craft-agent/shared/config/llm-connections'
+import { validateSuperAgentConfig } from '@tokenbird/shared/super-agent'
+import { resolveSessionAgentRuntime, type LlmConnection } from '@tokenbird/shared/config/llm-connections'
 import { sameNodeSessionIdentity } from './SuperAgentScheduling'
 import { superAgentFixture, until } from './SuperAgentTestSupport'
 

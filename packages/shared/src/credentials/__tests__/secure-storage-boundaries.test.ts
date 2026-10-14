@@ -26,7 +26,7 @@ function fixture(payload: unknown, legacy = false) {
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const ciphertext = Buffer.concat([cipher.update(JSON.stringify(payload)), cipher.final()]);
   const header = Buffer.alloc(64);
-  Buffer.from('CRAFT01\0').copy(header);
+  Buffer.from('TOKENBIRD01\0').copy(header);
   salt.copy(header, 12);
   const bytes = Buffer.concat([header, iv, cipher.getAuthTag(), ciphertext]);
   writeFileSync(path, bytes, { mode: 0o600 });

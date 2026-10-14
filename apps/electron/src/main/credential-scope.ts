@@ -1,1 +1,1 @@
-export { sourceCredentialWorkspaceId, workspaceForSourceCredentialId } from '@craft-agent/shared/credentials/workspace-scope';
+export { sourceCredentialWorkspaceId, workspaceForSourceCredentialId } from '@tokenbird/shared/credentials/workspace-scope';

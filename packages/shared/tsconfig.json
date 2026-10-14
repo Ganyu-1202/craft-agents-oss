@@ -23,10 +23,10 @@
     "noPropertyAccessFromIndexSignature": false,
     "baseUrl": ".",
     "paths": {
-      "@craft-agent/core": ["../core/src/index.ts"],
-      "@craft-agent/core/*": ["../core/src/*"],
-      "@craft-agent/shared": ["./src/index.ts"],
-      "@craft-agent/shared/*": ["./src/*"]
+      "@tokenbird/core": ["../core/src/index.ts"],
+      "@tokenbird/core/*": ["../core/src/*"],
+      "@tokenbird/shared": ["./src/index.ts"],
+      "@tokenbird/shared/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

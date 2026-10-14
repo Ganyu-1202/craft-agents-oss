@@ -63,9 +63,9 @@ function ErrorScreen({ message, onRetry, embedded }: { message: string; onRetry:
         >
           {t("common.retry")}
         </button>
-        {embedded && window.CraftAgentAndroid && (
+        {embedded && window.TokenBirdAgentAndroid && (
           <button
-            onClick={() => window.CraftAgentAndroid?.configureServer()}
+            onClick={() => window.TokenBirdAgentAndroid?.configureServer()}
             className="min-h-11 rounded-xl border border-border bg-background px-5 py-2 text-sm font-medium text-foreground"
           >
             {t("settings.server.title")}

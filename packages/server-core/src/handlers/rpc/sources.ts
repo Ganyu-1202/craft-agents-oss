@@ -1,8 +1,8 @@
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config'
-import { loadWorkspaceSources } from '@craft-agent/shared/sources'
-import { safeJsonParse } from '@craft-agent/shared/utils/files'
-import type { RequestContext, RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config'
+import { loadWorkspaceSources } from '@tokenbird/shared/sources'
+import { safeJsonParse } from '@tokenbird/shared/utils/files'
+import type { RequestContext, RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 export const HANDLED_CHANNELS = [
@@ -36,10 +36,10 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
   })
 
   // Create a new source
-  server.handle(RPC_CHANNELS.sources.CREATE, async (_ctx, workspaceId: string, config: Partial<import('@craft-agent/shared/sources').CreateSourceInput>) => {
+  server.handle(RPC_CHANNELS.sources.CREATE, async (_ctx, workspaceId: string, config: Partial<import('@tokenbird/shared/sources').CreateSourceInput>) => {
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`)
-    const { createSource } = await import('@craft-agent/shared/sources')
+    const { createSource } = await import('@tokenbird/shared/sources')
     return createSource(workspace.rootPath, {
       name: config.name || 'New Source',
       provider: config.provider || 'custom',
@@ -55,11 +55,11 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
   server.handle(RPC_CHANNELS.sources.DELETE, async (_ctx, workspaceId: string, sourceSlug: string) => {
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`)
-    const { deleteSource } = await import('@craft-agent/shared/sources')
+    const { deleteSource } = await import('@tokenbird/shared/sources')
     deleteSource(workspace.rootPath, sourceSlug)
 
     // Clean up stale slug from workspace default sources
-    const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@tokenbird/shared/workspaces')
     const config = loadWorkspaceConfig(workspace.rootPath)
     if (config?.defaults?.enabledSourceSlugs?.includes(sourceSlug)) {
       config.defaults.enabledSourceSlugs = config.defaults.enabledSourceSlugs.filter(s => s !== sourceSlug)
@@ -81,17 +81,17 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
     assertCredentialWorkspace(ctx, workspaceId)
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`)
-    const { saveSourceCredentialBatch } = await import('@craft-agent/shared/sources')
+    const { saveSourceCredentialBatch } = await import('@tokenbird/shared/sources')
     const result = await saveSourceCredentialBatch(workspace.rootPath, [{ sourceSlug, credential }])
     if (result.statusUpdateFailed.length) log.warn('Credential saved, but source status could not be updated')
     log.info(`Saved credentials for source: ${sourceSlug}`)
   })
 
-  server.handle(RPC_CHANNELS.sources.SAVE_CREDENTIALS_BATCH, async (ctx, workspaceId: string, entries: import('@craft-agent/shared/sources').SourceCredentialUpdate[]) => {
+  server.handle(RPC_CHANNELS.sources.SAVE_CREDENTIALS_BATCH, async (ctx, workspaceId: string, entries: import('@tokenbird/shared/sources').SourceCredentialUpdate[]) => {
     assertCredentialWorkspace(ctx, workspaceId)
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`)
-    const { saveSourceCredentialBatch } = await import('@craft-agent/shared/sources')
+    const { saveSourceCredentialBatch } = await import('@tokenbird/shared/sources')
     return saveSourceCredentialBatch(workspace.rootPath, entries)
   })
 
@@ -101,7 +101,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
     if (!workspace) return null
 
     const { existsSync, readFileSync } = await import('fs')
-    const { getSourcePermissionsPath } = await import('@craft-agent/shared/agent')
+    const { getSourcePermissionsPath } = await import('@tokenbird/shared/agent')
     const path = getSourcePermissionsPath(workspace.rootPath, sourceSlug)
 
     if (!existsSync(path)) return null
@@ -121,7 +121,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
     if (!workspace) return null
 
     const { existsSync, readFileSync } = await import('fs')
-    const { getWorkspacePermissionsPath } = await import('@craft-agent/shared/agent')
+    const { getWorkspacePermissionsPath } = await import('@tokenbird/shared/agent')
     const path = getWorkspacePermissionsPath(workspace.rootPath)
 
     if (!existsSync(path)) return null
@@ -138,7 +138,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
   // Get default permissions from ~/.tokenbird/permissions/default.json
   server.handle(RPC_CHANNELS.permissions.GET_DEFAULTS, async () => {
     const { existsSync, readFileSync } = await import('fs')
-    const { getAppPermissionsDir } = await import('@craft-agent/shared/agent')
+    const { getAppPermissionsDir } = await import('@tokenbird/shared/agent')
     const { join } = await import('path')
 
     const defaultPath = join(getAppPermissionsDir(), 'default.json')
@@ -177,15 +177,15 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
         return { success: false, error: 'Source has not been tested yet' }
       }
 
-      const { CraftMcpClient } = await import('@craft-agent/shared/mcp')
-      let client: InstanceType<typeof CraftMcpClient>
+      const { TokenBirdMcpClient } = await import('@tokenbird/shared/mcp')
+      let client: InstanceType<typeof TokenBirdMcpClient>
 
       if (source.config.mcp.transport === 'stdio') {
         if (!source.config.mcp.command) {
           return { success: false, error: 'Stdio MCP source is missing required "command" field' }
         }
         log.info(`Fetching MCP tools via stdio: ${source.config.mcp.command}`)
-        client = new CraftMcpClient({
+        client = new TokenBirdMcpClient({
           transport: 'stdio',
           command: source.config.mcp.command,
           args: source.config.mcp.args,
@@ -196,7 +196,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
           return { success: false, error: 'MCP source URL is required for HTTP/SSE transport' }
         }
 
-        const { getSourceCredentialManager, getSourceServerBuilder, TokenRefreshManager } = await import('@craft-agent/shared/sources')
+        const { getSourceCredentialManager, getSourceServerBuilder, TokenRefreshManager } = await import('@tokenbird/shared/sources')
         const credentials = getSourceCredentialManager()
         let accessToken: string | undefined
         if ((source.config.mcp.authType === 'oauth' || source.config.mcp.authType === 'bearer') && !source.config.mcp.headerNames?.length) {
@@ -208,7 +208,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
         if (source.config.mcp.headerNames?.length && !headerCredentials) throw new Error('Authentication required. Please save credentials for this source.')
         const config = getSourceServerBuilder().buildMcpServer(source, accessToken ?? null, headerCredentials)
         if (!config || config.type === 'stdio') throw new Error('MCP connection configuration is invalid')
-        client = new CraftMcpClient({
+        client = new TokenBirdMcpClient({
           transport: config.type,
           url: config.url,
           headers: config.headers,
@@ -217,7 +217,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
 
       const tools = await client.listTools().finally(() => client.close())
       if (forceRefresh) {
-        const { saveSourceConfig } = await import('@craft-agent/shared/sources')
+        const { saveSourceConfig } = await import('@tokenbird/shared/sources')
         source.config.connectionStatus = 'connected'
         source.config.isAuthenticated = true
         source.config.connectionError = undefined
@@ -225,7 +225,7 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
         saveSourceConfig(workspace.rootPath, source.config)
       }
 
-      const { loadSourcePermissionsConfig, permissionsConfigCache } = await import('@craft-agent/shared/agent')
+      const { loadSourcePermissionsConfig, permissionsConfigCache } = await import('@tokenbird/shared/agent')
       const permissionsConfig = loadSourcePermissionsConfig(workspace.rootPath, sourceSlug)
 
       const mergedConfig = permissionsConfigCache.getMergedConfig({
@@ -246,11 +246,11 @@ export function registerSourcesHandlers(server: RpcServer, deps: HandlerDeps): v
     } catch (error) {
       // SDK/provider exceptions may echo request headers or response bodies.
       // Classify locally, but never log, persist, or return their raw text.
-      const { sanitizeMcpConnectionError } = await import('@craft-agent/shared/mcp')
+      const { sanitizeMcpConnectionError } = await import('@tokenbird/shared/mcp')
       const { needsAuth, message: errorMessage } = sanitizeMcpConnectionError(error)
       log.error('Failed to get MCP tools:', errorMessage)
       if (forceRefresh && refreshedSource) {
-        const { saveSourceConfig } = await import('@craft-agent/shared/sources')
+        const { saveSourceConfig } = await import('@tokenbird/shared/sources')
         refreshedSource.config.connectionStatus = needsAuth ? 'needs_auth' : 'failed'
         if (refreshedSource.config.connectionStatus === 'needs_auth') refreshedSource.config.isAuthenticated = false
         refreshedSource.config.connectionError = errorMessage

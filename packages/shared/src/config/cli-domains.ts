@@ -13,78 +13,78 @@ export interface CliDomainPolicy {
 const POLICIES: Record<CliDomainNamespace, CliDomainPolicy> = {
   label: {
     namespace: 'label',
-    helpCommand: 'craft-agent label --help',
+    helpCommand: 'tokenbird label --help',
     workspacePathScopes: ['labels/**'],
     readActions: ['list', 'get', 'auto-rule-list', 'auto-rule-validate'],
     quickExamples: [
-      'craft-agent label list',
-      'craft-agent label create --name "Bug" --color "accent"',
-      'craft-agent label update bug --json \'{"name":"Bug Report"}\'',
+      'tokenbird label list',
+      'tokenbird label create --name "Bug" --color "accent"',
+      'tokenbird label update bug --json \'{"name":"Bug Report"}\'',
     ],
     bashGuardPaths: ['labels/**'],
   },
   source: {
     namespace: 'source',
-    helpCommand: 'craft-agent source --help',
+    helpCommand: 'tokenbird source --help',
     workspacePathScopes: ['sources/**'],
     readActions: ['list', 'get', 'validate', 'test', 'auth-help'],
     quickExamples: [
-      'craft-agent source list',
-      'craft-agent source get <slug>',
-      'craft-agent source update <slug> --json "{...}"',
-      'craft-agent source validate <slug>',
+      'tokenbird source list',
+      'tokenbird source get <slug>',
+      'tokenbird source update <slug> --json "{...}"',
+      'tokenbird source validate <slug>',
     ],
   },
   skill: {
     namespace: 'skill',
-    helpCommand: 'craft-agent skill --help',
+    helpCommand: 'tokenbird skill --help',
     workspacePathScopes: ['skills/**'],
     readActions: ['list', 'get', 'validate', 'where'],
     quickExamples: [
-      'craft-agent skill list',
-      'craft-agent skill get <slug>',
-      'craft-agent skill update <slug> --json "{...}"',
-      'craft-agent skill validate <slug>',
+      'tokenbird skill list',
+      'tokenbird skill get <slug>',
+      'tokenbird skill update <slug> --json "{...}"',
+      'tokenbird skill validate <slug>',
     ],
   },
   automation: {
     namespace: 'automation',
-    helpCommand: 'craft-agent automation --help',
+    helpCommand: 'tokenbird automation --help',
     workspacePathScopes: ['automations.json', 'automations-history.jsonl'],
     readActions: ['list', 'get', 'validate', 'history', 'last-executed', 'test', 'lint'],
     quickExamples: [
-      'craft-agent automation list',
-      'craft-agent automation create --event UserPromptSubmit --prompt "Summarize this prompt"',
-      'craft-agent automation update <id> --json "{\"enabled\":false}"',
-      'craft-agent automation history <id> --limit 20',
-      'craft-agent automation validate',
+      'tokenbird automation list',
+      'tokenbird automation create --event UserPromptSubmit --prompt "Summarize this prompt"',
+      'tokenbird automation update <id> --json "{\"enabled\":false}"',
+      'tokenbird automation history <id> --limit 20',
+      'tokenbird automation validate',
     ],
     bashGuardPaths: ['automations.json', 'automations-history.jsonl'],
   },
   permission: {
     namespace: 'permission',
-    helpCommand: 'craft-agent permission --help',
+    helpCommand: 'tokenbird permission --help',
     workspacePathScopes: ['permissions.json', 'sources/*/permissions.json'],
     readActions: ['list', 'get', 'validate'],
     quickExamples: [
-      'craft-agent permission list',
-      'craft-agent permission get --source linear',
-      'craft-agent permission add-mcp-pattern "list" --comment "All list ops" --source linear',
-      'craft-agent permission validate',
+      'tokenbird permission list',
+      'tokenbird permission get --source linear',
+      'tokenbird permission add-mcp-pattern "list" --comment "All list ops" --source linear',
+      'tokenbird permission validate',
     ],
     bashGuardPaths: ['permissions.json', 'sources/*/permissions.json'],
   },
   theme: {
     namespace: 'theme',
-    helpCommand: 'craft-agent theme --help',
+    helpCommand: 'tokenbird theme --help',
     workspacePathScopes: ['config.json', 'theme.json', 'themes/*.json'],
     readActions: ['get', 'validate', 'list-presets', 'get-preset'],
     quickExamples: [
-      'craft-agent theme get',
-      'craft-agent theme list-presets',
-      'craft-agent theme set-color-theme nord',
-      'craft-agent theme set-workspace-color-theme default',
-      'craft-agent theme set-override --json "{\"accent\":\"#3b82f6\"}"',
+      'tokenbird theme get',
+      'tokenbird theme list-presets',
+      'tokenbird theme set-color-theme nord',
+      'tokenbird theme set-workspace-color-theme default',
+      'tokenbird theme set-override --json "{\"accent\":\"#3b82f6\"}"',
     ],
     bashGuardPaths: ['config.json', 'theme.json', 'themes/*.json'],
   },
@@ -102,30 +102,30 @@ function dedupeScopes(scopes: string[]): string[] {
 }
 
 /**
- * Canonical workspace-relative path scopes owned by craft-agent CLI domains.
+ * Canonical workspace-relative path scopes owned by tokenbird CLI domains.
  * Use these for file-path ownership checks to avoid drift across call sites.
  */
-export const CRAFT_AGENTS_CLI_OWNED_WORKSPACE_PATH_SCOPES = dedupeScopes(
+export const TOKENBIRD_CLI_OWNED_WORKSPACE_PATH_SCOPES = dedupeScopes(
   Object.values(POLICIES).flatMap(policy => policy.workspacePathScopes)
 )
 
 /**
  * Canonical workspace-relative path scopes guarded for direct Bash operations.
  */
-export const CRAFT_AGENTS_CLI_OWNED_BASH_GUARD_PATH_SCOPES = dedupeScopes(
+export const TOKENBIRD_CLI_OWNED_BASH_GUARD_PATH_SCOPES = dedupeScopes(
   Object.values(POLICIES).flatMap(policy => policy.bashGuardPaths ?? [])
 )
 
 /**
- * Namespace-aware workspace scope entries for craft-agent CLI owned paths.
+ * Namespace-aware workspace scope entries for tokenbird CLI owned paths.
  */
-export const CRAFT_AGENTS_CLI_WORKSPACE_SCOPE_ENTRIES: CliDomainScopeEntry[] = Object.values(POLICIES)
+export const TOKENBIRD_CLI_WORKSPACE_SCOPE_ENTRIES: CliDomainScopeEntry[] = Object.values(POLICIES)
   .flatMap(policy => policy.workspacePathScopes.map(scope => ({ namespace: policy.namespace, scope })))
 
 /**
  * Namespace-aware Bash guard scope entries.
  */
-export const CRAFT_AGENTS_CLI_BASH_GUARD_SCOPE_ENTRIES: CliDomainScopeEntry[] = Object.values(POLICIES)
+export const TOKENBIRD_CLI_BASH_GUARD_SCOPE_ENTRIES: CliDomainScopeEntry[] = Object.values(POLICIES)
   .flatMap(policy => (policy.bashGuardPaths ?? []).map(scope => ({ namespace: policy.namespace, scope })))
 
 export interface BashPatternRule {
@@ -134,10 +134,10 @@ export interface BashPatternRule {
 }
 
 /**
- * Derive the canonical Explore-mode read-only craft-agent bash patterns from
+ * Derive the canonical Explore-mode read-only tokenbird bash patterns from
  * CLI domain policies. Keeps permissions regexes aligned with command metadata.
  */
-export function getCraftAgentReadOnlyBashPatterns(): BashPatternRule[] {
+export function getTokenBirdAgentReadOnlyBashPatterns(): BashPatternRule[] {
   const namespaces = Object.keys(POLICIES) as CliDomainNamespace[]
   const namespaceAlternation = namespaces.join('|')
 
@@ -145,16 +145,16 @@ export function getCraftAgentReadOnlyBashPatterns(): BashPatternRule[] {
     const policy = POLICIES[namespace]
     const actions = policy.readActions.join('|')
     return {
-      pattern: `^craft-agent\\s+${namespace}\\s+(${actions})\\b`,
-      comment: `craft-agent ${namespace} read-only operations`,
+      pattern: `^tokenbird\\s+${namespace}\\s+(${actions})\\b`,
+      comment: `tokenbird ${namespace} read-only operations`,
     }
   })
 
   rules.push(
-    { pattern: '^craft-agent\\s*$', comment: 'craft-agent bare invocation (prints help)' },
-    { pattern: `^craft-agent\\s+(${namespaceAlternation})\\s*$`, comment: 'craft-agent entity help' },
-    { pattern: `^craft-agent\\s+(${namespaceAlternation})\\s+--help\\b`, comment: 'craft-agent entity help flags' },
-    { pattern: '^craft-agent\\s+--(help|version|discover)\\b', comment: 'craft-agent global flags' },
+    { pattern: '^tokenbird\\s*$', comment: 'tokenbird bare invocation (prints help)' },
+    { pattern: `^tokenbird\\s+(${namespaceAlternation})\\s*$`, comment: 'tokenbird entity help' },
+    { pattern: `^tokenbird\\s+(${namespaceAlternation})\\s+--help\\b`, comment: 'tokenbird entity help flags' },
+    { pattern: '^tokenbird\\s+--(help|version|discover)\\b', comment: 'tokenbird global flags' },
   )
 
   return rules

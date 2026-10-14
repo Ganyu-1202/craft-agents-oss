@@ -5,7 +5,7 @@ import { constants } from 'node:fs'
 import { delimiter, isAbsolute, join, relative, sep } from 'node:path'
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { SuperAgentConfig, SuperAgentEnvironment, SuperAgentSessionPolicy, SuperAgentEnvironmentStatus, SuperAgentReadiness } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentEnvironment, SuperAgentSessionPolicy, SuperAgentEnvironmentStatus, SuperAgentReadiness } from '@tokenbird/shared/super-agent'
 
 const executeFile = promisify(execFile)
 const MAX_RUNTIME_OUTPUT = 512 * 1024

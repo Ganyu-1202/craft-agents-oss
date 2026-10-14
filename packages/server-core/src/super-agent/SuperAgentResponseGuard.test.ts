@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { loadSuperAgentDocument, withSuperAgentOrchestrator, type SuperAgentDocument } from '@craft-agent/shared/super-agent'
+import { loadSuperAgentDocument, withSuperAgentOrchestrator, type SuperAgentDocument } from '@tokenbird/shared/super-agent'
 import { SuperAgentService } from './SuperAgentService'
 import { hasSuperAgentResponseLoop, isSuperAgentAcknowledgment, superAgentResponseProgressKey } from './SuperAgentResponseGuard'
 import { superAgentFixture, until } from './SuperAgentTestSupport'

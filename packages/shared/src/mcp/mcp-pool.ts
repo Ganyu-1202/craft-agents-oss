@@ -17,7 +17,7 @@
  * workspace-level discovered-tools cache below is the only cross-session cache.
  */
 
-import { CraftMcpClient, getProcessRssBytes, type McpClientConfig, type PoolCallToolOptions, type PoolClient } from './client.ts';
+import { TokenBirdMcpClient, getProcessRssBytes, type McpClientConfig, type PoolCallToolOptions, type PoolClient } from './client.ts';
 import { mcpRuntimeLimiter, type McpRuntimeLease } from './runtime-limiter.ts';
 import { ApiSourcePoolClient } from './api-source-pool-client.ts';
 import { proxyToolName } from './proxy-tool-name.ts';
@@ -84,7 +84,7 @@ export interface McpToolResult {
 }
 
 /**
- * Convert SdkMcpServerConfig (used by backend types) to CraftMcpClient config.
+ * Convert SdkMcpServerConfig (used by backend types) to TokenBirdMcpClient config.
  */
 function sdkConfigToClientConfig(config: SdkMcpServerConfig): McpClientConfig | null {
   if (config.type === 'http' || config.type === 'sse') {
@@ -307,8 +307,8 @@ export class McpClientPool {
   getDiagnostics(): Array<{ sourceSlug: string; transport: 'stdio' | 'http' | 'sse' | 'api'; connected: boolean; toolCount: number }> {
     return Array.from(this.clients.entries()).map(([sourceSlug, client]) => ({
       sourceSlug,
-      transport: client instanceof CraftMcpClient ? client.transportType : 'api',
-      connected: client instanceof CraftMcpClient ? client.isConnected() : true,
+      transport: client instanceof TokenBirdMcpClient ? client.transportType : 'api',
+      connected: client instanceof TokenBirdMcpClient ? client.isConnected() : true,
       toolCount: this.toolCache.get(sourceSlug)?.length ?? 0,
     }))
   }
@@ -317,7 +317,7 @@ export class McpClientPool {
     const diagnostics = this.getDiagnostics();
     return Promise.all(diagnostics.map(async diagnostic => {
       const client = this.clients.get(diagnostic.sourceSlug);
-      const pid = client instanceof CraftMcpClient ? client.getPid() : undefined;
+      const pid = client instanceof TokenBirdMcpClient ? client.getPid() : undefined;
       return { ...diagnostic, pid, rssBytes: await getProcessRssBytes(pid) };
     }));
   }
@@ -343,7 +343,7 @@ export class McpClientPool {
    * Shared logic for both remote MCP and in-process API sources.
    */
   protected async registerClient(slug: string, client: PoolClient): Promise<void> {
-    // listTools() triggers connect() internally for both CraftMcpClient and ApiSourcePoolClient
+    // listTools() triggers connect() internally for both TokenBirdMcpClient and ApiSourcePoolClient
     const tools = await client.listTools();
     const connection = this.clientConnections.get(client);
     // Never publish an obsolete handshake, including to the workspace cache.
@@ -411,7 +411,7 @@ export class McpClientPool {
     };
     this.connections.set(slug, connection);
     this.activeConfigs.set(slug, savedConfig);
-    connection.promise = this.openConnection(connection, () => new CraftMcpClient(clientConfig));
+    connection.promise = this.openConnection(connection, () => new TokenBirdMcpClient(clientConfig));
     return connection.promise;
   }
 
@@ -424,7 +424,7 @@ export class McpClientPool {
         lease = await mcpRuntimeLimiter.acquire(
           connection.runtimeKey,
           () => this.evictRuntime(connection),
-          async () => connection.client instanceof CraftMcpClient
+          async () => connection.client instanceof TokenBirdMcpClient
             ? getProcessRssBytes(connection.client.getPid()) : undefined,
         );
       }
@@ -437,7 +437,7 @@ export class McpClientPool {
         const client = createClient();
         connection.client = client;
         this.clientConnections.set(client, connection);
-        if (client instanceof CraftMcpClient) client.onclose = () => this.onClientClosed(connection);
+        if (client instanceof TokenBirdMcpClient) client.onclose = () => this.onClientClosed(connection);
         await this.registerClient(connection.slug, client);
         // A successful discovery response can race with transport closure
         // before its continuation publishes readiness. Do not report success

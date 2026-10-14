@@ -1,5 +1,5 @@
-import type { SuperAgentActivityEntry, SuperAgentSnapshot } from '@craft-agent/shared/super-agent'
-import { superAgentTaskBlocker } from '@craft-agent/shared/super-agent'
+import type { SuperAgentActivityEntry, SuperAgentSnapshot } from '@tokenbird/shared/super-agent'
+import { superAgentTaskBlocker } from '@tokenbird/shared/super-agent'
 import type { PermissionRequest } from '../../../shared/types'
 
 export type SuperAgentWorkStatus = 'idle' | 'thinking' | 'working' | 'preparing' | 'recovering'

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { CloudConfig, CloudDevice, CloudShare, CloudStatus } from '@craft-agent/shared/cloud'
-import { DEFAULT_CLOUD_URL } from '@craft-agent/shared/cloud'
+import type { CloudConfig, CloudDevice, CloudShare, CloudStatus } from '@tokenbird/shared/cloud'
+import { DEFAULT_CLOUD_URL } from '@tokenbird/shared/cloud'
 import { SettingsSection, SettingsCard, SettingsInputRow, SettingsToggle, SettingsRow } from '@/components/settings'
 import { Button } from '@/components/ui/button'
 

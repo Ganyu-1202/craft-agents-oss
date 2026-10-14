@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 import { posix } from 'node:path'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import type { RemoteServerProfile, RemoteServerSftpConfig } from '@craft-agent/shared/config/remote-servers'
+import type { RemoteServerProfile, RemoteServerSftpConfig } from '@tokenbird/shared/config/remote-servers'
 
 export interface SftpTransferRequest {
   direction: 'upload' | 'download'
@@ -220,7 +220,7 @@ export async function transferSftpFile(
         throw new Error(`Remote upload path resolves outside the configured SFTP root: ${resolved.root}`)
       }
       const targetPath = posix.join(realParent, posix.basename(resolved.path))
-      const tempPath = `${targetPath}.craft-upload-${randomUUID()}.tmp`
+      const tempPath = `${targetPath}.tokenbird-upload-${randomUUID()}.tmp`
       try {
         await fastPut(sftp, request.localPath, tempPath)
         await replaceRemoteFile(sftp, tempPath, targetPath)
@@ -243,7 +243,7 @@ export async function transferSftpFile(
     }
 
     mkdirSync(dirname(request.localPath), { recursive: true })
-    const tempPath = `${request.localPath}.craft-download-${randomUUID()}.tmp`
+    const tempPath = `${request.localPath}.tokenbird-download-${randomUUID()}.tmp`
     try {
       await fastGet(sftp, realRemotePath, tempPath)
       const downloaded = statSync(tempPath)

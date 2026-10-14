@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { RPC_CHANNELS } from '../../../shared/types'
-import { registerSessionsHandlers, cleanupSessionFileWatchForClient } from '@craft-agent/server-core/handlers/rpc'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { registerSessionsHandlers, cleanupSessionFileWatchForClient } from '@tokenbird/server-core/handlers/rpc'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 type HandlerFn = (ctx: { clientId: string }, ...args: any[]) => Promise<any> | any
@@ -25,7 +25,7 @@ describe('sessions file watchers', () => {
     handlers.clear()
     pushed.length = 0
 
-    tempRoot = mkdtempSync(join(tmpdir(), 'craft-session-watchers-'))
+    tempRoot = mkdtempSync(join(tmpdir(), 'tokenbird-session-watchers-'))
     sessionDirA = join(tempRoot, 'session-a')
     sessionDirB = join(tempRoot, 'session-b')
     mkdirSync(sessionDirA, { recursive: true })

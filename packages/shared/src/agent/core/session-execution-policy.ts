@@ -1,9 +1,9 @@
-import { SUPER_AGENT_ACTION_TOOLS } from '@craft-agent/session-tools-core/super-agent-tools';
+import { SUPER_AGENT_ACTION_TOOLS } from '@tokenbird/session-tools-core/super-agent-tools';
 import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { expandPath } from '../../utils/paths.ts';
 import type { SuperAgentSessionPolicy } from '../../super-agent/types.ts';
-import type { SessionPolicyPermissionScope } from '@craft-agent/core/types';
+import type { SessionPolicyPermissionScope } from '@tokenbird/core/types';
 import { isReadOnlySystemInspection } from './system-inspection-policy.ts';
 import { classifyActionGate, type ActionReview, type ActionReviewRequest } from './action-gates.ts';
 

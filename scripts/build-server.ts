@@ -110,7 +110,7 @@ Options:
   --help                 Show this help message
 
 Environment variables:
-  CRAFT_GITHUB_MIRROR   GitHub download mirror prefix, e.g.
+  TOKENBIRD_GITHUB_MIRROR   GitHub download mirror prefix, e.g.
                         https://ghproxy.net/ — for servers with poor
                         connectivity to github.com.
   http_proxy / https_proxy are honored by curl for all downloads.
@@ -244,7 +244,7 @@ async function downloadUvForServer(config: ServerBuildConfig): Promise<void> {
         `Pre-seed it from a machine with good connectivity:\n` +
         `  download ${UV_VERSION}/${getUvDownloadName(platform, arch)} from github.com/astral-sh/uv/releases,\n` +
         `  extract the 'uv' binary and copy it to the path above.\n` +
-        `(Or drop --skip-download / set CRAFT_GITHUB_MIRROR.) See docs/build-guide.md.`,
+        `(Or drop --skip-download / set TOKENBIRD_GITHUB_MIRROR.) See docs/build-guide.md.`,
       );
     }
     console.log(`  uv pre-seeded at ${electronUvPath}, skipping download`);
@@ -295,7 +295,7 @@ async function downloadBunForServer(config: ServerBuildConfig): Promise<void> {
         `Pre-seed it from a machine with good connectivity:\n` +
         `  download ${BUN_VERSION}/${getBunDownloadName(platform, arch)}.zip from github.com/oven-sh/bun/releases,\n` +
         `  extract the 'bun' binary and copy it to the path above.\n` +
-        `(Or drop --skip-download / set CRAFT_GITHUB_MIRROR.) See docs/build-guide.md.`,
+        `(Or drop --skip-download / set TOKENBIRD_GITHUB_MIRROR.) See docs/build-guide.md.`,
       );
     }
     console.log(`  Bun pre-seeded at ${electronBunPath}, skipping download`);
@@ -408,7 +408,7 @@ function copyDependencyTree(
 /**
  * Scan all .ts files in a directory tree for import/require statements
  * and return the set of external npm package names (not relative paths,
- * not node: builtins, not workspace @craft-agent/* packages).
+ * not node: builtins, not workspace @tokenbird/* packages).
  */
 function scanImports(dir: string): Set<string> {
   const packages = new Set<string>();
@@ -427,7 +427,7 @@ function scanImports(dir: string): Set<string> {
         while ((match = importRe.exec(content)) !== null) {
           const spec = match[1]!;
           // Skip relative imports, node: builtins, workspace packages
-          if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('@craft-agent/')) continue;
+          if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('@tokenbird/')) continue;
           // Extract package name (handle scoped: @scope/name)
           const parts = spec.split('/');
           const pkgName = spec.startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0]!;
@@ -668,7 +668,7 @@ function copyWorkspacePackages(config: ServerBuildConfig): void {
 
   // Messaging workers are included so their built bundles ship.
   // The worker is spawned as a Node subprocess against that file at runtime; see
-  // CRAFT_MESSAGING_WA_WORKER env resolution in packages/server/src/index.ts.
+  // TOKENBIRD_MESSAGING_WA_WORKER env resolution in packages/server/src/index.ts.
   const packages = [
     'server',
     'server-core',
@@ -740,7 +740,7 @@ async function buildInterceptorForServer(config: ServerBuildConfig): Promise<voi
 async function buildMinimalEntrypoints(config: ServerBuildConfig): Promise<void> {
   const bundleDir = join(config.outputDir, 'bundle');
   mkdirSync(bundleDir, { recursive: true });
-  await $`bun build ${join(config.rootDir, 'packages', 'server', 'src', 'index.ts')} --target=bun --outfile=${join(bundleDir, 'server.js')} --external markitdown-js --external @craft-agent/messaging-gateway --sourcemap=none`.cwd(config.rootDir);
+  await $`bun build ${join(config.rootDir, 'packages', 'server', 'src', 'index.ts')} --target=bun --outfile=${join(bundleDir, 'server.js')} --external markitdown-js --external @tokenbird/messaging-gateway --sourcemap=none`.cwd(config.rootDir);
   await $`bun build ${join(config.rootDir, 'apps', 'cli', 'src', 'index.ts')} --target=bun --outfile=${join(bundleDir, 'cli.js')} --sourcemap=none`.cwd(config.rootDir);
 }
 
@@ -751,7 +751,7 @@ async function buildMinimalEntrypoints(config: ServerBuildConfig): Promise<void>
 function createRootConfig(config: ServerBuildConfig): void {
   const { outputDir, version } = config;
 
-  // Root package.json with workspaces (Bun resolves @craft-agent/* through this)
+  // Root package.json with workspaces (Bun resolves @tokenbird/* through this)
   const rootPkg = {
     name: config.minimal ? 'tokenbird-cli-dist' : 'tokenbird-server-dist',
     version,
@@ -767,18 +767,18 @@ function createRootConfig(config: ServerBuildConfig): void {
       module: 'ESNext',
       moduleResolution: 'bundler',
       paths: {
-        '@craft-agent/server-core/*': ['./packages/server-core/src/*'],
-        '@craft-agent/shared/*': ['./packages/shared/src/*'],
-        '@craft-agent/core/*': ['./packages/core/src/*'],
-        '@craft-agent/session-tools-core/*': ['./packages/session-tools-core/src/*'],
+        '@tokenbird/server-core/*': ['./packages/server-core/src/*'],
+        '@tokenbird/shared/*': ['./packages/shared/src/*'],
+        '@tokenbird/core/*': ['./packages/core/src/*'],
+        '@tokenbird/session-tools-core/*': ['./packages/session-tools-core/src/*'],
       },
     },
   };
   writeFileSync(join(outputDir, 'tsconfig.json'), JSON.stringify(rootTsconfig, null, 2) + '\n');
 
-  // Create workspace symlinks in node_modules/@craft-agent/
+  // Create workspace symlinks in node_modules/@tokenbird/
   // Bun needs these to resolve workspace package imports at runtime
-  const scopeDir = join(outputDir, 'node_modules', '@craft-agent');
+  const scopeDir = join(outputDir, 'node_modules', '@tokenbird');
   mkdirSync(scopeDir, { recursive: true });
 
   const packagesDir = join(outputDir, 'packages');
@@ -790,8 +790,8 @@ function createRootConfig(config: ServerBuildConfig): void {
       try {
         const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
         const name: string = pkgJson.name || '';
-        if (name.startsWith('@craft-agent/')) {
-          const shortName = name.replace('@craft-agent/', '');
+        if (name.startsWith('@tokenbird/')) {
+          const shortName = name.replace('@tokenbird/', '');
           const linkPath = join(scopeDir, shortName);
           const target = join('..', '..', 'packages', pkg);
           if (!existsSync(linkPath)) {
@@ -815,8 +815,8 @@ function createEntryScripts(config: ServerBuildConfig): void {
   const binDir = join(outputDir, 'bin');
   mkdirSync(binDir, { recursive: true });
 
-  // bin/craft-server — main entry wrapper
-  const craftServer = `#!/bin/sh
+  // bin/tokenbird-server — main entry wrapper
+  const tokenBirdServer = `#!/bin/sh
 set -e
 
 # Resolve the distribution root
@@ -824,14 +824,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Set environment for resource resolution
-export CRAFT_BUNDLED_ASSETS_ROOT="$ROOT"
-export CRAFT_IS_PACKAGED=true
-export CRAFT_APP_ROOT="$ROOT"
-export CRAFT_RESOURCES_PATH="$ROOT/resources"
-${minimal ? 'export CRAFT_MINIMAL_SERVER=true\nexport CRAFT_DISABLE_MESSAGING=true' : ''}
+export TOKENBIRD_BUNDLED_ASSETS_ROOT="$ROOT"
+export TOKENBIRD_IS_PACKAGED=true
+export TOKENBIRD_APP_ROOT="$ROOT"
+export TOKENBIRD_RESOURCES_PATH="$ROOT/resources"
+${minimal ? 'export TOKENBIRD_MINIMAL_SERVER=true\nexport TOKENBIRD_DISABLE_MESSAGING=true' : ''}
 
 # CLI tools (doc tools use uv + Python scripts)
-${minimal ? '' : 'export CRAFT_UV="$ROOT/resources/bin/uv"\nexport CRAFT_SCRIPTS="$ROOT/resources/scripts"'}
+${minimal ? '' : 'export TOKENBIRD_UV="$ROOT/resources/bin/uv"\nexport TOKENBIRD_SCRIPTS="$ROOT/resources/scripts"'}
 
 # Prepend resource bin to PATH (makes doc tool wrappers available)
 export PATH="$ROOT/resources/bin:$ROOT/vendor/bun:$PATH"
@@ -839,31 +839,31 @@ export PATH="$ROOT/resources/bin:$ROOT/vendor/bun:$PATH"
 # Use bundled Bun runtime
 exec "$ROOT/vendor/bun/bun" run "$ROOT/${minimal ? 'bundle/server.js' : 'packages/server/src/index.ts'}" "$@"
 `;
-  writeFileSync(join(binDir, 'craft-server'), craftServer);
+  writeFileSync(join(binDir, 'tokenbird-server'), tokenBirdServer);
 
   if (minimal) {
-    const craftCli = `#!/bin/sh
+    const tokenBirdCli = `#!/bin/sh
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
-export CRAFT_BUNDLED_ASSETS_ROOT="$ROOT"
-export CRAFT_IS_PACKAGED=true
-export CRAFT_APP_ROOT="$ROOT"
-export CRAFT_RESOURCES_PATH="$ROOT/resources"
-export CRAFT_MINIMAL_SERVER=true
-export CRAFT_DISABLE_MESSAGING=true
-export CRAFT_SERVER_ENTRY="$ROOT/bundle/server.js"
+export TOKENBIRD_BUNDLED_ASSETS_ROOT="$ROOT"
+export TOKENBIRD_IS_PACKAGED=true
+export TOKENBIRD_APP_ROOT="$ROOT"
+export TOKENBIRD_RESOURCES_PATH="$ROOT/resources"
+export TOKENBIRD_MINIMAL_SERVER=true
+export TOKENBIRD_DISABLE_MESSAGING=true
+export TOKENBIRD_SERVER_ENTRY="$ROOT/bundle/server.js"
 export PATH="$ROOT/vendor/bun:$PATH"
 exec "$ROOT/vendor/bun/bun" run "$ROOT/bundle/cli.js" "$@"
 `;
-    writeFileSync(join(binDir, 'craft-cli'), craftCli);
+    writeFileSync(join(binDir, 'tokenbird-cli'), tokenBirdCli);
   }
 
   // start.sh — convenience entry
   const startSh = `#!/bin/sh
 # TokenBird Server — convenience entry point
 DIR="$(cd "$(dirname "$0")" && pwd)"
-exec "$DIR/bin/craft-server" "$@"
+exec "$DIR/bin/tokenbird-server" "$@"
 `;
   writeFileSync(join(outputDir, 'start.sh'), startSh);
 
@@ -877,7 +877,7 @@ echo "=== TokenBird Server Setup ==="
 echo ""
 
 # Make binaries executable
-chmod +x "$DIR/bin/craft-server" "$DIR/start.sh"${minimal ? ' "$DIR/bin/craft-cli"' : ''}
+chmod +x "$DIR/bin/tokenbird-server" "$DIR/start.sh"${minimal ? ' "$DIR/bin/tokenbird-cli"' : ''}
 [ -f "$DIR/vendor/bun/bun" ] && chmod +x "$DIR/vendor/bun/bun"
 [ -f "$DIR/resources/bin/uv" ] && chmod +x "$DIR/resources/bin/uv"
 
@@ -889,22 +889,22 @@ done
 echo "Binaries configured."
 
 # Generate token if not set
-if [ -z "\${CRAFT_SERVER_TOKEN:-}" ]; then
+if [ -z "\${TOKENBIRD_SERVER_TOKEN:-}" ]; then
   TOKEN=\$(openssl rand -hex 32)
   cat > "$DIR/.env" <<ENVFILE
-CRAFT_SERVER_TOKEN=$TOKEN
+TOKENBIRD_SERVER_TOKEN=$TOKEN
 
 # TLS — uncomment and set paths to enable wss://
-# CRAFT_RPC_TLS_CERT=/path/to/cert.pem
-# CRAFT_RPC_TLS_KEY=/path/to/key.pem
-# CRAFT_RPC_TLS_CA=/path/to/ca.pem
+# TOKENBIRD_RPC_TLS_CERT=/path/to/cert.pem
+# TOKENBIRD_RPC_TLS_KEY=/path/to/key.pem
+# TOKENBIRD_RPC_TLS_CA=/path/to/ca.pem
 ENVFILE
   echo ""
   echo "Generated server token (saved to $DIR/.env)"
 else
-  TOKEN="\$CRAFT_SERVER_TOKEN"
+  TOKEN="\$TOKENBIRD_SERVER_TOKEN"
   echo ""
-  echo "Using CRAFT_SERVER_TOKEN from environment."
+  echo "Using TOKENBIRD_SERVER_TOKEN from environment."
 fi
 
 # Systemd installation
@@ -914,8 +914,8 @@ if [ "\${1:-}" = "--systemd" ]; then
     exit 1
   fi
 
-  SERVICE_USER="\${CRAFT_USER:-\$(logname 2>/dev/null || echo craft)}"
-  SERVICE_FILE="/etc/systemd/system/craft-server.service"
+  SERVICE_USER="\${TOKENBIRD_USER:-\$(logname 2>/dev/null || echo tokenbird)}"
+  SERVICE_FILE="/etc/systemd/system/tokenbird-server.service"
 
   cat > "$SERVICE_FILE" <<UNIT
 [Unit]
@@ -927,9 +927,9 @@ Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$DIR
 EnvironmentFile=$DIR/.env
-Environment=CRAFT_RPC_HOST=127.0.0.1
-Environment=CRAFT_RPC_PORT=9100
-ExecStart=$DIR/bin/craft-server
+Environment=TOKENBIRD_RPC_HOST=127.0.0.1
+Environment=TOKENBIRD_RPC_PORT=9100
+ExecStart=$DIR/bin/tokenbird-server
 Restart=on-failure
 RestartSec=5
 
@@ -938,20 +938,20 @@ WantedBy=multi-user.target
 UNIT
 
   systemctl daemon-reload
-  systemctl enable craft-server
+  systemctl enable tokenbird-server
 
   echo ""
   echo "Systemd service installed."
-  echo "  Start:   sudo systemctl start craft-server"
-  echo "  Status:  sudo systemctl status craft-server"
-  echo "  Logs:    journalctl -u craft-server -f"
+  echo "  Start:   sudo systemctl start tokenbird-server"
+  echo "  Status:  sudo systemctl status tokenbird-server"
+  echo "  Logs:    journalctl -u tokenbird-server -f"
   echo ""
   exit 0
 fi
 
 echo ""
 echo "Quick start:"
-echo "  CRAFT_SERVER_TOKEN=$TOKEN $DIR/start.sh"
+echo "  TOKENBIRD_SERVER_TOKEN=$TOKEN $DIR/start.sh"
 echo ""
 echo "Or with systemd:"
 echo "  sudo $DIR/install.sh --systemd"
@@ -964,49 +964,49 @@ echo ""
       '@echo off',
       'setlocal',
       'set "DIR=%~dp0.."',
-      'set "CRAFT_BUNDLED_ASSETS_ROOT=%DIR%"',
-      'set "CRAFT_IS_PACKAGED=true"',
-      'set "CRAFT_APP_ROOT=%DIR%"',
-      'set "CRAFT_RESOURCES_PATH=%DIR%\\resources"',
+      'set "TOKENBIRD_BUNDLED_ASSETS_ROOT=%DIR%"',
+      'set "TOKENBIRD_IS_PACKAGED=true"',
+      'set "TOKENBIRD_APP_ROOT=%DIR%"',
+      'set "TOKENBIRD_RESOURCES_PATH=%DIR%\\resources"',
       ...(minimal
-        ? ['set "CRAFT_MINIMAL_SERVER=true"', 'set "CRAFT_DISABLE_MESSAGING=true"']
-        : ['set "CRAFT_UV=%DIR%\\resources\\bin\\uv.exe"', 'set "CRAFT_SCRIPTS=%DIR%\\resources\\scripts"']),
+        ? ['set "TOKENBIRD_MINIMAL_SERVER=true"', 'set "TOKENBIRD_DISABLE_MESSAGING=true"']
+        : ['set "TOKENBIRD_UV=%DIR%\\resources\\bin\\uv.exe"', 'set "TOKENBIRD_SCRIPTS=%DIR%\\resources\\scripts"']),
       'set "PATH=%DIR%\\resources\\bin;%DIR%\\vendor\\bun;%PATH%"',
       `"%DIR%\\vendor\\bun\\bun.exe" run "%DIR%\\${minimal ? 'bundle\\server.js' : 'packages\\server\\src\\index.ts'}" %*`,
-      'set "CRAFT_EXIT_CODE=%ERRORLEVEL%"',
-      'endlocal & exit /b %CRAFT_EXIT_CODE%',
+      'set "TOKENBIRD_EXIT_CODE=%ERRORLEVEL%"',
+      'endlocal & exit /b %TOKENBIRD_EXIT_CODE%',
       '',
     ].join('\r\n');
-    writeFileSync(join(binDir, 'craft-server.cmd'), windowsEntry);
-    writeFileSync(join(outputDir, 'start.cmd'), '@echo off\r\ncall "%~dp0bin\\craft-server.cmd" %*\r\n');
+    writeFileSync(join(binDir, 'tokenbird-server.cmd'), windowsEntry);
+    writeFileSync(join(outputDir, 'start.cmd'), '@echo off\r\ncall "%~dp0bin\\tokenbird-server.cmd" %*\r\n');
     if (minimal) {
       const windowsCli = [
         '@echo off',
         'setlocal',
         'set "DIR=%~dp0.."',
-        'set "CRAFT_BUNDLED_ASSETS_ROOT=%DIR%"',
-        'set "CRAFT_IS_PACKAGED=true"',
-        'set "CRAFT_APP_ROOT=%DIR%"',
-        'set "CRAFT_RESOURCES_PATH=%DIR%\\resources"',
-        'set "CRAFT_MINIMAL_SERVER=true"',
-        'set "CRAFT_DISABLE_MESSAGING=true"',
-        'set "CRAFT_SERVER_ENTRY=%DIR%\\bundle\\server.js"',
+        'set "TOKENBIRD_BUNDLED_ASSETS_ROOT=%DIR%"',
+        'set "TOKENBIRD_IS_PACKAGED=true"',
+        'set "TOKENBIRD_APP_ROOT=%DIR%"',
+        'set "TOKENBIRD_RESOURCES_PATH=%DIR%\\resources"',
+        'set "TOKENBIRD_MINIMAL_SERVER=true"',
+        'set "TOKENBIRD_DISABLE_MESSAGING=true"',
+        'set "TOKENBIRD_SERVER_ENTRY=%DIR%\\bundle\\server.js"',
         'set "PATH=%DIR%\\vendor\\bun;%PATH%"',
         '"%DIR%\\vendor\\bun\\bun.exe" run "%DIR%\\bundle\\cli.js" %*',
-        'set "CRAFT_EXIT_CODE=%ERRORLEVEL%"',
-        'endlocal & exit /b %CRAFT_EXIT_CODE%',
+        'set "TOKENBIRD_EXIT_CODE=%ERRORLEVEL%"',
+        'endlocal & exit /b %TOKENBIRD_EXIT_CODE%',
         '',
       ].join('\r\n');
-      writeFileSync(join(binDir, 'craft-cli.cmd'), windowsCli);
+      writeFileSync(join(binDir, 'tokenbird-cli.cmd'), windowsCli);
     }
   }
 
   // Make scripts executable at build time
   for (const script of [
-    join(binDir, 'craft-server'),
+    join(binDir, 'tokenbird-server'),
     join(outputDir, 'start.sh'),
     join(outputDir, 'install.sh'),
-    ...(minimal ? [join(binDir, 'craft-cli')] : []),
+    ...(minimal ? [join(binDir, 'tokenbird-cli')] : []),
   ]) {
     chmodSync(script, 0o755);
   }
@@ -1027,37 +1027,37 @@ WORKDIR /app
 COPY . .
 
 # Make binaries executable
-RUN chmod +x bin/craft-server vendor/bun/bun resources/bin/uv && \\
+RUN chmod +x bin/tokenbird-server vendor/bun/bun resources/bin/uv && \\
     for f in resources/bin/*; do [ -f "$f" ] && chmod +x "$f"; done
 
-ENV CRAFT_IS_PACKAGED=true
-ENV CRAFT_BUNDLED_ASSETS_ROOT=/app
-ENV CRAFT_APP_ROOT=/app
-ENV CRAFT_RESOURCES_PATH=/app/resources
-ENV CRAFT_UV=/app/resources/bin/uv
-ENV CRAFT_SCRIPTS=/app/resources/scripts
-ENV CRAFT_RPC_HOST=0.0.0.0
-ENV CRAFT_RPC_PORT=9100
+ENV TOKENBIRD_IS_PACKAGED=true
+ENV TOKENBIRD_BUNDLED_ASSETS_ROOT=/app
+ENV TOKENBIRD_APP_ROOT=/app
+ENV TOKENBIRD_RESOURCES_PATH=/app/resources
+ENV TOKENBIRD_UV=/app/resources/bin/uv
+ENV TOKENBIRD_SCRIPTS=/app/resources/scripts
+ENV TOKENBIRD_RPC_HOST=0.0.0.0
+ENV TOKENBIRD_RPC_PORT=9100
 ENV PATH="/app/resources/bin:/app/vendor/bun:\${PATH}"
 
 EXPOSE 9100
 
-ENTRYPOINT ["/app/bin/craft-server"]
+ENTRYPOINT ["/app/bin/tokenbird-server"]
 `;
   writeFileSync(join(outputDir, 'Dockerfile'), dockerfile);
 
   const dockerCompose = `version: "3.8"
 services:
-  craft-server:
+  tokenbird-server:
     build: .
     ports:
       - "9100:9100"
     environment:
-      - CRAFT_SERVER_TOKEN=\${CRAFT_SERVER_TOKEN:?Set CRAFT_SERVER_TOKEN}
-      - CRAFT_RPC_PORT=9100
+      - TOKENBIRD_SERVER_TOKEN=\${TOKENBIRD_SERVER_TOKEN:?Set TOKENBIRD_SERVER_TOKEN}
+      - TOKENBIRD_RPC_PORT=9100
       # TLS — uncomment to enable wss://
-      # - CRAFT_RPC_TLS_CERT=/certs/cert.pem
-      # - CRAFT_RPC_TLS_KEY=/certs/key.pem
+      # - TOKENBIRD_RPC_TLS_CERT=/certs/cert.pem
+      # - TOKENBIRD_RPC_TLS_KEY=/certs/key.pem
     volumes:
       - tokenbird-data:/root/.tokenbird
       # TLS — mount cert directory
@@ -1225,10 +1225,10 @@ async function main(): Promise<void> {
   console.log('\n  Build completed successfully!');
   console.log(`\nQuick start:`);
   if (minimal) {
-    console.log(`  ${outputDir}/bin/craft-cli --help`);
-    console.log(`  ANTHROPIC_API_KEY=<key> ${outputDir}/bin/craft-cli run "Help configure this server"`);
+    console.log(`  ${outputDir}/bin/tokenbird-cli --help`);
+    console.log(`  ANTHROPIC_API_KEY=<key> ${outputDir}/bin/tokenbird-cli run "Help configure this server"`);
   } else {
-    console.log(`  CRAFT_SERVER_TOKEN=<secret> ${outputDir}/start.sh`);
+    console.log(`  TOKENBIRD_SERVER_TOKEN=<secret> ${outputDir}/start.sh`);
   }
 }
 

@@ -2,7 +2,7 @@
  * Resource Bundle File Persistence
  *
  * Serializes a ResourceBundle to a portable JSON archive file
- * (`*.craft-resources.json`) and reads it back with validation.
+ * (`*.tokenbird-resources.json`) and reads it back with validation.
  * This is the "打包存档" layer on top of the in-memory bundle used by
  * workspace-to-workspace transfer.
  */
@@ -13,10 +13,10 @@ import { validateResourceBundle } from './resource-bundle.ts';
 import type { ResourceBundle } from './types.ts';
 
 /** Human-readable format marker embedded in archive files. */
-export const RESOURCE_BUNDLE_FILE_MARKER = 'craft-resource-bundle';
+export const RESOURCE_BUNDLE_FILE_MARKER = 'tokenbird-resource-bundle';
 
 /** Suggested file extension for archive files. */
-export const RESOURCE_BUNDLE_FILE_EXTENSION = '.craft-resources.json';
+export const RESOURCE_BUNDLE_FILE_EXTENSION = '.tokenbird-resources.json';
 
 /** Full bundle file shape — the on-disk envelope wraps the bundle. */
 export interface ResourceBundleFile {
@@ -54,7 +54,7 @@ export function parseResourceBundle(text: string): ResourceBundle {
     raw === null ||
     (raw as Record<string, unknown>).format !== RESOURCE_BUNDLE_FILE_MARKER
   ) {
-    throw new Error(`Not a Craft resource bundle file (missing format marker "${RESOURCE_BUNDLE_FILE_MARKER}")`);
+    throw new Error(`Not a TokenBird resource bundle file (missing format marker "${RESOURCE_BUNDLE_FILE_MARKER}")`);
   }
 
   const envelope = raw as { format: string; version?: number; bundle?: unknown };

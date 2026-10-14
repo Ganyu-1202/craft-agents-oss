@@ -1,19 +1,19 @@
 import { join } from 'path'
 import { homedir } from 'os'
 import { execSync } from 'child_process'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId, getGitBashPath, setGitBashPath, clearGitBashPath } from '@craft-agent/shared/config'
-import { classifyExternalUrl, formatBlockedUrlError } from '@craft-agent/shared/utils/url-safety'
-import { getBundledGitBashPath, isUsableGitBashPath, validateGitBashPath } from '@craft-agent/server-core/services'
-import { resolveUserFilePath } from '@craft-agent/server-core/handlers'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId, getGitBashPath, setGitBashPath, clearGitBashPath } from '@tokenbird/shared/config'
+import { classifyExternalUrl, formatBlockedUrlError } from '@tokenbird/shared/utils/url-safety'
+import { getBundledGitBashPath, isUsableGitBashPath, validateGitBashPath } from '@tokenbird/server-core/services'
+import { resolveUserFilePath } from '@tokenbird/server-core/handlers'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import {
   requestClientOpenExternal,
   requestClientOpenPath,
   requestClientShowInFolder,
   requestClientOpenFileDialog,
-} from '@craft-agent/server-core/transport'
+} from '@tokenbird/server-core/transport'
 
 export const CORE_HANDLED_CHANNELS = [
   RPC_CHANNELS.theme.GET_SYSTEM_PREFERENCE,
@@ -64,7 +64,7 @@ function collectDeepLinkParams(parsed: URL, pathId?: string): Record<string, str
   return Object.keys(params).length > 0 ? params : undefined
 }
 
-function parseInternalCraftAgentsDeepLink(parsed: URL): ParsedInternalDeepLink | null {
+function parseInternalTokenBirdDeepLink(parsed: URL): ParsedInternalDeepLink | null {
   if (parsed.protocol !== 'tokenbird:') return null
 
   const host = parsed.hostname
@@ -283,7 +283,7 @@ export function registerSystemCoreHandlers(server: RpcServer, deps: HandlerDeps)
       const parsed = new URL(url)
 
       if (classification.kind === 'internal-deeplink') {
-        const deepLink = parseInternalCraftAgentsDeepLink(parsed)
+        const deepLink = parseInternalTokenBirdDeepLink(parsed)
 
         if (deepLink?.handledNoop) {
           deps.platform.logger.info('[OPEN_URL] Ignoring auth-callback deep link in OPEN_URL handler')

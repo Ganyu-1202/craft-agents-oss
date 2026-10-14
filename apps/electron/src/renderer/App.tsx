@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/useTheme'
 import type { ThemeOverrides } from '@config/theme'
 import { useSetAtom, useStore, useAtomValue, useAtom } from 'jotai'
 import type { Session, Workspace, SessionEvent, Message, FileAttachment, StoredAttachment, PermissionRequest, CredentialRequest, CredentialResponse, SetupNeeds, SessionStatus, NewChatActionParams, ContentBadge, LlmConnectionWithStatus, PermissionModeState, StartupServerContext } from '../shared/types'
-import type { SessionDraft, DraftAttachmentRef, UserPreferences } from '@craft-agent/shared/config'
+import type { SessionDraft, DraftAttachmentRef, UserPreferences } from '@tokenbird/shared/config'
 import type { SessionOptions, SessionOptionUpdates } from './hooks/useSessionOptions'
 import { defaultSessionOptions, mergeSessionOptions } from './hooks/useSessionOptions'
 import { generateMessageId } from '../shared/types'
@@ -21,12 +21,12 @@ import { ResetConfirmationDialog } from '@/components/ResetConfirmationDialog'
 import { DeleteSessionConfirmationDialog } from '@/components/DeleteSessionConfirmationDialog'
 import { TokenNestReauthDialog } from '@/components/TokenNestReauthDialog'
 import { OAuthReauthDialog } from '@/components/OAuthReauthDialog'
-import type { TokenNestAuthorizationIssue } from '@craft-agent/shared/auth'
+import type { TokenNestAuthorizationIssue } from '@tokenbird/shared/auth'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
 import { SplashScreen } from '@/components/SplashScreen'
 import { GettingStartedGuide } from '@/components/GettingStartedGuide'
 import { BirdCompanionBridge } from '@/components/BirdCompanionBridge'
-import { TooltipProvider } from '@craft-agent/ui'
+import { TooltipProvider } from '@tokenbird/ui'
 import { FocusProvider } from '@/context/FocusContext'
 import { ModalProvider } from '@/context/ModalContext'
 import { DismissibleLayerProvider } from '@/context/DismissibleLayerContext'
@@ -43,8 +43,8 @@ import { coerceInputText } from './lib/input-text'
 import { getSessionsToRefreshAfterStaleReconnect } from './lib/reconnect-recovery'
 import { createSessionListRequestGuard, formatSessionLoadFailure, retrySessionListRequest, shouldTreatSessionLoadFailureAsTransportFallback } from './lib/session-load'
 import { reconcileSessionPermissionModes } from './lib/session-permission-reconciliation'
-import { extractWorkspaceSlugFromPath } from '@craft-agent/shared/utils/workspace-slug'
-import { DEFAULT_THINKING_LEVEL } from '@craft-agent/shared/agent/thinking-levels'
+import { extractWorkspaceSlugFromPath } from '@tokenbird/shared/utils/workspace-slug'
+import { DEFAULT_THINKING_LEVEL } from '@tokenbird/shared/agent/thinking-levels'
 import { initRendererPerf } from './lib/perf'
 import {
   initializeSessionsAtom,
@@ -82,7 +82,7 @@ import {
   CodePreviewOverlay,
   DocumentFormattedMarkdownOverlay,
   JSONPreviewOverlay,
-} from '@craft-agent/ui'
+} from '@tokenbird/ui'
 import { useLinkInterceptor, type FilePreviewState } from '@/hooks/useLinkInterceptor'
 import { useTransportConnectionState } from '@/hooks/useTransportConnectionState'
 import { useStaleSessionRecovery } from '@/hooks/useStaleSessionRecovery'
@@ -106,7 +106,7 @@ import { getOAuthReauthConnection } from '@/lib/oauth-reauth'
 // PDF previews are opened on demand. Loading the renderer lazily keeps pdf.js
 // and its worker off the startup path.
 const PDFPreviewOverlay = React.lazy(() =>
-  import('@craft-agent/ui/overlay/PDFPreviewOverlay').then(module => ({ default: module.PDFPreviewOverlay }))
+  import('@tokenbird/ui/overlay/PDFPreviewOverlay').then(module => ({ default: module.PDFPreviewOverlay }))
 )
 const StudioCanvas = React.lazy(() => import('./pages/studio/StudioCanvas'))
 const StudioMindMap = React.lazy(() => import('./pages/studio/StudioMindMap'))
@@ -315,11 +315,11 @@ export default function App() {
       setStudioMode(mode)
       if (mode !== 'agent') setStudioVisited(previous => ({ ...previous, [mode]: true }))
     }
-    window.addEventListener('craft-agent:studio-mode', changeMode)
-    return () => window.removeEventListener('craft-agent:studio-mode', changeMode)
+    window.addEventListener('tokenbird:studio-mode', changeMode)
+    return () => window.removeEventListener('tokenbird:studio-mode', changeMode)
   }, [])
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('craft-agent:studio-mode-changed', { detail: studioMode }))
+    window.dispatchEvent(new CustomEvent('tokenbird:studio-mode-changed', { detail: studioMode }))
   }, [studioMode])
   const isAndroidEmbedded = useMemo(
     () => new URLSearchParams(window.location.search).get('embedded') === 'android',
@@ -1156,7 +1156,7 @@ export default function App() {
             handleInputChange(sessionId, restored)
             // handleInputChange updates the ref but ChatPage has local state.
             // Dispatch a custom event so ChatPage re-reads the draft.
-            window.dispatchEvent(new CustomEvent('craft:restore-input', {
+            window.dispatchEvent(new CustomEvent('tokenbird:restore-input', {
               detail: { sessionId, text: restored },
             }))
             break
@@ -1241,7 +1241,7 @@ export default function App() {
       // Note: markCompactionComplete is called on the backend (sessions.ts) to ensure
       // it happens even if CMD+R occurs during compaction
       if (event.type === 'info' && event.statusType === 'compaction_complete') {
-        window.dispatchEvent(new CustomEvent('craft:compaction-complete', {
+        window.dispatchEvent(new CustomEvent('tokenbird:compaction-complete', {
           detail: { sessionId }
         }))
       }
@@ -1602,7 +1602,7 @@ export default function App() {
               timestamp: Date.now()
             }]
           }))
-          window.dispatchEvent(new CustomEvent('craft:restore-unsent-message', {
+          window.dispatchEvent(new CustomEvent('tokenbird:restore-unsent-message', {
             detail: { sessionId, message, attachments },
           }))
           return
@@ -2229,7 +2229,7 @@ export default function App() {
     openNewChat,
   ])
 
-  // Platform actions for @craft-agent/ui components (overlays, etc.)
+  // Platform actions for @tokenbird/ui components (overlays, etc.)
   // Memoized to prevent re-renders when these callbacks don't change
   // NOTE: Must be defined before early returns to maintain consistent hook order
   const platformActions = useMemo(() => ({

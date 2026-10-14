@@ -9,7 +9,7 @@
  * Claude / Codex / Copilot backends.
  */
 
-import type { AgentEvent as CraftAgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent as TokenBirdAgentEvent } from '@tokenbird/core/types';
 import type {
   AgentEvent as PiAgentEvent,
 } from '@earendil-works/pi-agent-core';
@@ -22,7 +22,7 @@ import { BaseEventAdapter } from '../base-event-adapter.ts';
 import { PI_TOOL_NAME_MAP } from './constants.ts';
 import { toolMetadataStore } from '../../../interceptor-common.ts';
 import { createAgentError, parseError } from '../../errors.ts';
-import { isCraftRetryableAssistantError, isHttp520Error } from './retry-policy.ts';
+import { isTokenBirdRetryableAssistantError, isHttp520Error } from './retry-policy.ts';
 
 function finiteNumberOrZero(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -153,7 +153,7 @@ export class PiEventAdapter extends BaseEventAdapter {
   //   recovering ──agent_end───────────► none          (normal complete)
   //   awaitingRetry|backoff ──auto_retry_end{success:false}──► none (release, complete)
   private retryState: 'none' | 'held' | 'awaitingRetry' | 'backoff' | 'recovering' = 'none';
-  private heldRetryError: CraftAgentEvent | null = null;
+  private heldRetryError: TokenBirdAgentEvent | null = null;
   private retryFallbackTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** Set when the adapter wants the caller to call `eventQueue.complete()`
@@ -163,7 +163,7 @@ export class PiEventAdapter extends BaseEventAdapter {
   /** Caller-supplied callbacks for the asynchronous fallback timer paths —
    *  the timers fire outside `adaptEvent()` so we can't yield through the
    *  generator. */
-  private onFallbackEvent: ((event: CraftAgentEvent) => void) | null = null;
+  private onFallbackEvent: ((event: TokenBirdAgentEvent) => void) | null = null;
   private onFallbackComplete: (() => void) | null = null;
 
   constructor(options: { oauthAuth?: boolean } = {}) {
@@ -186,7 +186,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * parked error, then `onComplete` to terminate the iterator.
    */
   setRecoveryFallbackHandlers(
-    onEvent: (event: CraftAgentEvent) => void,
+    onEvent: (event: TokenBirdAgentEvent) => void,
     onComplete: () => void,
   ): void {
     this.onFallbackEvent = onEvent;
@@ -232,7 +232,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * machine. Used when the SDK will not retry (disabled/exhausted) or when a
    * retry was cancelled.
    */
-  private *releaseHeldRetryError(): Generator<CraftAgentEvent> {
+  private *releaseHeldRetryError(): Generator<TokenBirdAgentEvent> {
     const held = this.heldRetryError;
     this.heldRetryError = null;
     this.retryState = 'none';
@@ -252,7 +252,7 @@ export class PiEventAdapter extends BaseEventAdapter {
       this.retryFallbackTimerId = null;
       if (this.retryState !== armedState) return;
       this.log.warn(`Auto-retry fallback fired — ${reason}`, { timeoutMs, state: armedState });
-      const held: CraftAgentEvent = this.heldRetryError ?? {
+      const held: TokenBirdAgentEvent = this.heldRetryError ?? {
         type: 'error',
         message: 'The model request failed and the automatic retry did not start. Please try again.',
       };
@@ -280,7 +280,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * "socket hang up", "stream ended before message_stop", …) become typed
    * connection/service errors so the UI offers Retry instead of a raw string.
    */
-  private classifyAssistantError(message: AssistantMessage, errorMessage: string): CraftAgentEvent {
+  private classifyAssistantError(message: AssistantMessage, errorMessage: string): TokenBirdAgentEvent {
     const parsed = parseError(new Error(errorMessage));
     const normalizedError = errorMessage.toLowerCase();
     const missingResolvedApiKey = normalizedError.includes('authheader requires a resolved api key') ||
@@ -301,7 +301,7 @@ export class PiEventAdapter extends BaseEventAdapter {
     if (parsed.code !== 'unknown_error') {
       return { type: 'typed_error', error: parsed };
     }
-    if (isCraftRetryableAssistantError(message)) {
+    if (isTokenBirdRetryableAssistantError(message)) {
       const code = (RETRYABLE_PROVIDER_SIDE_PATTERN.test(errorMessage) || isHttp520Error(errorMessage))
         ? 'service_error'
         : 'network_error';
@@ -374,7 +374,7 @@ export class PiEventAdapter extends BaseEventAdapter {
     this.messageSubTurnId = null;
     this.thinkingSubTurnId = null;
     this.thinkingText = '';
-    // A new Craft turn can only start once the previous queue completed (or
+    // A new TokenBird turn can only start once the previous queue completed (or
     // was force-aborted), so any recovery state left here is stale.
     this.resetRecoveryState();
     this.log.debug('Turn started', { turnIndex: this.turnIndex });
@@ -383,12 +383,12 @@ export class PiEventAdapter extends BaseEventAdapter {
   /**
    * Adapt a Pi SDK event to zero or more TokenBirdEvents.
    */
-  *adaptEvent(event: PiEvent): Generator<CraftAgentEvent> {
-    // Craft-injected event from pi-agent-server (not part of the Pi SDK).
+  *adaptEvent(event: PiEvent): Generator<TokenBirdAgentEvent> {
+    // TokenBird-injected event from pi-agent-server (not part of the Pi SDK).
     // The subprocess emits this immediately after each `message_end` to deliver
     // the correct `sdkTurnAnchor` (the leaf id AFTER the SDK has appended the
     // assistant entry). We forward it through as-is — SessionManager correlates
-    // it to a Craft assistant message via `sdkMessageId`. See craft-agents-oss#782.
+    // it to a TokenBird assistant message via `sdkMessageId`. See tokenbird#782.
     if ((event as { type?: string }).type === 'pi_turn_anchor') {
       const e = event as unknown as { sdkMessageId?: string; sdkTurnAnchor?: string };
       if (e.sdkMessageId && e.sdkTurnAnchor) {
@@ -441,7 +441,7 @@ export class PiEventAdapter extends BaseEventAdapter {
         // Auto-retry: AgentSession stamps `willRetry` on agent_end
         // (`_willRetryAfterAgentEnd`). When true, `_prepareRetry` follows with
         // auto_retry_start, sleeps the backoff and re-runs the turn, so this
-        // agent_end is NOT the end of the Craft turn.
+        // agent_end is NOT the end of the TokenBird turn.
         const willRetry = (event as { willRetry?: boolean }).willRetry === true;
         if (willRetry && this.retryState !== 'awaitingRetry' && this.retryState !== 'backoff') {
           this.retryState = 'awaitingRetry';
@@ -498,7 +498,7 @@ export class PiEventAdapter extends BaseEventAdapter {
         this.currentTurnId = null;
         this.hasStreamedDeltas = false;
         this.hasEmittedFinalText = false;
-        // Keep sub-turn IDs unique across SDK turns/retries within this Craft
+        // Keep sub-turn IDs unique across SDK turns/retries within this TokenBird
         // turn. startTurn() is the only place the counter resets.
         this.messageSubTurnId = null;
         this.thinkingSubTurnId = null;
@@ -551,7 +551,7 @@ export class PiEventAdapter extends BaseEventAdapter {
         const msg = event.message as { role?: string; stopReason?: string; errorMessage?: string; usage?: { input: number; output: number; cacheRead: number; cacheWrite: number; totalTokens: number; cost: { total: number } }; id?: string } | undefined;
         // SDK message id, set by pi-agent-server when forwarding the event.
         // SessionManager uses this to correlate the follow-up `pi_turn_anchor`
-        // event to the Craft assistant message created here (#782).
+        // event to the TokenBird assistant message created here (#782).
         const sdkMessageId = (event as { sdkMessageId?: string }).sdkMessageId ?? msg?.id;
         if (msg?.role !== 'assistant') break;
 
@@ -588,14 +588,14 @@ export class PiEventAdapter extends BaseEventAdapter {
           const errorEvent = this.classifyAssistantError(event.message as AssistantMessage, msg.errorMessage);
 
           // Transient provider/transport errors: the SDK's retry loop uses the
-          // same Craft classifier, so it will retry
+          // same TokenBird classifier, so it will retry
           // unless retries are disabled or exhausted — and the following
           // agent_end { willRetry } tells us which. Park the error instead of
           // showing it now; agent_end either releases it or holds the queue
           // open for the retried run.
           if (
             (this.retryState === 'none' || this.retryState === 'recovering') &&
-            isCraftRetryableAssistantError(event.message as AssistantMessage)
+            isTokenBirdRetryableAssistantError(event.message as AssistantMessage)
           ) {
             this.retryState = 'held';
             this.heldRetryError = errorEvent;

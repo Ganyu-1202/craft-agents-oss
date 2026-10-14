@@ -1,6 +1,6 @@
 {
-  "name": "@craft-agent/server-core",
-  "version": "26.10.13",
+  "name": "@tokenbird/server-core",
+  "version": "26.10.14",
   "license": "Apache-2.0",
   "description": "Reusable headless server infrastructure for TokenBird",
   "type": "module",
@@ -26,8 +26,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@craft-agent/core": "workspace:*",
-    "@craft-agent/shared": "workspace:*",
+    "@tokenbird/core": "workspace:*",
+    "@tokenbird/shared": "workspace:*",
     "@earendil-works/pi-ai": "0.85.1",
     "jose": "^6.0.0",
     "reflect-metadata": "0.2.2",

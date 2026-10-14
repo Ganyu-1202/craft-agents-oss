@@ -35,7 +35,7 @@ describe('lockHolderMatchesLock (#978)', () => {
     expect(lockHolderMatchesLock(lockWith('bun'), 'bun', null)).toBe(true)
   })
 
-  it('rejects a different executable even when its name contains "craft"', () => {
+  it('rejects a different executable even when its name contains "tokenbird"', () => {
     // PID recycled onto e.g. a game process — must NOT keep the brick (#978)
     expect(lockHolderMatchesLock(lockWith('TokenBird.exe'), 'minecraft-launcher', null)).toBe(false)
   })
@@ -45,14 +45,14 @@ describe('lockHolderMatchesLock (#978)', () => {
   })
 
   it('ignores the command line when execName is recorded', () => {
-    // cmdline mentions craft, but the executable is something else → recycled PID
+    // cmdline mentions tokenbird, but the executable is something else → recycled PID
     expect(lockHolderMatchesLock(lockWith('TokenBird.exe'), 'java', '/usr/bin/java -jar minecraft.jar')).toBe(false)
   })
 
   describe('legacy locks without execName', () => {
-    it('recognizes TokenBird and legacy Craft command lines', () => {
+    it('recognizes TokenBird and legacy TokenBird command lines', () => {
       expect(lockHolderMatchesLock(lockWith(undefined), null, '/Applications/TokenBird.app/Contents/MacOS/TokenBird')).toBe(true)
-      expect(lockHolderMatchesLock(lockWith(undefined), null, '/Applications/Craft Agents.app/Contents/MacOS/Craft Agents')).toBe(true)
+      expect(lockHolderMatchesLock(lockWith(undefined), null, '/Applications/TokenBird.app/Contents/MacOS/TokenBird')).toBe(true)
       expect(lockHolderMatchesLock(lockWith(undefined), null, '/usr/libexec/swcd')).toBe(false)
     })
 

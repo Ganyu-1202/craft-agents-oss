@@ -1,4 +1,4 @@
-package com.craftagents.mobile;
+package com.tokenbird.mobile;
 
 import android.content.res.AssetManager;
 import android.net.Uri;
@@ -71,7 +71,7 @@ final class LocalWebServer {
         }
         serverSocket = socket;
         final ServerSocket listener = socket;
-        Thread acceptThread = new Thread(() -> acceptLoop(listener), "craft-agent-local-web");
+        Thread acceptThread = new Thread(() -> acceptLoop(listener), "tokenbird-local-web");
         acceptThread.setDaemon(true);
         acceptThread.start();
         return socket.getLocalPort();

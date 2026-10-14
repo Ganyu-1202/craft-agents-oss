@@ -1,4 +1,4 @@
-import { i18n } from '@craft-agent/shared/i18n'
+import { i18n } from '@tokenbird/shared/i18n'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, Clipboard, Download, FileUp, LoaderCircle, MessageCircle, PanelRightClose, PanelRightOpen, RotateCcw, Sparkles } from 'lucide-react'
@@ -11,7 +11,7 @@ import { StudioSessionWorkspace, type StudioSessionEditorProps } from './StudioS
 import { Markdown } from '@/components/markdown'
 import { StudioThinkingPicker, studioThinkingLevel, type StudioThinkingLevel } from './StudioThinkingPicker'
 import { StudioExecutionModePicker, studioExecutionMode, type StudioExecutionMode } from './StudioExecutionModePicker'
-import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import type { StudioWorkEvent } from '@tokenbird/shared/protocol'
 import { StudioWorkLog, appendStudioWorkEvent } from './StudioWorkLog'
 
 const EMPTY_DRAWIO = '<mxfile host="TokenBird"><diagram name="Mind Map"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>'

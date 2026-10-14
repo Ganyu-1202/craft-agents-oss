@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -181,14 +182,18 @@ export default function AppearanceSettingsPage() {
   }, [themePacks, isDark])
 
   const [importingPack, setImportingPack] = useState(false)
-  const handleImportPack = useCallback(async () => {
+  const handleImportPack = useCallback(async (format: 'zip' | 'folder' = 'zip') => {
     setImportingPack(true)
     try {
-      await importThemePack()
+      await importThemePack(format)
+    } catch (error) {
+      toast.error(t('settings.appearance.themePackImportFailed'), {
+        description: error instanceof Error ? error.message : String(error),
+      })
     } finally {
       setImportingPack(false)
     }
-  }, [importThemePack])
+  }, [importThemePack, t])
 
   const handleOpenPacksFolder = useCallback(async () => {
     const dir = await window.electronAPI?.getThemePacksDir?.()
@@ -597,6 +602,11 @@ export default function AppearanceSettingsPage() {
                     >
                       <PackagePlus className="mr-1.5 h-4 w-4" />
                       {t("settings.appearance.themePackImport")}
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={importingPack}
+                      onClick={() => void handleImportPack('folder')}>
+                      <FolderOpen className="mr-1.5 h-4 w-4" />
+                      {t('settings.appearance.themePackImportFolder')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => void handleOpenPacksFolder()}>
                       <FolderOpen className="mr-1.5 h-4 w-4" />

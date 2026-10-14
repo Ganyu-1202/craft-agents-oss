@@ -25,14 +25,14 @@ export function useMobileAppViewport() {
     const android = isAndroidApp()
     const removeDownloads = android ? installAndroidDownloads() : () => {}
     const onFileError = (event: Event) => toast.error((event as CustomEvent<string>).detail)
-    window.addEventListener('craft-agent:file-error', onFileError)
+    window.addEventListener('tokenbird:file-error', onFileError)
     if (android) {
       root.dataset.mobileApp = 'android'
       document.body.dataset.mobileApp = 'android'
     }
     // Sync the effective theme, including settings and system preference changes.
     const syncNativeTheme = () => {
-      if (android) window.CraftAgentAndroid?.setDarkTheme?.(root.classList.contains('dark'))
+      if (android) window.TokenBirdAgentAndroid?.setDarkTheme?.(root.classList.contains('dark'))
     }
     const themeObserver = new MutationObserver(syncNativeTheme)
     if (android) themeObserver.observe(root, { attributes: true, attributeFilter: ['class'] })
@@ -56,15 +56,15 @@ export function useMobileAppViewport() {
         key: 'Escape', code: 'Escape', bubbles: true, cancelable: true,
       }))
     }
-    window.addEventListener('craft-agent-android-back', dismissAndroidDialog, true)
+    window.addEventListener('tokenbird-android-back', dismissAndroidDialog, true)
     updateViewport()
     window.addEventListener('resize', updateViewport)
     window.visualViewport?.addEventListener('resize', updateViewport)
     window.visualViewport?.addEventListener('scroll', updateViewport)
     return () => {
       removeDownloads()
-      window.removeEventListener('craft-agent:file-error', onFileError)
-      window.removeEventListener('craft-agent-android-back', dismissAndroidDialog, true)
+      window.removeEventListener('tokenbird:file-error', onFileError)
+      window.removeEventListener('tokenbird-android-back', dismissAndroidDialog, true)
       themeObserver.disconnect()
       window.removeEventListener('resize', updateViewport)
       window.visualViewport?.removeEventListener('resize', updateViewport)
@@ -168,24 +168,24 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
   const closeOverlays = () => { setNavigationOpen(false); setWorkspaceOpen(false) }
   const dismissKeyboard = () => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    window.CraftAgentAndroid?.dismissKeyboard()
+    window.TokenBirdAgentAndroid?.dismissKeyboard()
   }
   const navigateTo = (route: Route) => {
     closeOverlays()
-    window.dispatchEvent(new CustomEvent('craft-agent:studio-mode', { detail: 'agent' }))
+    window.dispatchEvent(new CustomEvent('tokenbird:studio-mode', { detail: 'agent' }))
     navigate(route, { skipAutoSelect: true })
   }
   const openStudio = (mode: string) => {
     closeOverlays(); dismissKeyboard()
-    window.dispatchEvent(new CustomEvent('craft-agent:studio-mode', { detail: mode }))
+    window.dispatchEvent(new CustomEvent('tokenbird:studio-mode', { detail: mode }))
   }
   useEffect(() => {
     const changed = (event: Event) => setStudioMode((event as CustomEvent<string>).detail)
-    window.addEventListener('craft-agent:studio-mode-changed', changed)
-    return () => window.removeEventListener('craft-agent:studio-mode-changed', changed)
+    window.addEventListener('tokenbird:studio-mode-changed', changed)
+    return () => window.removeEventListener('tokenbird:studio-mode-changed', changed)
   }, [])
   useEffect(() => {
-    if (android) window.CraftAgentAndroid?.setTaskRunning?.([...sessionMetadata.values()].some(session => session.isProcessing))
+    if (android) window.TokenBirdAgentAndroid?.setTaskRunning?.([...sessionMetadata.values()].some(session => session.isProcessing))
   }, [android, sessionMetadata])
   useEffect(() => {
     if (!android || studioMode === 'agent') return
@@ -193,8 +193,8 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
       if (event.defaultPrevented || navigationOpen || workspaceOpen || document.querySelector('[role="dialog"]')) return
       event.preventDefault(); openStudio('agent')
     }
-    window.addEventListener('craft-agent-android-back', backToChat)
-    return () => window.removeEventListener('craft-agent-android-back', backToChat)
+    window.addEventListener('tokenbird-android-back', backToChat)
+    return () => window.removeEventListener('tokenbird-android-back', backToChat)
   }, [android, studioMode, navigationOpen, workspaceOpen])
 
   useEffect(() => {
@@ -216,11 +216,11 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
     const handleBack = (event: Event) => { event.preventDefault(); close() }
     document.documentElement.classList.add('mobile-overlay-open')
     window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('craft-agent-android-back', handleBack)
+    window.addEventListener('tokenbird-android-back', handleBack)
     return () => {
       document.documentElement.classList.remove('mobile-overlay-open')
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('craft-agent-android-back', handleBack)
+      window.removeEventListener('tokenbird-android-back', handleBack)
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
     }
   }, [android, navigationOpen, workspaceOpen])
@@ -308,7 +308,7 @@ export function MobileControls({ connectionMode }: { connectionMode: 'local' | '
               <button type="button" onClick={openWorkspace}><FolderKanban aria-hidden="true" /><span>工作区</span></button>
               <button type="button" onClick={() => navigateTo(routes.view.settings())}><Settings aria-hidden="true" /><span>设置</span></button>
               <button type="button" aria-label={isDark ? '切换浅色模式' : '切换深色模式'} onClick={() => setMode(isDark ? 'light' : 'dark')}>{isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}<span>{isDark ? '浅色' : '深色'}</span></button>
-              <button type="button" onClick={() => { closeOverlays(); window.CraftAgentAndroid?.reload() }}><RefreshCw aria-hidden="true" /><span>刷新</span></button>
+              <button type="button" onClick={() => { closeOverlays(); window.TokenBirdAgentAndroid?.reload() }}><RefreshCw aria-hidden="true" /><span>刷新</span></button>
             </div>
           </footer>
         </section>

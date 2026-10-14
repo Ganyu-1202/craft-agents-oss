@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
 import { delimiter, dirname, join, resolve } from 'node:path'
-import { getRuntimeToolPaths, setRuntimeToolPath } from '@craft-agent/shared/config/storage'
-import type { RuntimeToolId, RuntimeToolStatus } from '@craft-agent/shared/config/types'
+import { getRuntimeToolPaths, setRuntimeToolPath } from '@tokenbird/shared/config/storage'
+import type { RuntimeToolId, RuntimeToolStatus } from '@tokenbird/shared/config/types'
 
 const EXECUTABLE_NAMES: Record<RuntimeToolId, string> = {
   java: process.platform === 'win32' ? 'java.exe' : 'java',
@@ -14,7 +14,7 @@ let injectedPathEntries: string[] = []
 const originalJavaHome = process.env.JAVA_HOME
 
 function bundledExecutable(tool: RuntimeToolId): string | undefined {
-  const root = process.env.CRAFT_RESOURCES_BASE
+  const root = process.env.TOKENBIRD_RESOURCES_BASE
   if (!root) return undefined
   const candidates: Record<RuntimeToolId, string[]> = {
     java: [join(root, 'vendor', 'toolchains', 'jdk', 'bin', EXECUTABLE_NAMES.java)],
@@ -66,15 +66,15 @@ export function applyRuntimeToolEnvironment(): void {
     if (!item.executable) continue
     injectedPathEntries.push(...pathEntries(item.tool, item.executable))
     if (item.tool === 'java') process.env.JAVA_HOME = dirname(dirname(item.executable))
-    if (item.tool === 'python') process.env.CRAFT_PYTHON = item.executable
-    if (item.tool === 'node') process.env.CRAFT_NODE = item.executable
+    if (item.tool === 'python') process.env.TOKENBIRD_PYTHON = item.executable
+    if (item.tool === 'node') process.env.TOKENBIRD_NODE = item.executable
   }
   if (!resolved.some(item => item.tool === 'java' && item.executable)) {
     if (originalJavaHome) process.env.JAVA_HOME = originalJavaHome
     else delete process.env.JAVA_HOME
   }
-  if (!resolved.some(item => item.tool === 'python' && item.executable)) delete process.env.CRAFT_PYTHON
-  if (!resolved.some(item => item.tool === 'node' && item.executable)) delete process.env.CRAFT_NODE
+  if (!resolved.some(item => item.tool === 'python' && item.executable)) delete process.env.TOKENBIRD_PYTHON
+  if (!resolved.some(item => item.tool === 'node' && item.executable)) delete process.env.TOKENBIRD_NODE
   process.env.PATH = [...new Set(injectedPathEntries), process.env.PATH ?? ''].filter(Boolean).join(delimiter)
 }
 

@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { mkdir, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { SessionPolicyPermissionScope } from '@craft-agent/core/types'
+import type { SessionPolicyPermissionScope } from '@tokenbird/core/types'
 import { canShareSuperAgentPermission, loadSuperAgentDocument, matchesSuperAgentPermissionGrant, superAgentPermissionEnvironmentKey,
-  validateSuperAgentCommand, type SuperAgentPermissionGrant } from '@craft-agent/shared/super-agent'
+  validateSuperAgentCommand, type SuperAgentPermissionGrant } from '@tokenbird/shared/super-agent'
 import { SuperAgentService, type SuperAgentServiceDeps } from './SuperAgentService'
 import type { ISessionManager } from '../handlers/session-manager-interface'
 import { cleanupSuperAgents, getSuperAgentService } from './registry'

@@ -1,4 +1,4 @@
-# craft-cli — CLI Reference
+# tokenbird-cli — CLI Reference
 
 Terminal client for TokenBird server. Connects over WebSocket (`ws://` or `wss://`) to a running headless server.
 
@@ -12,8 +12,8 @@ Terminal client for TokenBird server. Connects over WebSocket (`ws://` or `wss:/
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/craft-agents.git
-cd craft-agents
+git clone https://github.com/Goldgom/craft-agents-oss.git TokenBird
+cd TokenBird
 
 # Install dependencies
 bun install
@@ -21,9 +21,9 @@ bun install
 # Option A: Run directly
 bun run apps/cli/src/index.ts <command>
 
-# Option B: Link globally (adds craft-cli to PATH)
+# Option B: Link globally (adds tokenbird-cli to PATH)
 cd apps/cli && bun link
-craft-cli <command>
+tokenbird-cli <command>
 ```
 
 ### Quick Start
@@ -39,11 +39,11 @@ ANTHROPIC_API_KEY=sk-... bun run apps/cli/src/index.ts run "Hello, world!"
 
 | Flag | Env var | Default | Description |
 |------|---------|---------|-------------|
-| `--url <ws[s]://...>` | `CRAFT_SERVER_URL` | — | Server WebSocket URL |
-| `--token <secret>` | `CRAFT_SERVER_TOKEN` | — | Authentication token |
+| `--url <ws[s]://...>` | `TOKENBIRD_SERVER_URL` | — | Server WebSocket URL |
+| `--token <secret>` | `TOKENBIRD_SERVER_TOKEN` | — | Authentication token |
 | `--workspace <id>` | — | auto-detect | Workspace ID |
 | `--timeout <ms>` | — | `10000` | Request timeout |
-| `--tls-ca <path>` | `CRAFT_TLS_CA` | — | Custom CA cert for self-signed TLS |
+| `--tls-ca <path>` | `TOKENBIRD_TLS_CA` | — | Custom CA cert for self-signed TLS |
 | `--json` | — | `false` | Raw JSON output for scripting |
 | `--send-timeout <ms>` | — | `300000` | Timeout for `send` command (5 min) |
 
@@ -54,40 +54,40 @@ Flags take precedence over environment variables. If `--workspace` is omitted, t
 ### Info & Health
 
 ```bash
-craft-cli ping              # Verify connectivity (clientId + latency)
-craft-cli health            # Check credential store health
-craft-cli versions          # Show server runtime versions
+tokenbird-cli ping              # Verify connectivity (clientId + latency)
+tokenbird-cli health            # Check credential store health
+tokenbird-cli versions          # Show server runtime versions
 ```
 
 ### Resource Listing
 
 ```bash
-craft-cli workspaces        # List all workspaces
-craft-cli sessions          # List sessions in workspace
-craft-cli connections       # List LLM connections
-craft-cli sources           # List configured sources
+tokenbird-cli workspaces        # List all workspaces
+tokenbird-cli sessions          # List sessions in workspace
+tokenbird-cli connections       # List LLM connections
+tokenbird-cli sources           # List configured sources
 ```
 
 ### Session Operations
 
 ```bash
-craft-cli session create [--name <n>] [--mode <m>]  # Create session
-craft-cli session messages <id>                       # Print message history
-craft-cli session delete <id>                         # Delete session
-craft-cli cancel <id>                                 # Cancel processing
+tokenbird-cli session create [--name <n>] [--mode <m>]  # Create session
+tokenbird-cli session messages <id>                       # Print message history
+tokenbird-cli session delete <id>                         # Delete session
+tokenbird-cli cancel <id>                                 # Cancel processing
 ```
 
 ### Send Message (Streaming)
 
 ```bash
 # Send a message and stream the AI response in real time
-craft-cli send <session-id> <message>
+tokenbird-cli send <session-id> <message>
 
 # Pipe text from stdin
-echo "Summarize this file" | craft-cli send <session-id>
+echo "Summarize this file" | tokenbird-cli send <session-id>
 
 # Read from stdin explicitly
-cat document.txt | craft-cli send <session-id> --stdin
+cat document.txt | tokenbird-cli send <session-id> --stdin
 ```
 
 The `send` command subscribes to session events and streams them to stdout:
@@ -102,24 +102,24 @@ The `send` command subscribes to session events and streams them to stdout:
 
 ```bash
 # Raw RPC call — send any channel with JSON args
-craft-cli invoke <channel> [json-args...]
+tokenbird-cli invoke <channel> [json-args...]
 
 # Subscribe to push events (Ctrl+C to stop)
-craft-cli listen <channel>
+tokenbird-cli listen <channel>
 ```
 
 Examples:
 ```bash
-craft-cli invoke system:homeDir
-craft-cli invoke sessions:get '"workspace-123"'
-craft-cli listen session:event
+tokenbird-cli invoke system:homeDir
+tokenbird-cli invoke sessions:get '"workspace-123"'
+tokenbird-cli listen session:event
 ```
 
 ### Run (Self-Contained)
 
 ```bash
-craft-cli run <prompt>
-craft-cli run --workspace-dir ./project --source github "List open PRs"
+tokenbird-cli run <prompt>
+tokenbird-cli run --workspace-dir ./project --source github "List open PRs"
 ```
 
 The `run` command is fully self-contained — it spawns a headless server, creates a session, sends the prompt, streams the response, and exits. No separate server setup needed. An API key is resolved from `--api-key`, `$LLM_API_KEY`, or a provider-specific env var (e.g., `$ANTHROPIC_API_KEY`, `$OPENAI_API_KEY`).
@@ -142,42 +142,42 @@ The `run` command is fully self-contained — it spawns a headless server, creat
 | `--api-key <key>` | `LLM_API_KEY` | (provider env) | API key — also checks provider-specific vars like `$OPENAI_API_KEY` |
 | `--base-url <url>` | `LLM_BASE_URL` | — | Custom endpoint for proxies, OpenRouter, or self-hosted models |
 | `--runtime <protocol>` | `LLM_AGENT_RUNTIME` | provider default | Agent runtime: `pi`, `codex`, or `claude-code`; Codex is native-first with compatibility fallback |
-| `--codex-login` | `CRAFT_CODEX_USE_LOGIN=1` | off | Reuse authentication created by `codex login`; requires `--provider openai --runtime codex` |
+| `--codex-login` | `TOKENBIRD_CODEX_USE_LOGIN=1` | off | Reuse authentication created by `codex login`; requires `--provider openai --runtime codex` |
 
 ```bash
 # Multi-provider examples
-craft-cli run --provider openai --model gpt-4o "Summarize this repo"
-craft-cli run --provider openai --runtime codex "Inspect this repository"
-craft-cli run --provider openai --runtime codex --codex-login "Inspect this repository"
-craft-cli run --provider anthropic --runtime pi "Inspect this repository"
-GOOGLE_API_KEY=... craft-cli run --provider google --model gemini-2.0-flash "Hello"
-craft-cli run --provider anthropic --base-url https://openrouter.ai/api/v1 --api-key $OR_KEY "Hello"
+tokenbird-cli run --provider openai --model gpt-4o "Summarize this repo"
+tokenbird-cli run --provider openai --runtime codex "Inspect this repository"
+tokenbird-cli run --provider openai --runtime codex --codex-login "Inspect this repository"
+tokenbird-cli run --provider anthropic --runtime pi "Inspect this repository"
+GOOGLE_API_KEY=... tokenbird-cli run --provider google --model gemini-2.0-flash "Hello"
+tokenbird-cli run --provider anthropic --base-url https://openrouter.ai/api/v1 --api-key $OR_KEY "Hello"
 ```
 
-The `codex` runtime discovers the native CLI in this order: `CRAFT_CODEX_PATH`,
+The `codex` runtime discovers the native CLI in this order: `TOKENBIRD_CODEX_PATH`,
 `CODEX_PATH`, a packaged Codex resource, then `PATH`. The app-server protocol is
-experimental, so Craft Agents currently enables native mode only for the tested
-`codex-cli 0.154.x` protocol line. Set `CRAFT_CODEX_ALLOW_UNTESTED=1` only for
+experimental, so TokenBird currently enables native mode only for the tested
+`codex-cli 0.154.x` protocol line. Set `TOKENBIRD_CODEX_ALLOW_UNTESTED=1` only for
 explicit compatibility testing; an unavailable or untested CLI automatically
 uses the Pi Responses fallback for managed API-key/OAuth connections. The
 `--codex-login` mode fails fast instead, because a credential-less Pi fallback
 cannot reuse Codex CLI authentication. Run `codex login` under the same OS
-account that starts the Craft server before using this mode.
+account that starts the TokenBird server before using this mode.
 
 Prompt can also be piped via stdin:
 ```bash
-echo "Summarize this file" | craft-cli run
-cat error.log | craft-cli run "What's causing these errors?"
+echo "Summarize this file" | tokenbird-cli run
+cat error.log | tokenbird-cli run "What's causing these errors?"
 ```
 
 ### Validate Server
 
 ```bash
 # Against a running server
-craft-cli --validate-server --url ws://127.0.0.1:9100 --token <token>
+tokenbird-cli --validate-server --url ws://127.0.0.1:9100 --token <token>
 
 # Self-contained (auto-spawns a server)
-craft-cli --validate-server
+tokenbird-cli --validate-server
 ```
 
 When no `--url` is provided, `--validate-server` automatically spawns a local headless server (same as the `run` command), runs the validation, and shuts it down.
@@ -212,22 +212,22 @@ Runs a 21-step integration test covering the full server lifecycle including sou
 
 ```bash
 # Get workspace IDs
-WORKSPACES=$(craft-cli --json workspaces | jq -r '.[].id')
+WORKSPACES=$(tokenbird-cli --json workspaces | jq -r '.[].id')
 
 # Count sessions per workspace
 for ws in $WORKSPACES; do
-  COUNT=$(craft-cli --json --workspace "$ws" sessions | jq length)
+  COUNT=$(tokenbird-cli --json --workspace "$ws" sessions | jq length)
   echo "$ws: $COUNT sessions"
 done
 
 # Create a session and capture its ID
-SESSION_ID=$(craft-cli --json session create --name "CI Run" | jq -r '.id')
+SESSION_ID=$(tokenbird-cli --json session create --name "CI Run" | jq -r '.id')
 
 # Send a message and wait for completion
-craft-cli send "$SESSION_ID" "Run the test suite and report results"
+tokenbird-cli send "$SESSION_ID" "Run the test suite and report results"
 
 # Clean up
-craft-cli session delete "$SESSION_ID"
+tokenbird-cli session delete "$SESSION_ID"
 ```
 
 ## TLS / wss://
@@ -236,20 +236,20 @@ For remote servers with TLS:
 
 ```bash
 # Trusted certificate (Let's Encrypt, etc.)
-craft-cli --url wss://server.example.com:9100 ping
+tokenbird-cli --url wss://server.example.com:9100 ping
 
 # Self-signed certificate
-craft-cli --url wss://server.example.com:9100 --tls-ca /path/to/ca.pem ping
+tokenbird-cli --url wss://server.example.com:9100 --tls-ca /path/to/ca.pem ping
 ```
 
-The `--tls-ca` flag sets `NODE_EXTRA_CA_CERTS` before connecting. You can also set `CRAFT_TLS_CA` in your environment.
+The `--tls-ca` flag sets `NODE_EXTRA_CA_CERTS` before connecting. You can also set `TOKENBIRD_TLS_CA` in your environment.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `Connection timeout` | Server not running or unreachable | Check server is started, verify URL |
-| `AUTH_FAILED` | Wrong token | Check `CRAFT_SERVER_TOKEN` matches server |
+| `AUTH_FAILED` | Wrong token | Check `TOKENBIRD_SERVER_TOKEN` matches server |
 | `PROTOCOL_VERSION_UNSUPPORTED` | Version mismatch | Update CLI and server to same version |
 | `WebSocket connection error` | Network issue or TLS problem | For self-signed certs, use `--tls-ca` |
 | `No workspace available` | Workspace not yet created | Create one via desktop app or API |

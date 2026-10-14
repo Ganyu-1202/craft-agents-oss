@@ -12,11 +12,11 @@ import i18n from 'i18next'
 import webuiPackage from '../../package.json'
 import { canvasExportInfo } from '../../../electron/src/shared/canvas-export'
 import { toast } from 'sonner'
-import { openExternalUrl } from '@craft-agent/ui'
+import { openExternalUrl } from '@tokenbird/ui'
 import { WsRpcClient } from '../../../electron/src/transport/client'
 import { buildClientApi } from '../../../electron/src/transport/build-api'
 import { CHANNEL_MAP } from '../../../electron/src/transport/channel-map'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { blobBase64, getPickedFile, pickedAttachment, saveBlob, webFilePicker } from './browser-files'
 import { requestBrowserClientFiles } from './client-files'
 import { pickServerDirectory } from './directory-picker'
@@ -30,7 +30,7 @@ import {
   CLIENT_REQUEST_FILES,
   type AndroidAdbRequest,
   type AndroidPermissionRequest,
-} from '@craft-agent/server-core/transport'
+} from '@tokenbird/server-core/transport'
 import {
   invokeAndroidNative,
   parseAndroidJson,
@@ -54,7 +54,7 @@ function getSystemTheme(): boolean {
   return darkMediaQuery?.matches ?? false
 }
 
-const TOKENNEST_OAUTH_CALLBACK_EVENT = 'craft-agent:tokennest-oauth-callback'
+const TOKENNEST_OAUTH_CALLBACK_EVENT = 'tokenbird:tokennest-oauth-callback'
 const TOKENNEST_OAUTH_TIMEOUT_MS = 5 * 60 * 1000
 
 interface TokenNestOAuthCallback {
@@ -121,7 +121,7 @@ export function createWebApi(options: WebApiOptions): {
   // Keep it in sync locally so components mounted after the Android workspace
   // picker (such as the floating switcher) see the selected workspace.
   let activeWorkspaceId = workspaceId
-  const androidBridge = window.CraftAgentAndroid
+  const androidBridge = window.TokenBirdAgentAndroid
   const androidCapabilities = androidBridge
     ? [CLIENT_ANDROID_PERMISSION, CLIENT_ANDROID_ADB, CLIENT_CANVAS_INVOKE]
     : [CLIENT_CANVAS_INVOKE]
@@ -147,7 +147,7 @@ export function createWebApi(options: WebApiOptions): {
       }
       if (!request.permission) throw new Error('permission is required')
       return await invokeAndroidNative<AndroidPermissionSnapshot>(
-        'craft-agent:android-permission-result',
+        'tokenbird:android-permission-result',
         requestId => androidBridge.requestPermission(
           requestId,
           request.permission!,
@@ -167,7 +167,7 @@ export function createWebApi(options: WebApiOptions): {
       }
       if (!request.command) throw new Error('command is required')
       return await invokeAndroidNative(
-        'craft-agent:android-adb-result',
+        'tokenbird:android-adb-result',
         requestId => androidBridge.runNetworkAdbCommand(
           requestId,
           request.command!,
@@ -276,7 +276,7 @@ export function createWebApi(options: WebApiOptions): {
     },
     changeLanguage: async language => {
       await i18n.changeLanguage(language)
-      window.CraftAgentAndroid?.setLanguage?.(language)
+      window.TokenBirdAgentAndroid?.setLanguage?.(language)
     },
 
     // System info
@@ -384,10 +384,10 @@ export function createWebApi(options: WebApiOptions): {
     },
     onNotificationNavigate: cb => {
       const handler = (event: Event) => cb((event as CustomEvent).detail)
-      window.addEventListener('craft-agent:notification-navigate', handler)
+      window.addEventListener('tokenbird:notification-navigate', handler)
       const sessionId = androidBridge?.takeNotificationSession?.()
       if (sessionId) queueMicrotask(() => cb({ workspaceId: activeWorkspaceId ?? '', sessionId }))
-      return () => window.removeEventListener('craft-agent:notification-navigate', handler)
+      return () => window.removeEventListener('tokenbird:notification-navigate', handler)
     },
 
     // Git bash (Windows-only) — not applicable
@@ -540,7 +540,7 @@ export function createWebApi(options: WebApiOptions): {
     // as the RFC 8252 callback listener and send the result back to this
     // WebView, while PKCE material and token exchange stay on the agent server.
     startTokenNestOAuth: async (connectionSlug = 'tokennest') => {
-      const bridge = window.CraftAgentAndroid
+      const bridge = window.TokenBirdAgentAndroid
       if (!bridge) {
         return { success: false, error: 'TokenNest sign-in requires the TokenBird Android app or desktop app.' }
       }

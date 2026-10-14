@@ -1,19 +1,19 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { dirname, join } from 'path'
 import { tmpdir } from 'node:os'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getPreferencesPath, getSessionDraft, setSessionDraft, deleteSessionDraft, getAllSessionDrafts, getWorkspaceByNameOrId, getDefaultThinkingLevel, setDefaultThinkingLevel, getDefaultLlmConnection, getLlmConnection, resolveMiniModel, resolveAgentRuntime } from '@craft-agent/shared/config'
-import { isValidThinkingLevel, normalizeThinkingLevel, THINKING_LEVEL_IDS } from '@craft-agent/shared/agent/thinking-levels'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getPreferencesPath, getSessionDraft, setSessionDraft, deleteSessionDraft, getAllSessionDrafts, getWorkspaceByNameOrId, getDefaultThinkingLevel, setDefaultThinkingLevel, getDefaultLlmConnection, getLlmConnection, resolveMiniModel, resolveAgentRuntime } from '@tokenbird/shared/config'
+import { isValidThinkingLevel, normalizeThinkingLevel, THINKING_LEVEL_IDS } from '@tokenbird/shared/agent/thinking-levels'
 import { setTransferableHandler } from './transfer'
 
 const VALID_THINKING_LEVELS_LIST = THINKING_LEVEL_IDS.map(id => `'${id}'`).join(', ')
-import { getWorkspaceOrThrow } from '@craft-agent/server-core/handlers'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { getWorkspaceOrThrow } from '@tokenbird/server-core/handlers'
+import type { RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
-import { requestClientOpenFileDialog } from '@craft-agent/server-core/transport'
-import { requestClientSaveFileDialog } from '@craft-agent/server-core/transport'
+import { requestClientOpenFileDialog } from '@tokenbird/server-core/transport'
+import { requestClientSaveFileDialog } from '@tokenbird/server-core/transport'
 import { isValidWorkingDirectory } from '../../utils/path-validation'
-import type { WorkspacePrompt } from '@craft-agent/shared/workspaces'
+import type { WorkspacePrompt } from '@tokenbird/shared/workspaces'
 
 export const HANDLED_CHANNELS = [
   RPC_CHANNELS.workspace.SETTINGS_GET,
@@ -123,10 +123,10 @@ function parseGeneratedWorkspacePrompt(
 
 export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): void {
   const performanceManager = deps.sessionManager as typeof deps.sessionManager & {
-    getPerformanceSnapshot(): Promise<import('@craft-agent/shared/protocol').PerformanceSnapshot>
-    runMemoryLeakCheck(options?: { durationMs?: number; intervalMs?: number }): Promise<import('@craft-agent/shared/protocol').MemoryLeakCheckResult>
-    getMcpRuntimeLimits(): import('@craft-agent/shared/mcp').McpRuntimeLimits
-    setMcpRuntimeLimits(limits: import('@craft-agent/shared/mcp').McpRuntimeLimits): Promise<void>
+    getPerformanceSnapshot(): Promise<import('@tokenbird/shared/protocol').PerformanceSnapshot>
+    runMemoryLeakCheck(options?: { durationMs?: number; intervalMs?: number }): Promise<import('@tokenbird/shared/protocol').MemoryLeakCheckResult>
+    getMcpRuntimeLimits(): import('@tokenbird/shared/mcp').McpRuntimeLimits
+    setMcpRuntimeLimits(limits: import('@tokenbird/shared/mcp').McpRuntimeLimits): Promise<void>
     clearIdleMcpRuntimes(): Promise<number>
     getMaxWarmRuntimes(): number
     setMaxWarmRuntimes(value: number): Promise<void>
@@ -151,7 +151,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   })
 
   server.handle(RPC_CHANNELS.settings.GET_PERFORMANCE_SETTINGS, async () => {
-    const prefs = (await import('@craft-agent/shared/config')).loadPreferences()
+    const prefs = (await import('@tokenbird/shared/config')).loadPreferences()
     const mcp = performanceManager.getMcpRuntimeLimits()
     return {
       maxWarmRuntimes: prefs.performance?.maxWarmRuntimes ?? performanceManager.getMaxWarmRuntimes(),
@@ -171,7 +171,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     if (!Number.isFinite(mcpMemoryHardLimitGb) || mcpMemoryHardLimitGb <= 0) throw new Error('mcpMemoryHardLimitGb must be positive')
     const mcpMemoryHardLimitBytes = Math.round(mcpMemoryHardLimitGb * 1024 * 1024 * 1024)
     if (!Number.isSafeInteger(mcpMemoryHardLimitBytes) || mcpMemoryHardLimitBytes <= 0) throw new Error('mcpMemoryHardLimitGb is too large')
-    const { updatePreferences } = await import('@craft-agent/shared/config')
+    const { updatePreferences } = await import('@tokenbird/shared/config')
     updatePreferences({ performance: {
       ...(settings?.maxWarmRuntimes === undefined ? {} : { maxWarmRuntimes: settings.maxWarmRuntimes }),
       mcpHardLimit, mcpSoftLimit, mcpMemoryHardLimitBytes,
@@ -222,7 +222,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     }
 
     // Load workspace config
-    const { loadWorkspaceConfig } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspaceConfig } = await import('@tokenbird/shared/workspaces')
     const config = loadWorkspaceConfig(workspace.rootPath)
 
     return {
@@ -254,7 +254,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
     // Validate defaultLlmConnection exists before saving
     if (key === 'defaultLlmConnection' && normalizedValue !== undefined && normalizedValue !== null) {
-      const { getLlmConnection } = await import('@craft-agent/shared/config/storage')
+      const { getLlmConnection } = await import('@tokenbird/shared/config/storage')
       if (!getLlmConnection(normalizedValue as string)) {
         throw new Error(`LLM connection "${normalizedValue}" not found`)
       }
@@ -267,7 +267,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
       }
     }
 
-    const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspaceConfig, saveWorkspaceConfig } = await import('@tokenbird/shared/workspaces')
     const config = loadWorkspaceConfig(workspace.rootPath)
     if (!config) {
       throw new Error(`Failed to load workspace config: ${workspaceId}`)
@@ -336,7 +336,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   })
 
   // Set draft for a session (empty drafts are cleared)
-  server.handle(RPC_CHANNELS.drafts.SET, async (_ctx, sessionId: string, draft: import('@craft-agent/shared/config').SessionDraft) => {
+  server.handle(RPC_CHANNELS.drafts.SET, async (_ctx, sessionId: string, draft: import('@tokenbird/shared/config').SessionDraft) => {
     setSessionDraft(sessionId, draft)
   })
 
@@ -356,49 +356,49 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get auto-capitalisation setting
   server.handle(RPC_CHANNELS.input.GET_AUTO_CAPITALISATION, async () => {
-    const { getAutoCapitalisation } = await import('@craft-agent/shared/config/storage')
+    const { getAutoCapitalisation } = await import('@tokenbird/shared/config/storage')
     return getAutoCapitalisation()
   })
 
   // Set auto-capitalisation setting
   server.handle(RPC_CHANNELS.input.SET_AUTO_CAPITALISATION, async (_ctx, enabled: boolean) => {
-    const { setAutoCapitalisation } = await import('@craft-agent/shared/config/storage')
+    const { setAutoCapitalisation } = await import('@tokenbird/shared/config/storage')
     setAutoCapitalisation(enabled)
   })
 
   // Get send message key setting
   server.handle(RPC_CHANNELS.input.GET_SEND_MESSAGE_KEY, async () => {
-    const { getSendMessageKey } = await import('@craft-agent/shared/config/storage')
+    const { getSendMessageKey } = await import('@tokenbird/shared/config/storage')
     return getSendMessageKey()
   })
 
   // Set send message key setting
   server.handle(RPC_CHANNELS.input.SET_SEND_MESSAGE_KEY, async (_ctx, key: 'enter' | 'cmd-enter') => {
-    const { setSendMessageKey } = await import('@craft-agent/shared/config/storage')
+    const { setSendMessageKey } = await import('@tokenbird/shared/config/storage')
     setSendMessageKey(key)
   })
 
   // Get spell check setting
   server.handle(RPC_CHANNELS.input.GET_SPELL_CHECK, async () => {
-    const { getSpellCheck } = await import('@craft-agent/shared/config/storage')
+    const { getSpellCheck } = await import('@tokenbird/shared/config/storage')
     return getSpellCheck()
   })
 
   // Set spell check setting
   server.handle(RPC_CHANNELS.input.SET_SPELL_CHECK, async (_ctx, enabled: boolean) => {
-    const { setSpellCheck } = await import('@craft-agent/shared/config/storage')
+    const { setSpellCheck } = await import('@tokenbird/shared/config/storage')
     setSpellCheck(enabled)
   })
 
   // Get image compression setting
   server.handle(RPC_CHANNELS.input.GET_COMPRESS_IMAGES, async () => {
-    const { getCompressImagesBeforeUpload } = await import('@craft-agent/shared/config/storage')
+    const { getCompressImagesBeforeUpload } = await import('@tokenbird/shared/config/storage')
     return getCompressImagesBeforeUpload()
   })
 
   // Set image compression setting
   server.handle(RPC_CHANNELS.input.SET_COMPRESS_IMAGES, async (_ctx, enabled: boolean) => {
-    const { setCompressImagesBeforeUpload } = await import('@craft-agent/shared/config/storage')
+    const { setCompressImagesBeforeUpload } = await import('@tokenbird/shared/config/storage')
     setCompressImagesBeforeUpload(enabled)
   })
 
@@ -408,7 +408,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get keep awake while running setting
   server.handle(RPC_CHANNELS.power.GET_KEEP_AWAKE, async () => {
-    const { getKeepAwakeWhileRunning } = await import('@craft-agent/shared/config/storage')
+    const { getKeepAwakeWhileRunning } = await import('@tokenbird/shared/config/storage')
     return getKeepAwakeWhileRunning()
   })
 
@@ -418,13 +418,13 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get rich tool descriptions setting
   server.handle(RPC_CHANNELS.appearance.GET_RICH_TOOL_DESCRIPTIONS, async () => {
-    const { getRichToolDescriptions } = await import('@craft-agent/shared/config/storage')
+    const { getRichToolDescriptions } = await import('@tokenbird/shared/config/storage')
     return getRichToolDescriptions()
   })
 
   // Set rich tool descriptions setting
   server.handle(RPC_CHANNELS.appearance.SET_RICH_TOOL_DESCRIPTIONS, async (_ctx, enabled: boolean) => {
-    const { setRichToolDescriptions } = await import('@craft-agent/shared/config/storage')
+    const { setRichToolDescriptions } = await import('@tokenbird/shared/config/storage')
     setRichToolDescriptions(enabled)
   })
 
@@ -434,25 +434,25 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get extended prompt cache (1h TTL) setting
   server.handle(RPC_CHANNELS.caching.GET_EXTENDED_PROMPT_CACHE, async () => {
-    const { getExtendedPromptCache } = await import('@craft-agent/shared/config/storage')
+    const { getExtendedPromptCache } = await import('@tokenbird/shared/config/storage')
     return getExtendedPromptCache()
   })
 
   // Set extended prompt cache (1h TTL) setting
   server.handle(RPC_CHANNELS.caching.SET_EXTENDED_PROMPT_CACHE, async (_ctx, enabled: boolean) => {
-    const { setExtendedPromptCache } = await import('@craft-agent/shared/config/storage')
+    const { setExtendedPromptCache } = await import('@tokenbird/shared/config/storage')
     setExtendedPromptCache(enabled)
   })
 
   // Get 1M context window setting
   server.handle(RPC_CHANNELS.caching.GET_ENABLE_1M_CONTEXT, async () => {
-    const { getEnable1MContext } = await import('@craft-agent/shared/config/storage')
+    const { getEnable1MContext } = await import('@tokenbird/shared/config/storage')
     return getEnable1MContext()
   })
 
   // Set 1M context window setting
   server.handle(RPC_CHANNELS.caching.SET_ENABLE_1M_CONTEXT, async (_ctx, enabled: boolean) => {
-    const { setEnable1MContext } = await import('@craft-agent/shared/config/storage')
+    const { setEnable1MContext } = await import('@tokenbird/shared/config/storage')
     setEnable1MContext(enabled)
   })
 
@@ -462,44 +462,44 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get rtk Bash-output compression setting
   server.handle(RPC_CHANNELS.rtk.GET_ENABLED, async () => {
-    const { getRtkEnabled } = await import('@craft-agent/shared/config/storage')
+    const { getRtkEnabled } = await import('@tokenbird/shared/config/storage')
     return getRtkEnabled()
   })
 
   // Set rtk Bash-output compression setting
   server.handle(RPC_CHANNELS.rtk.SET_ENABLED, async (_ctx, enabled: boolean) => {
-    const { setRtkEnabled } = await import('@craft-agent/shared/config/storage')
+    const { setRtkEnabled } = await import('@tokenbird/shared/config/storage')
     setRtkEnabled(enabled)
   })
 
   // Detect rtk installation (used by Settings UI to swap install prompt ↔ toggle)
   server.handle(RPC_CHANNELS.rtk.GET_STATUS, async (_ctx, opts?: { forceRecheck?: boolean }) => {
-    const { getRtkStatus } = await import('@craft-agent/shared/agent')
+    const { getRtkStatus } = await import('@tokenbird/shared/agent')
     return getRtkStatus(opts)
   })
 
   // Token-savings summary from `rtk gain --format json` (efficiency meter)
   server.handle(RPC_CHANNELS.rtk.GET_GAIN, async () => {
-    const { getRtkGain } = await import('@craft-agent/shared/agent')
+    const { getRtkGain } = await import('@tokenbird/shared/agent')
     return getRtkGain()
   })
 
   // Detect or install the tested Codex CLI. Installation is isolated under
   // ~/.tokenbird/runtime and never modifies the user's native ~/.codex setup.
   server.handle(RPC_CHANNELS.codex.GET_STATUS, async (_ctx, opts?: { forceRecheck?: boolean }) => {
-    const { getNativeCodexStatus } = await import('@craft-agent/shared/agent')
+    const { getNativeCodexStatus } = await import('@tokenbird/shared/agent')
     return getNativeCodexStatus(opts)
   })
 
   server.handle(RPC_CHANNELS.codex.INSTALL, async () => {
-    const { installBackendFramework } = await import('@craft-agent/shared/agent-plugins/framework-installer')
-    const { getNativeCodexStatus } = await import('@craft-agent/shared/codex/binary-resolver')
+    const { installBackendFramework } = await import('@tokenbird/shared/agent-plugins/framework-installer')
+    const { getNativeCodexStatus } = await import('@tokenbird/shared/codex/binary-resolver')
     const { buildBackendHostRuntimeContext } = await import('../utils')
     const result = await installBackendFramework('codex', buildBackendHostRuntimeContext(deps.platform), progress => {
       server.push(RPC_CHANNELS.agentPlugins.INSTALL_PROGRESS, { to: 'all' }, progress)
     })
     if (result.success) {
-      const { getLlmConnections } = await import('@craft-agent/shared/config')
+      const { getLlmConnections } = await import('@tokenbird/shared/config')
       for (const connection of getLlmConnections()) {
         if (connection.agentRuntime === 'codex') await deps.sessionManager.refreshConnectionRuntime(connection.slug)
       }
@@ -513,22 +513,22 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // ============================================================
 
   server.handle(RPC_CHANNELS.tools.GET_BROWSER_TOOL_ENABLED, async () => {
-    const { getBrowserToolEnabled } = await import('@craft-agent/shared/config/storage')
+    const { getBrowserToolEnabled } = await import('@tokenbird/shared/config/storage')
     return getBrowserToolEnabled()
   })
 
   server.handle(RPC_CHANNELS.tools.SET_BROWSER_TOOL_ENABLED, async (_ctx, enabled: boolean) => {
-    const { setBrowserToolEnabled } = await import('@craft-agent/shared/config/storage')
+    const { setBrowserToolEnabled } = await import('@tokenbird/shared/config/storage')
     setBrowserToolEnabled(enabled)
   })
 
   server.handle(RPC_CHANNELS.tools.GET_REQUIRE_SOURCE_GUIDE, async () => {
-    const { getRequireSourceGuide } = await import('@craft-agent/shared/config/storage')
+    const { getRequireSourceGuide } = await import('@tokenbird/shared/config/storage')
     return getRequireSourceGuide()
   })
 
   server.handle(RPC_CHANNELS.tools.SET_REQUIRE_SOURCE_GUIDE, async (_ctx, enabled: boolean) => {
-    const { setRequireSourceGuide } = await import('@craft-agent/shared/config/storage')
+    const { setRequireSourceGuide } = await import('@tokenbird/shared/config/storage')
     setRequireSourceGuide(enabled)
   })
 
@@ -538,7 +538,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Get network proxy settings
   server.handle(RPC_CHANNELS.settings.GET_NETWORK_PROXY, async () => {
-    const { getNetworkProxySettings } = await import('@craft-agent/shared/config/storage')
+    const { getNetworkProxySettings } = await import('@tokenbird/shared/config/storage')
     return getNetworkProxySettings()
   })
 
@@ -549,7 +549,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // List all preference prompts for a workspace
   server.handle(RPC_CHANNELS.settings.PROMPTS_GET, async (_ctx, workspaceId: string) => {
     const workspace = getWorkspaceOrThrow(workspaceId)
-    const { loadWorkspacePrompts } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspacePrompts } = await import('@tokenbird/shared/workspaces')
     return loadWorkspacePrompts(workspace.rootPath)
   })
 
@@ -557,13 +557,13 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // This is read-only and intentionally excludes credentials and MCP headers.
   server.handle(RPC_CHANNELS.settings.PROMPTS_SYSTEM_GET, async (_ctx, workspaceId: string) => {
     const workspace = getWorkspaceOrThrow(workspaceId)
-    const { getSystemPromptSources } = await import('@craft-agent/shared/prompts/system')
+    const { getSystemPromptSources } = await import('@tokenbird/shared/prompts/system')
     const defaultSlug = getDefaultLlmConnection()
     const connection = defaultSlug ? getLlmConnection(defaultSlug) : null
     const runtime = connection ? resolveAgentRuntime(connection) : 'claude-code'
     const backendName = runtime === 'claude-code'
       ? 'Claude Code'
-      : runtime === 'codex' ? 'Codex native-first runtime' : 'Craft Agents Backend'
+      : runtime === 'codex' ? 'Codex native-first runtime' : 'TokenBird Backend'
     return getSystemPromptSources(
       undefined,
       undefined,
@@ -578,7 +578,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     )
   })
   server.handle(RPC_CHANNELS.settings.PROMPTS_SYSTEM_SETTINGS_GET, async () => {
-    const { getSystemPromptSettings } = await import('@craft-agent/shared/config/preferences')
+    const { getSystemPromptSettings } = await import('@tokenbird/shared/config/preferences')
     return getSystemPromptSettings()
   })
   server.handle(RPC_CHANNELS.settings.PROMPTS_SYSTEM_SETTINGS_SET, async (_ctx, input: unknown) => {
@@ -589,7 +589,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     const normalized: Record<string, boolean> = {}
     for (const key of allowed) if (capabilities[key] !== undefined) normalized[key] = Boolean(capabilities[key])
     const editableInstructions = typeof raw.editableInstructions === 'string' ? raw.editableInstructions.slice(0, 20_000) : ''
-    const { updatePreferences } = await import('@craft-agent/shared/config/preferences')
+    const { updatePreferences } = await import('@tokenbird/shared/config/preferences')
     updatePreferences({ systemPrompt: { capabilities: normalized, editableInstructions } })
     return { success: true }
   })
@@ -597,7 +597,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // Upsert a preference prompt (manual or AI-generated)
   server.handle(RPC_CHANNELS.settings.PROMPTS_SAVE, async (_ctx, workspaceId: string, input: unknown): Promise<WorkspacePrompt> => {
     const workspace = getWorkspaceOrThrow(workspaceId)
-    const { loadWorkspaceConfig, saveWorkspaceConfig, loadWorkspacePrompts, WORKSPACE_PROMPT_LIMITS } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspaceConfig, saveWorkspaceConfig, loadWorkspacePrompts, WORKSPACE_PROMPT_LIMITS } = await import('@tokenbird/shared/workspaces')
     const { randomUUID } = await import('node:crypto')
 
     if (!input || typeof input !== 'object') {
@@ -653,7 +653,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // Delete a preference prompt
   server.handle(RPC_CHANNELS.settings.PROMPTS_DELETE, async (_ctx, workspaceId: string, id: string) => {
     const workspace = getWorkspaceOrThrow(workspaceId)
-    const { loadWorkspaceConfig, saveWorkspaceConfig, loadWorkspacePrompts } = await import('@craft-agent/shared/workspaces')
+    const { loadWorkspaceConfig, saveWorkspaceConfig, loadWorkspacePrompts } = await import('@tokenbird/shared/workspaces')
     const config = loadWorkspaceConfig(workspace.rootPath)
     if (!config) {
       throw new Error(`Failed to load workspace config: ${workspaceId}`)
@@ -668,7 +668,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
   // AI-generate a preference prompt from a description via a hidden one-shot session
   server.handle(RPC_CHANNELS.settings.PROMPTS_GENERATE, async (_ctx, workspaceId: string, description: string) => {
     const workspace = getWorkspaceOrThrow(workspaceId)
-    const { WORKSPACE_PROMPT_LIMITS } = await import('@craft-agent/shared/workspaces')
+    const { WORKSPACE_PROMPT_LIMITS } = await import('@tokenbird/shared/workspaces')
 
     const desc = String(description ?? '').trim()
     if (!desc) throw new Error('A description is required to generate a preference prompt')
@@ -735,7 +735,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     const stamp = new Date().toISOString().slice(0, 10)
     const dialogResult = await requestClientSaveFileDialog(server, ctx.clientId, {
       title: 'Export TokenBird data',
-      defaultPath: `craft-agent-backup-${stamp}.zip`,
+      defaultPath: `tokenbird-backup-${stamp}.zip`,
       filters: [{ name: 'ZIP archive', extensions: ['zip'] }],
     })
     if (dialogResult.canceled || !dialogResult.filePath) {
@@ -743,7 +743,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
     }
 
     try {
-      const { exportAllData } = await import('@craft-agent/shared/migration')
+      const { exportAllData } = await import('@tokenbird/shared/migration')
       const result = await exportAllData({ destPath: dialogResult.filePath })
       deps.platform.logger.info(
         `Data export complete: ${result.workspaceCount} workspace(s), ${result.fileCount} file(s) → ${result.destPath} (${result.bytes} bytes)`,
@@ -769,9 +769,9 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
 
   // Browser/mobile clients save on their device, not on the server filesystem.
   server.handle(RPC_CHANNELS.settings.EXPORT_ALL_DATA_BUNDLE, async () => {
-    const temp = mkdtempSync(join(tmpdir(), 'craft-export-'))
+    const temp = mkdtempSync(join(tmpdir(), 'tokenbird-export-'))
     try {
-      const { exportAllData } = await import('@craft-agent/shared/migration')
+      const { exportAllData } = await import('@tokenbird/shared/migration')
       const result = await exportAllData({ destPath: join(temp, 'backup.zip') })
       if (result.bytes > 50 * 1024 * 1024) throw new Error('备份超过 50 MB，请使用服务器端导出')
       return { success: true, canceled: false, ...result, destPath: undefined,
@@ -815,7 +815,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
       return { canceled: false, success: false, error: 'Missing bundle payload' }
     }
 
-    const tmpDir = mkdtempSync(join(tmpdir(), 'craft-import-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'tokenbird-import-'))
     const tmpPath = join(tmpDir, payload.fileName && /^[a-zA-Z0-9._-]+$/.test(payload.fileName) ? payload.fileName : 'bundle.zip')
     try {
       writeFileSync(tmpPath, Buffer.from(payload.bundleBase64, 'base64'))
@@ -835,7 +835,7 @@ export function registerSettingsHandlers(server: RpcServer, deps: HandlerDeps): 
  */
 async function runImportFromPath(sourcePath: string) {
   try {
-    const { importAllData } = await import('@craft-agent/shared/migration')
+    const { importAllData } = await import('@tokenbird/shared/migration')
     const result = await importAllData({ sourcePath })
     return {
       canceled: false,

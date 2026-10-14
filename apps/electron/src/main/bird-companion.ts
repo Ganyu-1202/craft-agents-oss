@@ -1,7 +1,7 @@
 import { BrowserWindow, Menu, ipcMain, screen, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
-import { loadPreferences, updatePreferences } from '@craft-agent/shared/config/preferences'
-import { i18n } from '@craft-agent/shared/i18n'
+import { loadPreferences, updatePreferences } from '@tokenbird/shared/config/preferences'
+import { i18n } from '@tokenbird/shared/i18n'
 import { mainLog } from './logger'
 import { BirdCompanionProgress } from './bird-companion-progress'
 import { BIRD_WIDTH, BIRD_HEIGHT, BUBBLE_HEIGHT, defaultBirdBounds, bubbleBounds } from './bird-companion-layout'
@@ -9,7 +9,7 @@ import {
   BIRD_COMPANION_IPC as IPC,
   toBirdProgressEvent, type BirdCompanionPreferences, type BirdProgressEvent, type BirdWindowRole, type BirdGesture,
 } from '../shared/bird-companion'
-import type { SessionEvent } from '@craft-agent/shared/protocol'
+import type { SessionEvent } from '@tokenbird/shared/protocol'
 import type { NativeAuthorityEvent } from './native-window-authority'
 
 const RESULT_DURATION_MS = 10_000

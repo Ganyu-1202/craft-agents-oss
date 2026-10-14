@@ -201,7 +201,7 @@ describe('importAllData round-trip', () => {
     const parent = makeDir();
 
     const manifest = {
-      format: 'craft-agent-data-export',
+      format: 'tokenbird-data-export',
       formatVersion: 2,
       appVersion: '0.0.0-test',
       exportedAt: new Date().toISOString(),

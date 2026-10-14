@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 import * as fs from 'node:fs'
-import { i18n, setupI18n } from '@craft-agent/shared/i18n'
+import { i18n, setupI18n } from '@tokenbird/shared/i18n'
 
 const existsSync = fs.existsSync
 mock.module('node:fs', () => ({

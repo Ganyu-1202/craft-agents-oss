@@ -1,4 +1,4 @@
-import type { CollaborationRelayCandidate, CollaborationRelaySelection, CollaborationServerRef } from '@craft-agent/shared/protocol'
+import type { CollaborationRelayCandidate, CollaborationRelaySelection, CollaborationServerRef } from '@tokenbird/shared/protocol'
 
 export function collaborationServerKey(server: CollaborationServerRef): string {
   return server.kind === 'local' ? 'local' : JSON.stringify(['saved', server.profileId])

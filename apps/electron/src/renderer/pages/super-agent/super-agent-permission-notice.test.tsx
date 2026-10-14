@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { SuperAgentConfig, SuperAgentMessage } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentMessage } from '@tokenbird/shared/super-agent'
 import { PermissionResultCard } from './PermissionResultCard'
 import { approvalNotice, permissionNotice } from './super-agent-permission-notice'
 import type { SuperAgentApproval } from './super-agent-activity'

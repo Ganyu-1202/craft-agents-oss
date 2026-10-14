@@ -1,4 +1,4 @@
-import { superAgentTaskBlocker, type SuperAgentState, type SuperAgentTask, type SuperAgentPlanItem } from '@craft-agent/shared/super-agent'
+import { superAgentTaskBlocker, type SuperAgentState, type SuperAgentTask, type SuperAgentPlanItem } from '@tokenbird/shared/super-agent'
 
 export function superAgentBlockingReports(state: SuperAgentState) {
   const report = (id: string, title: string, initialTasks: SuperAgentTask[], plan?: SuperAgentPlanItem, task?: SuperAgentTask) => {

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Check } from 'lucide-react'
 import type { MenuComponents } from '@/components/ui/menu-context'
 import { getStatusIconStyle, type SessionStatusId, type SessionStatus } from '@/config/session-status-config'
-import { sortLabelsForDisplay, type LabelConfig } from '@craft-agent/shared/labels'
+import { sortLabelsForDisplay, type LabelConfig } from '@tokenbird/shared/labels'
 import { LabelIcon } from '@/components/ui/label-icon'
 
 export interface StatusMenuItemsProps {

@@ -1,5 +1,5 @@
 import type { SuperAgentEnvironment, SuperAgentNode, SuperAgentPermissionGrant, SuperAgentScript } from './types'
-import type { SessionPolicyPermissionScope } from '@craft-agent/core/types'
+import type { SessionPolicyPermissionScope } from '@tokenbird/core/types'
 import { z } from 'zod'
 
 export const SuperAgentPermissionGrantSchema = z.object({

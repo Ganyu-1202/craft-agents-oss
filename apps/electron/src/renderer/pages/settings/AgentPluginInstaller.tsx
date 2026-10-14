@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { SettingsCard, SettingsSection } from '@/components/settings'
-import type { AgentPluginManifest } from '@craft-agent/shared/agent-plugins/types'
+import type { AgentPluginManifest } from '@tokenbird/shared/agent-plugins/types'
 
 /** Register a local bridge manifest; framework runtime downloads have their own verified recipes. */
 export function AgentPluginInstaller({ onInstalled }: { onInstalled: () => Promise<void> }) {

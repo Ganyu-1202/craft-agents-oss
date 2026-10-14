@@ -1,6 +1,6 @@
 import type { HandlerDeps } from './handler-deps'
-import type { RpcServer } from '@craft-agent/server-core/transport'
-import { registerCoreRpcHandlers, type ServerHandlerContext } from '@craft-agent/server-core/handlers/rpc'
+import type { RpcServer } from '@tokenbird/server-core/transport'
+import { registerCoreRpcHandlers, type ServerHandlerContext } from '@tokenbird/server-core/handlers/rpc'
 export { registerCoreRpcHandlers }
 
 // GUI-only handlers remain local (Electron-specific imports)

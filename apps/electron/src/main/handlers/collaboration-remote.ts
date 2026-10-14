@@ -1,4 +1,4 @@
-import { RPC_CHANNELS, type CollaborationSessionSelection } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS, type CollaborationSessionSelection } from '@tokenbird/shared/protocol'
 import type { NativeAuthorityEvent } from '../native-window-authority'
 import { validateNativeRemoteUrl } from '../remote-transport-policy'
 

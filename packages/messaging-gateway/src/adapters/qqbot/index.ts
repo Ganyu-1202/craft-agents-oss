@@ -1,6 +1,6 @@
 /** QQ Bot adapter backed by a dedicated Node worker and Tencent's official SDK. */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { encodeMessage, parseFrames, type WorkerCommand, type WorkerEvent } from '@craft-agent/messaging-qqbot-worker'
+import { encodeMessage, parseFrames, type WorkerCommand, type WorkerEvent } from '@tokenbird/messaging-qqbot-worker'
 import type { PlatformAdapter, PlatformConfig, AdapterCapabilities, IncomingMessage, SendOptions, SentMessage, InlineButton, ButtonPress, MessagingLogger } from '../../types'
 
 const NOOP_LOGGER: MessagingLogger = { info: () => {}, warn: () => {}, error: () => {}, child: () => NOOP_LOGGER }

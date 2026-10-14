@@ -82,11 +82,11 @@ mock.module('../../../skills/storage.ts', () => ({
   PROJECT_AGENT_SKILLS_DIR: '.agents/skills',
 }));
 
-let mockCraftAgentsCliFlag = false;
+let mockTokenBirdCliFlag = false;
 mock.module('../../../feature-flags.ts', () => ({
   FEATURE_FLAGS: {
-    get craftAgentsCli() {
-      return mockCraftAgentsCliFlag;
+    get tokenBirdCli() {
+      return mockTokenBirdCliFlag;
     },
     get developerFeedback() {
       return false;
@@ -166,7 +166,7 @@ describe('runPreToolUseChecks', () => {
     mockValidateConfigFileContent.mockReset();
     mockValidateConfigFileContent.mockImplementation(() => null);
     mockReadOnlyBashPatterns = [];
-    mockCraftAgentsCliFlag = false;
+    mockTokenBirdCliFlag = false;
   });
 
   // ============================================================
@@ -403,7 +403,7 @@ describe('runPreToolUseChecks', () => {
 
   describe('step 5: input transforms', () => {
     beforeEach(() => {
-      mockCraftAgentsCliFlag = true;
+      mockTokenBirdCliFlag = true;
     });
 
     it('expands tilde paths and returns modify', () => {
@@ -456,8 +456,8 @@ describe('runPreToolUseChecks', () => {
       }
     });
 
-    it('blocks direct label folder reads and suggests craft-agent label help when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks direct label folder reads and suggests tokenbird label help when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
 
       const result = runPreToolUseChecks(createInput({
         toolName: 'Read',
@@ -466,14 +466,14 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent label');
-        expect(result.reason).toContain('craft-agent label --help');
+        expect(result.reason).toContain('tokenbird label');
+        expect(result.reason).toContain('tokenbird label --help');
         expect(result.reason).toContain('labels/');
       }
     });
 
-    it('blocks direct label config writes and suggests craft-agent label help when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks direct label config writes and suggests tokenbird label help when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
       mockDetectConfigFileType.mockImplementation(() => ({ type: 'labels', displayFile: 'labels/config.json' }));
 
       const result = runPreToolUseChecks(createInput({
@@ -483,13 +483,13 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent label');
-        expect(result.reason).toContain('craft-agent label --help');
+        expect(result.reason).toContain('tokenbird label');
+        expect(result.reason).toContain('tokenbird label --help');
       }
     });
 
     it('does not apply config-file CLI redirect when feature is disabled', () => {
-      mockCraftAgentsCliFlag = false;
+      mockTokenBirdCliFlag = false;
       mockDetectConfigFileType.mockImplementation(() => ({ type: 'labels', displayFile: 'labels/config.json' }));
 
       const result = runPreToolUseChecks(createInput({
@@ -501,7 +501,7 @@ describe('runPreToolUseChecks', () => {
     });
 
     it('does not block label config writes when feature is disabled', () => {
-      mockCraftAgentsCliFlag = false;
+      mockTokenBirdCliFlag = false;
       mockDetectConfigFileType.mockImplementation(() => ({ type: 'labels', displayFile: 'labels/config.json' }));
 
       const result = runPreToolUseChecks(createInput({
@@ -513,7 +513,7 @@ describe('runPreToolUseChecks', () => {
     });
 
     it('does not block bash commands touching automations files when feature is disabled', () => {
-      mockCraftAgentsCliFlag = false;
+      mockTokenBirdCliFlag = false;
 
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
@@ -524,8 +524,8 @@ describe('runPreToolUseChecks', () => {
       expect(result.type).toBe('allow');
     });
 
-    it('blocks direct automations config edits and suggests craft-agent automation commands when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks direct automations config edits and suggests tokenbird automation commands when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
       mockDetectConfigFileType.mockImplementation(() => ({ type: 'automations', displayFile: 'automations.json' }));
 
       const result = runPreToolUseChecks(createInput({
@@ -539,13 +539,13 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent automation');
+        expect(result.reason).toContain('tokenbird automation');
         expect(result.reason).toContain('automations.json');
       }
     });
 
-    it('blocks direct source config edits and suggests craft-agent source commands when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks direct source config edits and suggests tokenbird source commands when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
       mockDetectConfigFileType.mockImplementation(() => ({
         type: 'source',
         slug: 'linear',
@@ -563,13 +563,13 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent source');
+        expect(result.reason).toContain('tokenbird source');
         expect(result.reason).toContain('sources/linear/config.json');
       }
     });
 
-    it('blocks direct skill file edits and suggests craft-agent skill commands when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks direct skill file edits and suggests tokenbird skill commands when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
       mockDetectConfigFileType.mockImplementation(() => ({
         type: 'skill',
         slug: 'commit-helper',
@@ -587,13 +587,13 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent skill');
+        expect(result.reason).toContain('tokenbird skill');
         expect(result.reason).toContain('skills/commit-helper/SKILL.md');
       }
     });
 
-    it('blocks bash commands touching labels paths and points to craft-agent label --help when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks bash commands touching labels paths and points to tokenbird label --help when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
 
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
@@ -603,23 +603,23 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent label --help');
-        expect(result.reason).toContain('craft-agent label');
+        expect(result.reason).toContain('tokenbird label --help');
+        expect(result.reason).toContain('tokenbird label');
       }
     });
 
-    it('allows bash craft-agent label commands through labels guard', () => {
+    it('allows bash tokenbird label commands through labels guard', () => {
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
-        input: { command: 'craft-agent label list' },
+        input: { command: 'tokenbird label list' },
         permissionMode: 'allow-all',
       }));
 
       expect(result.type).toBe('allow');
     });
 
-    it('blocks bash commands touching automations files and points to craft-agent automation --help when feature is enabled', () => {
-      mockCraftAgentsCliFlag = true;
+    it('blocks bash commands touching automations files and points to tokenbird automation --help when feature is enabled', () => {
+      mockTokenBirdCliFlag = true;
 
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
@@ -629,15 +629,15 @@ describe('runPreToolUseChecks', () => {
 
       expect(result.type).toBe('block');
       if (result.type === 'block') {
-        expect(result.reason).toContain('craft-agent automation --help');
-        expect(result.reason).toContain('craft-agent automation');
+        expect(result.reason).toContain('tokenbird automation --help');
+        expect(result.reason).toContain('tokenbird automation');
       }
     });
 
-    it('allows bash craft-agent automation commands through config-domain bash guard', () => {
+    it('allows bash tokenbird automation commands through config-domain bash guard', () => {
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
-        input: { command: 'craft-agent automation list' },
+        input: { command: 'tokenbird automation list' },
         permissionMode: 'allow-all',
       }));
 
@@ -645,7 +645,7 @@ describe('runPreToolUseChecks', () => {
     });
 
     it('does not apply config-domain bash guard when feature is disabled', () => {
-      mockCraftAgentsCliFlag = false;
+      mockTokenBirdCliFlag = false;
 
       const result = runPreToolUseChecks(createInput({
         toolName: 'Bash',
@@ -919,7 +919,7 @@ describe('shouldPromptInAskMode', () => {
     mockValidateConfigFileContent.mockReset();
     mockValidateConfigFileContent.mockImplementation(() => null);
     mockReadOnlyBashPatterns = [];
-    mockCraftAgentsCliFlag = false;
+    mockTokenBirdCliFlag = false;
   });
 
   // --- File writes ---

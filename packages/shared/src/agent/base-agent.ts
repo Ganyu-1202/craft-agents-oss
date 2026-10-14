@@ -16,7 +16,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { AgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent } from '@tokenbird/core/types';
 import type { FileAttachment } from '../utils/files.ts';
 import { expandPath, getBundledAssetsDir } from '../utils/paths.ts';
 import { buildTransferredSessionContext } from './conversation-summary.ts';

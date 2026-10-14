@@ -7,7 +7,7 @@
  * runtime keep these tests independent of disk state, credentials, and network.
  */
 import { describe, expect, it } from 'bun:test';
-import type { AgentEvent as CraftAgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent as TokenBirdAgentEvent } from '@tokenbird/core/types';
 import {
   createAgentSession,
   createExtensionRuntime,
@@ -25,7 +25,7 @@ import {
   type StopReason,
 } from '@earendil-works/pi-ai';
 import { PiEventAdapter } from '../backend/pi/event-adapter.ts';
-import { installCraftPiRetryClassifier } from '../backend/pi/retry-policy.ts';
+import { installTokenBirdPiRetryClassifier } from '../backend/pi/retry-policy.ts';
 
 const TEST_MODEL: Model<'openai-responses'> = {
   id: 'retry-integration-model',
@@ -57,14 +57,14 @@ interface Attempt {
 
 interface TraceEntry {
   sdkEvent: AgentSessionEvent;
-  adapted: CraftAgentEvent[];
+  adapted: TokenBirdAgentEvent[];
   completedQueue: boolean;
 }
 
 interface ScenarioResult {
   callCount: number;
   trace: TraceEntry[];
-  events: CraftAgentEvent[];
+  events: TokenBirdAgentEvent[];
   queueCompletionSdkEvents: AgentSessionEvent['type'][];
   isHoldingTurn: boolean;
   hasExtraQueueCompletion: boolean;
@@ -199,7 +199,7 @@ async function runScenario(
     sessionManager: SessionManager.inMemory(import.meta.dir),
     tools: [],
   });
-  installCraftPiRetryClassifier(session);
+  installTokenBirdPiRetryClassifier(session);
 
   let callCount = 0;
   session.agent.streamFunction = () => {

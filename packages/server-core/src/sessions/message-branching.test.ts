@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import type { StoredMessage } from '@craft-agent/core/types'
+import type { StoredMessage } from '@tokenbird/core/types'
 import { MessageBranchGate, editedBranchMessages, branchSeedMessages } from './message-branching'
 
 const transcript: StoredMessage[] = [

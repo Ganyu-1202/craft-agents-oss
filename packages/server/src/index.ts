@@ -1,49 +1,49 @@
 #!/usr/bin/env bun
 /**
- * @craft-agent/server — standalone headless TokenBird server.
+ * @tokenbird/server — standalone headless TokenBird server.
  *
  * Usage:
- *   CRAFT_SERVER_TOKEN=<secret> bun run packages/server/src/index.ts
+ *   TOKENBIRD_SERVER_TOKEN=<secret> bun run packages/server/src/index.ts
  *
  * Environment:
- *   CRAFT_SERVER_TOKEN         — required bearer token for client auth
- *   CRAFT_RPC_HOST             — bind address (default: 127.0.0.1)
- *   CRAFT_RPC_PORT             — bind port (default: 9100)
- *   CRAFT_RPC_TLS_CERT         — path to PEM certificate file (enables TLS/wss)
- *   CRAFT_RPC_TLS_KEY          — path to PEM private key file (required with cert)
- *   CRAFT_RPC_TLS_CA           — path to PEM CA chain file (optional)
- *   CRAFT_APP_ROOT             — app root path (default: cwd)
- *   CRAFT_RESOURCES_PATH       — resources path (default: cwd/resources)
- *   CRAFT_IS_PACKAGED          — 'true' for production (default: false)
- *   CRAFT_VERSION              — app version (default: 0.0.0-dev)
- *   CRAFT_DEBUG                — 'true' for debug logging
- *   CRAFT_WEBUI_DIR            — path to built web UI assets (enables web UI on RPC port)
- *   CRAFT_WEBUI_PASSWORD       — optional shorter password for web login (falls back to CRAFT_SERVER_TOKEN)
- *   CRAFT_WEBUI_SECURE_COOKIE  — optional true/false override for the session cookie Secure flag
- *   CRAFT_WEBUI_WS_URL         — optional browser-facing ws:// or wss:// URL returned by /api/config
- *   CRAFT_MESSAGING_WA_WORKER  — absolute path to worker.cjs (default: packages/messaging-whatsapp-worker/dist/worker.cjs)
- *   CRAFT_MESSAGING_NODE_BIN   — Node binary used to spawn the WhatsApp worker (default: node)
+ *   TOKENBIRD_SERVER_TOKEN         — required bearer token for client auth
+ *   TOKENBIRD_RPC_HOST             — bind address (default: 127.0.0.1)
+ *   TOKENBIRD_RPC_PORT             — bind port (default: 9100)
+ *   TOKENBIRD_RPC_TLS_CERT         — path to PEM certificate file (enables TLS/wss)
+ *   TOKENBIRD_RPC_TLS_KEY          — path to PEM private key file (required with cert)
+ *   TOKENBIRD_RPC_TLS_CA           — path to PEM CA chain file (optional)
+ *   TOKENBIRD_APP_ROOT             — app root path (default: cwd)
+ *   TOKENBIRD_RESOURCES_PATH       — resources path (default: cwd/resources)
+ *   TOKENBIRD_IS_PACKAGED          — 'true' for production (default: false)
+ *   TOKENBIRD_VERSION              — app version (default: 0.0.0-dev)
+ *   TOKENBIRD_DEBUG                — 'true' for debug logging
+ *   TOKENBIRD_WEBUI_DIR            — path to built web UI assets (enables web UI on RPC port)
+ *   TOKENBIRD_WEBUI_PASSWORD       — optional shorter password for web login (falls back to TOKENBIRD_SERVER_TOKEN)
+ *   TOKENBIRD_WEBUI_SECURE_COOKIE  — optional true/false override for the session cookie Secure flag
+ *   TOKENBIRD_WEBUI_WS_URL         — optional browser-facing ws:// or wss:// URL returned by /api/config
+ *   TOKENBIRD_MESSAGING_WA_WORKER  — absolute path to worker.cjs (default: packages/messaging-whatsapp-worker/dist/worker.cjs)
+ *   TOKENBIRD_MESSAGING_NODE_BIN   — Node binary used to spawn the WhatsApp worker (default: node)
  */
 
 import { join } from 'node:path'
 import { readFileSync, existsSync, writeFileSync, renameSync } from 'node:fs'
 import { version as packageVersion } from '../package.json'
-import { enableDebug } from '@craft-agent/shared/utils/debug'
-import { bootstrapServer, startHealthHttpServer, generateServerToken } from '@craft-agent/server-core/bootstrap'
-import { validateSession, createWebuiHandler, nodeHttpAdapter } from '@craft-agent/server-core/webui'
-import type { WebuiHandler } from '@craft-agent/server-core/webui'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
-import { getWorkspaces } from '@craft-agent/shared/config'
-import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
-import type { MessagingBootstrapHandle } from '@craft-agent/messaging-gateway'
+import { enableDebug } from '@tokenbird/shared/utils/debug'
+import { bootstrapServer, startHealthHttpServer, generateServerToken } from '@tokenbird/server-core/bootstrap'
+import { validateSession, createWebuiHandler, nodeHttpAdapter } from '@tokenbird/server-core/webui'
+import type { WebuiHandler } from '@tokenbird/server-core/webui'
+import { getCredentialManager } from '@tokenbird/shared/credentials'
+import { getWorkspaces } from '@tokenbird/shared/config'
+import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
+import type { MessagingBootstrapHandle } from '@tokenbird/messaging-gateway'
 
-import type { WsRpcTlsOptions } from '@craft-agent/server-core/transport'
-import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient, refreshTokenNestModelsAtStartup } from '@craft-agent/server-core/handlers/rpc'
-import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@craft-agent/server-core/sessions'
-import { initModelRefreshService, setFetcherPlatform } from '@craft-agent/server-core/model-fetchers'
-import { setSearchPlatform, setImageProcessor } from '@craft-agent/server-core/services'
-import type { HandlerDeps } from '@craft-agent/server-core/handlers'
-import type { ServerInstance } from '@craft-agent/server-core/bootstrap'
+import type { WsRpcTlsOptions } from '@tokenbird/server-core/transport'
+import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient, refreshTokenNestModelsAtStartup } from '@tokenbird/server-core/handlers/rpc'
+import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@tokenbird/server-core/sessions'
+import { initModelRefreshService, setFetcherPlatform } from '@tokenbird/server-core/model-fetchers'
+import { setSearchPlatform, setImageProcessor } from '@tokenbird/server-core/services'
+import type { HandlerDeps } from '@tokenbird/server-core/handlers'
+import type { ServerInstance } from '@tokenbird/server-core/bootstrap'
 import { createHeadlessSessionManager } from './session-manager'
 import { createHeadlessCredentialHost } from './credential-host'
 
@@ -54,15 +54,15 @@ if (process.argv.includes('--generate-token')) {
   process.exit(0)
 }
 
-process.env.CRAFT_IS_PACKAGED ??= 'false'
-const minimalServer = process.env.CRAFT_MINIMAL_SERVER === 'true' || process.env.CRAFT_MINIMAL_SERVER === '1'
+process.env.TOKENBIRD_IS_PACKAGED ??= 'false'
+const minimalServer = process.env.TOKENBIRD_MINIMAL_SERVER === 'true' || process.env.TOKENBIRD_MINIMAL_SERVER === '1'
 
 // Keep the small CLI/server distribution free of messaging transports and
 // their dependency trees. Dynamic loading means those packages are not needed
-// at all when CRAFT_MINIMAL_SERVER is enabled.
+// at all when TOKENBIRD_MINIMAL_SERVER is enabled.
 const createMessagingBootstrap = minimalServer
   ? null
-  : (await import('@craft-agent/messaging-gateway')).createMessagingBootstrap
+  : (await import('@tokenbird/messaging-gateway')).createMessagingBootstrap
 
 // Prevent unhandled rejections from crashing the server.
 // SDK subprocess abort can reject promises that propagate up unhandled;
@@ -72,7 +72,7 @@ process.on('unhandledRejection', (reason) => {
   console.error(`[server] Unhandled rejection (caught, not crashing): ${msg}`)
 })
 
-if (process.env.CRAFT_DEBUG === 'true' || process.env.CRAFT_DEBUG === '1') {
+if (process.env.TOKENBIRD_DEBUG === 'true' || process.env.TOKENBIRD_DEBUG === '1') {
   enableDebug()
 }
 
@@ -104,32 +104,32 @@ function parseOptionalWebSocketUrl(name: string, value: string | undefined): str
 }
 
 // In dev (monorepo), bundled assets root is the repo root (4 levels up from this file).
-// In packaged mode, use CRAFT_BUNDLED_ASSETS_ROOT env or cwd.
-const bundledAssetsRoot = process.env.CRAFT_BUNDLED_ASSETS_ROOT
+// In packaged mode, use TOKENBIRD_BUNDLED_ASSETS_ROOT env or cwd.
+const bundledAssetsRoot = process.env.TOKENBIRD_BUNDLED_ASSETS_ROOT
   ?? join(import.meta.dir, '..', '..', '..', '..')
 
 // TLS configuration — when cert + key paths are provided, server listens on wss://
 let tls: WsRpcTlsOptions | undefined
-const tlsCertPath = process.env.CRAFT_RPC_TLS_CERT
-const tlsKeyPath = process.env.CRAFT_RPC_TLS_KEY
+const tlsCertPath = process.env.TOKENBIRD_RPC_TLS_CERT
+const tlsKeyPath = process.env.TOKENBIRD_RPC_TLS_KEY
 if (tlsCertPath || tlsKeyPath) {
   if (!tlsCertPath || !tlsKeyPath) {
-    console.error('TLS requires both CRAFT_RPC_TLS_CERT and CRAFT_RPC_TLS_KEY.')
+    console.error('TLS requires both TOKENBIRD_RPC_TLS_CERT and TOKENBIRD_RPC_TLS_KEY.')
     process.exit(1)
   }
   tls = {
     cert: readFileSync(tlsCertPath),
     key: readFileSync(tlsKeyPath),
-    ...(process.env.CRAFT_RPC_TLS_CA ? { ca: readFileSync(process.env.CRAFT_RPC_TLS_CA) } : {}),
+    ...(process.env.TOKENBIRD_RPC_TLS_CA ? { ca: readFileSync(process.env.TOKENBIRD_RPC_TLS_CA) } : {}),
   }
 }
 
 // Web UI configuration
-const webuiDir = process.env.CRAFT_WEBUI_DIR || undefined
+const webuiDir = process.env.TOKENBIRD_WEBUI_DIR || undefined
 const webuiEnabled = !minimalServer && webuiDir && existsSync(webuiDir)
-const webuiSecureCookies = parseOptionalBooleanEnv('CRAFT_WEBUI_SECURE_COOKIE', process.env.CRAFT_WEBUI_SECURE_COOKIE)
-const webuiWsUrl = parseOptionalWebSocketUrl('CRAFT_WEBUI_WS_URL', process.env.CRAFT_WEBUI_WS_URL)
-const serverToken = process.env.CRAFT_SERVER_TOKEN
+const webuiSecureCookies = parseOptionalBooleanEnv('TOKENBIRD_WEBUI_SECURE_COOKIE', process.env.TOKENBIRD_WEBUI_SECURE_COOKIE)
+const webuiWsUrl = parseOptionalWebSocketUrl('TOKENBIRD_WEBUI_WS_URL', process.env.TOKENBIRD_WEBUI_WS_URL)
+const serverToken = process.env.TOKENBIRD_SERVER_TOKEN
 
 // ---------------------------------------------------------------------------
 // Create WebUI handler early so it can be embedded in the WsRpcServer.
@@ -145,13 +145,13 @@ let webuiNodeHandler: ReturnType<typeof nodeHttpAdapter> | undefined
 let healthCheckFn: (() => { status: string }) | null = null
 
 if (webuiEnabled && serverToken) {
-  const rpcPort = parseInt(process.env.CRAFT_RPC_PORT ?? '9100', 10)
+  const rpcPort = parseInt(process.env.TOKENBIRD_RPC_PORT ?? '9100', 10)
   const rpcProtocol = tls ? 'wss' as const : 'ws' as const
 
   webuiHandler = createWebuiHandler({
     webuiDir: webuiDir!,
     secret: serverToken,
-    password: process.env.CRAFT_WEBUI_PASSWORD || undefined,
+    password: process.env.TOKENBIRD_WEBUI_PASSWORD || undefined,
     secureCookies: webuiSecureCookies,
     publicWsUrl: webuiWsUrl,
     wsProtocol: rpcProtocol,
@@ -168,10 +168,10 @@ if (webuiEnabled && serverToken) {
 // The worker is a Node subprocess — Bun cannot run it directly — so we must
 // pass an explicit `nodeBin` (Electron defaults nodeBin to process.execPath
 // which is correct there but wrong under Bun).
-const waWorkerEntry = process.env.CRAFT_MESSAGING_WA_WORKER
+const waWorkerEntry = process.env.TOKENBIRD_MESSAGING_WA_WORKER
   ?? join(bundledAssetsRoot, 'packages', 'messaging-whatsapp-worker', 'dist', 'worker.cjs')
-const waNodeBin = process.env.CRAFT_MESSAGING_NODE_BIN ?? 'node'
-const qqbotWorkerEntry = process.env.CRAFT_MESSAGING_QQBOT_WORKER
+const waNodeBin = process.env.TOKENBIRD_MESSAGING_NODE_BIN ?? 'node'
+const qqbotWorkerEntry = process.env.TOKENBIRD_MESSAGING_QQBOT_WORKER
   ?? join(bundledAssetsRoot, 'packages', 'messaging-qqbot-worker', 'dist', 'worker.cjs')
 
 // Built inside createHandlerDeps (needs sessionManager), populated with the WS
@@ -212,7 +212,7 @@ const instance = await (async () => {
   try {
     return await bootstrapServer<SessionManager, HandlerDeps>({
       bundledAssetsRoot,
-      serverVersion: process.env.CRAFT_VERSION ?? packageVersion,
+      serverVersion: process.env.TOKENBIRD_VERSION ?? packageVersion,
       tls,
       // When web UI is enabled, accept JWT session cookies on WebSocket upgrade
       validateSessionCookie: webuiEnabled && serverToken
@@ -311,9 +311,9 @@ resolveServerInstance(instance)
 // workspaces. Remote-owned workspaces are skipped because their messaging
 // runs on the remote server.
 // ---------------------------------------------------------------------------
-// CRAFT_DISABLE_MESSAGING lets a dev/test server share a config dir with a live app
+// TOKENBIRD_DISABLE_MESSAGING lets a dev/test server share a config dir with a live app
 // without both processes fighting over the same Telegram/WhatsApp connections (409s).
-const messagingDisabled = minimalServer || process.env.CRAFT_DISABLE_MESSAGING === 'true' || process.env.CRAFT_DISABLE_MESSAGING === '1'
+const messagingDisabled = minimalServer || process.env.TOKENBIRD_DISABLE_MESSAGING === 'true' || process.env.TOKENBIRD_DISABLE_MESSAGING === '1'
 if (messagingHandle !== null && !messagingDisabled) {
   const handle: MessagingBootstrapHandle = messagingHandle
   handle.setPublisher(instance.wsServer.push.bind(instance.wsServer))
@@ -326,13 +326,13 @@ if (messagingHandle !== null && !messagingDisabled) {
     console.error('[messaging] Workspace initialization failed:', error)
   }
 } else if (messagingDisabled) {
-  console.log('[messaging] Disabled via CRAFT_DISABLE_MESSAGING — skipping workspace messaging init')
+  console.log('[messaging] Disabled via TOKENBIRD_DISABLE_MESSAGING — skipping workspace messaging init')
 }
 
 // Android's service tracks work even when the WebView is suspended or destroyed.
 // No credentials or message contents are written to this app-private status file.
-if (process.env.CRAFT_ANDROID === 'true') {
-  const statePath = join(process.env.CRAFT_APP_ROOT ?? process.cwd(), 'android-task-state.json')
+if (process.env.TOKENBIRD_ANDROID === 'true') {
+  const statePath = join(process.env.TOKENBIRD_APP_ROOT ?? process.cwd(), 'android-task-state.json')
   let previousCount = -1
   const updateAndroidTaskState = () => {
     const processing = instance.sessionManager.getActiveSessionCount()
@@ -349,15 +349,15 @@ if (process.env.CRAFT_ANDROID === 'true') {
 
 // Wire up the lazy health check now that the session manager is ready
 if (webuiHandler) {
-  const { getHealthCheck } = await import('@craft-agent/server-core/handlers/rpc/server')
+  const { getHealthCheck } = await import('@tokenbird/server-core/handlers/rpc/server')
   const depsLike = { sessionManager: instance.sessionManager } as any
   healthCheckFn = () => getHealthCheck(depsLike)
 
   // Wire up OAuth callback deps so /api/oauth/callback works
-  const { getSourceCredentialManager, loadWorkspaceSources } = await import('@craft-agent/shared/sources')
-  const { getWorkspaceByNameOrId } = await import('@craft-agent/shared/config')
-  const { pushTyped } = await import('@craft-agent/server-core/transport')
-  const { RPC_CHANNELS } = await import('@craft-agent/shared/protocol')
+  const { getSourceCredentialManager, loadWorkspaceSources } = await import('@tokenbird/shared/sources')
+  const { getWorkspaceByNameOrId } = await import('@tokenbird/shared/config')
+  const { pushTyped } = await import('@tokenbird/server-core/transport')
+  const { RPC_CHANNELS } = await import('@tokenbird/shared/protocol')
 
   webuiHandler.setOAuthCallbackDeps({
     flowStore: instance.oauthFlowStore,
@@ -371,8 +371,8 @@ if (webuiHandler) {
   })
 }
 
-// Start HTTP health endpoint if CRAFT_HEALTH_PORT is set
-const healthPort = parseInt(process.env.CRAFT_HEALTH_PORT ?? '0', 10)
+// Start HTTP health endpoint if TOKENBIRD_HEALTH_PORT is set
+const healthPort = parseInt(process.env.TOKENBIRD_HEALTH_PORT ?? '0', 10)
 healthServer = await startHealthHttpServer({
   port: healthPort,
   deps: { sessionManager: instance.sessionManager },
@@ -381,10 +381,10 @@ healthServer = await startHealthHttpServer({
 })
 
 const serverProto = instance.protocol === 'wss' ? 'https' : 'http'
-console.log(`CRAFT_SERVER_URL=${instance.protocol}://${instance.host}:${instance.port}`)
-console.log(`CRAFT_SERVER_TOKEN=${instance.token}`)
+console.log(`TOKENBIRD_SERVER_URL=${instance.protocol}://${instance.host}:${instance.port}`)
+console.log(`TOKENBIRD_SERVER_TOKEN=${instance.token}`)
 if (webuiHandler) {
-  console.log(`CRAFT_WEBUI_URL=${serverProto}://0.0.0.0:${instance.port}`)
+  console.log(`TOKENBIRD_WEBUI_URL=${serverProto}://0.0.0.0:${instance.port}`)
 }
 
 // Block binding to a non-localhost address without TLS — tokens would be sent in cleartext.
@@ -395,14 +395,14 @@ if (!isLocalBind && instance.protocol === 'ws') {
     console.warn(
       '\n⚠️  WARNING: Server is listening on a network address without TLS.\n' +
       '   Authentication tokens will be sent in cleartext.\n' +
-      '   Set CRAFT_RPC_TLS_CERT and CRAFT_RPC_TLS_KEY to enable wss://.\n'
+      '   Set TOKENBIRD_RPC_TLS_CERT and TOKENBIRD_RPC_TLS_KEY to enable wss://.\n'
     )
   } else {
     console.error(
       '\n❌  Refusing to bind to a network address without TLS.\n' +
       '   Authentication tokens would be sent in cleartext.\n\n' +
       '   Options:\n' +
-      '     1. Set CRAFT_RPC_TLS_CERT and CRAFT_RPC_TLS_KEY to enable wss://\n' +
+      '     1. Set TOKENBIRD_RPC_TLS_CERT and TOKENBIRD_RPC_TLS_KEY to enable wss://\n' +
       '     2. Pass --allow-insecure-bind to override (NOT recommended for production)\n'
     )
     await instance.stop()

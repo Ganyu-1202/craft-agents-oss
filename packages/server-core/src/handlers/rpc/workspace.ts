@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs'
 import { join } from 'path'
-import { CONFIG_DIR } from '@craft-agent/shared/config/paths'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId, addWorkspace, setActiveWorkspace, updateWorkspaceRemoteServer } from '@craft-agent/shared/config'
-import { perf } from '@craft-agent/shared/utils'
-import { pushTyped, type RpcServer } from '@craft-agent/server-core/transport'
+import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import { getWorkspaceByNameOrId, addWorkspace, setActiveWorkspace, updateWorkspaceRemoteServer } from '@tokenbird/shared/config'
+import { perf } from '@tokenbird/shared/utils'
+import { pushTyped, type RpcServer } from '@tokenbird/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import { isValidWorkspaceRootPath } from '../../utils/path-validation'
 import { redactWorkspaceRemoteCredentials, validateRemoteWorkspaceInput } from './workspace-remote-input'
@@ -35,6 +35,7 @@ export const CORE_HANDLED_CHANNELS = [
   RPC_CHANNELS.theme.GET_SELECTED_PACK,
   RPC_CHANNELS.theme.SET_SELECTED_PACK,
   RPC_CHANNELS.theme.GET_PACK_ASSET,
+  RPC_CHANNELS.theme.IMPORT_PACK,
   RPC_CHANNELS.theme.IMPORT_PACK_FOLDER,
   RPC_CHANNELS.theme.DELETE_PACK,
   RPC_CHANNELS.theme.BROADCAST_PACK_CHANGE,
@@ -263,28 +264,28 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   // ============================================================
 
   server.handle(RPC_CHANNELS.theme.GET_APP, async () => {
-    const { loadAppTheme } = await import('@craft-agent/shared/config/storage')
+    const { loadAppTheme } = await import('@tokenbird/shared/config/storage')
     return loadAppTheme()
   })
 
   // Preset themes (app-level)
   server.handle(RPC_CHANNELS.theme.GET_PRESETS, async () => {
-    const { loadPresetThemes } = await import('@craft-agent/shared/config/storage')
+    const { loadPresetThemes } = await import('@tokenbird/shared/config/storage')
     return loadPresetThemes()
   })
 
   server.handle(RPC_CHANNELS.theme.LOAD_PRESET, async (_ctx, themeId: string) => {
-    const { loadPresetTheme } = await import('@craft-agent/shared/config/storage')
+    const { loadPresetTheme } = await import('@tokenbird/shared/config/storage')
     return loadPresetTheme(themeId)
   })
 
   server.handle(RPC_CHANNELS.theme.GET_COLOR_THEME, async () => {
-    const { getColorTheme } = await import('@craft-agent/shared/config/storage')
+    const { getColorTheme } = await import('@tokenbird/shared/config/storage')
     return getColorTheme()
   })
 
   server.handle(RPC_CHANNELS.theme.SET_COLOR_THEME, async (_ctx, themeId: string) => {
-    const { setColorTheme } = await import('@craft-agent/shared/config/storage')
+    const { setColorTheme } = await import('@tokenbird/shared/config/storage')
     setColorTheme(themeId)
   })
 
@@ -295,8 +296,8 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
 
   // Workspace-level theme overrides
   server.handle(RPC_CHANNELS.theme.GET_WORKSPACE_COLOR_THEME, async (_ctx, workspaceId: string) => {
-    const { getWorkspaces } = await import('@craft-agent/shared/config/storage')
-    const { getWorkspaceColorTheme } = await import('@craft-agent/shared/workspaces/storage')
+    const { getWorkspaces } = await import('@tokenbird/shared/config/storage')
+    const { getWorkspaceColorTheme } = await import('@tokenbird/shared/workspaces/storage')
     const workspaces = getWorkspaces()
     const workspace = workspaces.find(w => w.id === workspaceId)
     if (!workspace) return null
@@ -304,8 +305,8 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   })
 
   server.handle(RPC_CHANNELS.theme.SET_WORKSPACE_COLOR_THEME, async (_ctx, workspaceId: string, themeId: string | null) => {
-    const { getWorkspaces } = await import('@craft-agent/shared/config/storage')
-    const { setWorkspaceColorTheme } = await import('@craft-agent/shared/workspaces/storage')
+    const { getWorkspaces } = await import('@tokenbird/shared/config/storage')
+    const { setWorkspaceColorTheme } = await import('@tokenbird/shared/workspaces/storage')
     const workspaces = getWorkspaces()
     const workspace = workspaces.find(w => w.id === workspaceId)
     if (!workspace) return
@@ -313,8 +314,8 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   })
 
   server.handle(RPC_CHANNELS.theme.GET_ALL_WORKSPACE_THEMES, async () => {
-    const { getWorkspaces } = await import('@craft-agent/shared/config/storage')
-    const { getWorkspaceColorTheme } = await import('@craft-agent/shared/workspaces/storage')
+    const { getWorkspaces } = await import('@tokenbird/shared/config/storage')
+    const { getWorkspaceColorTheme } = await import('@tokenbird/shared/workspaces/storage')
     const workspaces = getWorkspaces()
     const themes: Record<string, string | undefined> = {}
     for (const ws of workspaces) {
@@ -336,45 +337,61 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   // ============================================================
 
   server.handle(RPC_CHANNELS.theme.GET_PACKS, async () => {
-    const { listThemePacks } = await import('@craft-agent/shared/config')
+    const { listThemePacks } = await import('@tokenbird/shared/config')
     return listThemePacks()
   })
 
   server.handle(RPC_CHANNELS.theme.GET_PACKS_DIR, async () => {
-    const { getThemePacksDir } = await import('@craft-agent/shared/config')
+    const { getThemePacksDir } = await import('@tokenbird/shared/config')
     return getThemePacksDir()
   })
 
   server.handle(RPC_CHANNELS.theme.GET_PACK, async (_ctx, packId: string) => {
-    const { loadThemePack } = await import('@craft-agent/shared/config')
+    const { loadThemePack } = await import('@tokenbird/shared/config')
     return loadThemePack(packId)
   })
 
   server.handle(RPC_CHANNELS.theme.GET_SELECTED_PACK, async () => {
-    const { getSelectedThemePackId, loadThemePack } = await import('@craft-agent/shared/config')
+    const { getSelectedThemePackId, loadThemePack } = await import('@tokenbird/shared/config')
     const id = getSelectedThemePackId()
     return id ? loadThemePack(id) : null
   })
 
   server.handle(RPC_CHANNELS.theme.SET_SELECTED_PACK, async (ctx, packId: string | null) => {
-    const { setSelectedThemePackId } = await import('@craft-agent/shared/config')
+    const { setSelectedThemePackId } = await import('@tokenbird/shared/config')
     setSelectedThemePackId(packId)
     pushTyped(server, RPC_CHANNELS.theme.PACK_CHANGED, { to: 'all' }, { packId })
   })
 
   server.handle(RPC_CHANNELS.theme.GET_PACK_ASSET, async (_ctx, packId: string, asset: string) => {
-    const { readThemePackAsset } = await import('@craft-agent/shared/config')
+    const { readThemePackAsset } = await import('@tokenbird/shared/config')
     return readThemePackAsset(packId, asset)
   })
 
+  server.handle(RPC_CHANNELS.theme.IMPORT_PACK, async (ctx) => {
+    const { requestClientOpenFileDialog } = await import('@tokenbird/server-core/transport')
+    const result = await requestClientOpenFileDialog(server, ctx.clientId, {
+      properties: ['openFile'],
+      title: 'Import Theme Pack',
+      filters: [{ name: 'Theme Pack ZIP', extensions: ['zip'] }],
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    const { importThemePackFromPath } = await import('@tokenbird/shared/config')
+    const pack = importThemePackFromPath(result.filePaths[0]!)
+    if (pack) {
+      pushTyped(server, RPC_CHANNELS.theme.PACK_CHANGED, { to: 'all' }, { packId: pack.id, imported: true })
+    }
+    return pack
+  })
+
   server.handle(RPC_CHANNELS.theme.IMPORT_PACK_FOLDER, async (ctx) => {
-    const { requestClientOpenFileDialog } = await import('@craft-agent/server-core/transport')
+    const { requestClientOpenFileDialog } = await import('@tokenbird/server-core/transport')
     const result = await requestClientOpenFileDialog(server, ctx.clientId, {
       properties: ['openDirectory'],
       title: 'Select Theme Pack Folder',
     })
     if (result.canceled || result.filePaths.length === 0) return null
-    const { importThemePackFromFolder } = await import('@craft-agent/shared/config')
+    const { importThemePackFromFolder } = await import('@tokenbird/shared/config')
     const pack = importThemePackFromFolder(result.filePaths[0])
     if (pack) {
       pushTyped(server, RPC_CHANNELS.theme.PACK_CHANGED, { to: 'all' }, { packId: pack.id, imported: true })
@@ -383,7 +400,7 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   })
 
   server.handle(RPC_CHANNELS.theme.DELETE_PACK, async (ctx, packId: string) => {
-    const { deleteThemePack } = await import('@craft-agent/shared/config')
+    const { deleteThemePack } = await import('@tokenbird/shared/config')
     const deleted = deleteThemePack(packId)
     if (deleted) {
       pushTyped(server, RPC_CHANNELS.theme.PACK_CHANGED, { to: 'all' }, { packId, deleted: true })
@@ -404,16 +421,16 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error('Workspace not found')
 
-    const { listViews } = await import('@craft-agent/shared/views/storage')
+    const { listViews } = await import('@tokenbird/shared/views/storage')
     return listViews(workspace.rootPath)
   })
 
   // Save views (replaces full array)
-  server.handle(RPC_CHANNELS.views.SAVE, async (_ctx, workspaceId: string, views: import('@craft-agent/shared/views').ViewConfig[]) => {
+  server.handle(RPC_CHANNELS.views.SAVE, async (_ctx, workspaceId: string, views: import('@tokenbird/shared/views').ViewConfig[]) => {
     const workspace = getWorkspaceByNameOrId(workspaceId)
     if (!workspace) throw new Error('Workspace not found')
 
-    const { saveViews } = await import('@craft-agent/shared/views/storage')
+    const { saveViews } = await import('@tokenbird/shared/views/storage')
     saveViews(workspace.rootPath, views)
     // Broadcast labels changed since views are used alongside labels in sidebar
     pushTyped(server, RPC_CHANNELS.labels.CHANGED, { to: 'workspace', workspaceId }, workspaceId)
@@ -426,11 +443,11 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
   // Tool icon mappings — loads tool-icons.json and resolves each entry's icon to a data URL
   // for display in the Appearance settings page
   server.handle(RPC_CHANNELS.toolIcons.GET_MAPPINGS, async () => {
-    const { getToolIconsDir } = await import('@craft-agent/shared/config/storage')
-    const { loadToolIconConfig } = await import('@craft-agent/shared/utils/cli-icon-resolver')
-    const { encodeIconToDataUrl } = await import('@craft-agent/shared/utils/icon-encoder')
+    const { getToolIconsDir } = await import('@tokenbird/shared/config/storage')
+    const { loadToolIconConfig } = await import('@tokenbird/shared/utils/cli-icon-resolver')
+    const { encodeIconToDataUrl } = await import('@tokenbird/shared/utils/icon-encoder')
     const { join } = await import('path')
-    const { getBundledAssetsDir } = await import('@craft-agent/shared/utils/paths')
+    const { getBundledAssetsDir } = await import('@tokenbird/shared/utils/paths')
 
     const toolIconsDir = getToolIconsDir()
     const config = loadToolIconConfig(toolIconsDir)
@@ -485,7 +502,7 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
 
   // Logo URL resolution (uses Node.js filesystem cache for provider domains)
   server.handle(RPC_CHANNELS.logo.GET_URL, async (_ctx, serviceUrl: string, provider?: string) => {
-    const { getLogoUrl } = await import('@craft-agent/shared/utils/logo')
+    const { getLogoUrl } = await import('@tokenbird/shared/utils/logo')
     const result = getLogoUrl(serviceUrl, provider)
     return result
   })

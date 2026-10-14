@@ -1,6 +1,6 @@
-import { SUPER_AGENT_ACTION_TOOLS } from '@craft-agent/session-tools-core/super-agent-tools';
+import { SUPER_AGENT_ACTION_TOOLS } from '@tokenbird/session-tools-core/super-agent-tools';
 import { z } from 'zod';
-import type { SessionPolicyPermissionScope } from '@craft-agent/core/types';
+import type { SessionPolicyPermissionScope } from '@tokenbird/core/types';
 import type { LLMQueryRequest, LLMQueryResult } from '../llm-tool.ts';
 import { isReadOnlySystemInspection } from './system-inspection-policy.ts';
 

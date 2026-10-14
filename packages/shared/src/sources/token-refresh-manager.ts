@@ -163,7 +163,7 @@ export class TokenRefreshManager {
 
         // Restore auth state — undoes markSourceNeedsReauth() from startup
         markSourceAuthenticated(source.workspaceRootPath, source.config.slug);
-        // eslint-disable-next-line craft-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
+        // eslint-disable-next-line tokenbird-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
         source.config.isAuthenticated = true;
         source.config.connectionStatus = 'connected';
         source.config.connectionError = undefined;
@@ -175,7 +175,7 @@ export class TokenRefreshManager {
         this.credManager.markSourceNeedsReauth(source, 'Token refresh failed');
         // Mirror disk write to in-memory state so isSourceUsable() returns false
         // and the failed source is excluded from intendedSlugs by callers.
-        // eslint-disable-next-line craft-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
+        // eslint-disable-next-line tokenbird-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
         source.config.isAuthenticated = false;
         source.config.connectionStatus = 'needs_auth';
         source.config.connectionError = 'Token refresh failed';
@@ -191,7 +191,7 @@ export class TokenRefreshManager {
       const reason = 'Token refresh failed. Check the connection or sign in again.';
       this.log(`[TokenRefresh] Failed for ${slug}: ${reason}`);
       this.credManager.markSourceNeedsReauth(source, reason);
-      // eslint-disable-next-line craft-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
+      // eslint-disable-next-line tokenbird-shared/no-inline-source-auth-check -- Mirror a status write, not an authorization decision.
       source.config.isAuthenticated = false;
       source.config.connectionStatus = 'needs_auth';
       source.config.connectionError = reason;

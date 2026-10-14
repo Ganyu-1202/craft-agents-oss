@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import type { ActiveSessionInfo } from '@craft-agent/core/types'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
+import type { ActiveSessionInfo } from '@tokenbird/core/types'
 import type { HandlerFn, RequestContext, RpcServer } from '../../transport'
 import type { HandlerDeps } from '../handler-deps'
 import type { ServerHandlerContext } from '../../bootstrap/headless-start'

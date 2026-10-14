@@ -28,7 +28,7 @@ function makeBundle(): ResourceBundle {
 
 describe('resource bundle file persistence', () => {
   it('round-trips a bundle through a JSON archive file', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'craft-bundle-'));
+    const dir = mkdtempSync(join(tmpdir(), 'tokenbird-bundle-'));
     try {
       const bundle = makeBundle();
       const filePath = join(dir, `test${RESOURCE_BUNDLE_FILE_EXTENSION}`);
@@ -66,7 +66,7 @@ describe('resource bundle file persistence', () => {
   });
 
   it('archives a real exportResources result and re-parses it', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'craft-bundle-'));
+    const dir = mkdtempSync(join(tmpdir(), 'tokenbird-bundle-'));
     try {
       const result = exportResources(dir, { sources: 'all', skills: 'all', automations: true });
       const text = stringifyResourceBundle(result.bundle);

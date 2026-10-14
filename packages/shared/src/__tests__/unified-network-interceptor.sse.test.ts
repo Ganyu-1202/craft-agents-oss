@@ -39,7 +39,7 @@ describe('unified-network-interceptor SSE processors', () => {
   let sessionDir: string;
 
   beforeAll(async () => {
-    process.env.CRAFT_INTERCEPTOR_DISABLE_AUTO_INSTALL = '1';
+    process.env.TOKENBIRD_INTERCEPTOR_DISABLE_AUTO_INSTALL = '1';
     const mod = await import('../unified-network-interceptor.ts');
     createOpenAiSseStrippingStream = mod.createOpenAiSseStrippingStream;
     createOpenAiResponsesSseStrippingStream = mod.createOpenAiResponsesSseStrippingStream;
@@ -48,7 +48,7 @@ describe('unified-network-interceptor SSE processors', () => {
   });
 
   afterAll(() => {
-    delete process.env.CRAFT_INTERCEPTOR_DISABLE_AUTO_INSTALL;
+    delete process.env.TOKENBIRD_INTERCEPTOR_DISABLE_AUTO_INSTALL;
   });
 
   beforeEach(() => {
@@ -126,7 +126,7 @@ describe('unified-network-interceptor SSE processors', () => {
   it('OpenAI Responses: strips metadata on function_call done events', async () => {
     const sse = [
       'data: {"type":"response.function_call_arguments.done","call_id":"call_resp_1","arguments":"{\\"foo\\":1,\\"_intent\\":\\"do thing\\",\\"_displayName\\":\\"Do Thing\\"}"}\n\n',
-      'data: {"type":"response.output_item.done","item":{"type":"function_call","call_id":"call_resp_1","id":"fc_1","name":"mcp__craft__search","arguments":"{\\"foo\\":1,\\"_intent\\":\\"do thing\\",\\"_displayName\\":\\"Do Thing\\"}"}}\n\n',
+      'data: {"type":"response.output_item.done","item":{"type":"function_call","call_id":"call_resp_1","id":"fc_1","name":"mcp__tokenbird__search","arguments":"{\\"foo\\":1,\\"_intent\\":\\"do thing\\",\\"_displayName\\":\\"Do Thing\\"}"}}\n\n',
       'data: [DONE]\n\n',
     ];
 

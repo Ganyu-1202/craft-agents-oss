@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { SuperAgentConfig, SuperAgentReadiness as Readiness } from '@craft-agent/shared/super-agent'
+import type { SuperAgentConfig, SuperAgentReadiness as Readiness } from '@tokenbird/shared/super-agent'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

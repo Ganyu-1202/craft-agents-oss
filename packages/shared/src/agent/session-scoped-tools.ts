@@ -5,7 +5,7 @@
  * instance of these tools with session-specific callbacks and state.
  *
  * This file is a thin adapter that wraps the shared handlers from
- * @craft-agent/session-tools-core for use with the Claude SDK.
+ * @tokenbird/session-tools-core for use with the Claude SDK.
  *
  * All tool definitions, schemas, and handlers live in session-tools-core.
  * This adapter only handles:
@@ -32,7 +32,7 @@ import {
   // Types
   type ToolResult,
   type AuthRequest,
-} from '@craft-agent/session-tools-core';
+} from '@tokenbird/session-tools-core';
 import { createLLMTool, type LLMQueryRequest, type LLMQueryResult } from './llm-tool.ts';
 import { createSpawnSessionTool, type SpawnSessionFn } from './spawn-session-tool.ts';
 import { createBrowserTools, type BrowserPaneFns } from './browser-tools.ts';
@@ -53,7 +53,7 @@ export type {
   GoogleService,
   SlackService,
   MicrosoftService,
-} from '@craft-agent/session-tools-core';
+} from '@tokenbird/session-tools-core';
 
 // Re-export browser pane types for session manager wiring
 export type { BrowserPaneFns } from './browser-tools.ts';
@@ -154,7 +154,7 @@ export function isPathInPlansDir(path: string, workspacePath: string, sessionId:
 /**
  * Convert shared ToolResult to SDK format
  */
-function convertResult(result: ToolResult): { content: Array<{ type: 'text'; text: string } | import('@craft-agent/session-tools-core').ToolImage>; isError?: boolean } {
+function convertResult(result: ToolResult): { content: Array<{ type: 'text'; text: string } | import('@tokenbird/session-tools-core').ToolImage>; isError?: boolean } {
   return {
     content: [...result.content, ...(result.images ?? [])],
     ...(result.isError ? { isError: true } : {}),

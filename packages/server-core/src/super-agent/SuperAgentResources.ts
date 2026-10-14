@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { loadAllSkills } from '@craft-agent/shared/skills'
-import { isSourceUsable, loadWorkspaceSources } from '@craft-agent/shared/sources'
-import { isLocalMcpEnabled } from '@craft-agent/shared/workspaces'
-import type { SuperAgentConfig } from '@craft-agent/shared/super-agent'
+import { loadAllSkills } from '@tokenbird/shared/skills'
+import { isSourceUsable, loadWorkspaceSources } from '@tokenbird/shared/sources'
+import { isLocalMcpEnabled } from '@tokenbird/shared/workspaces'
+import type { SuperAgentConfig } from '@tokenbird/shared/super-agent'
 
 /** Discovery contains descriptions and availability only, never credentials or launch commands. */
 export interface SuperAgentResourceCatalog {

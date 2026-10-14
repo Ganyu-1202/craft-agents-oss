@@ -24,7 +24,7 @@ import {
   StyledDropdownMenuItem,
 } from '@/components/ui/styled-dropdown'
 import { SettingsInput } from '@/components/settings'
-import { Spinner } from '@craft-agent/ui'
+import { Spinner } from '@tokenbird/ui'
 import type { RemoteServerProfileInfo, SftpTransferRequest } from '../../../../shared/types'
 
 interface SftpToolbarButtonProps {

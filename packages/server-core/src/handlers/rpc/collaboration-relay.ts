@@ -1,5 +1,5 @@
-import { getWorkspaceByNameOrId } from '@craft-agent/shared/config';
-import { COLLABORATION_RELAY_CAPABILITY, COLLABORATION_RELAY_RPC as C, type CollaborationRelayScope } from '@craft-agent/shared/protocol';
+import { getWorkspaceByNameOrId } from '@tokenbird/shared/config';
+import { COLLABORATION_RELAY_CAPABILITY, COLLABORATION_RELAY_RPC as C, type CollaborationRelayScope } from '@tokenbird/shared/protocol';
 import type { HandlerDeps } from '../handler-deps';
 import type { RequestContext, RpcServer } from '../../transport';
 import { RelayParticipantManager } from '../../collaboration/RelayParticipantManager';

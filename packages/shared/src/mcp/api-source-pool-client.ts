@@ -3,7 +3,7 @@
  *
  * Connects to an in-process McpServer (created by createSdkMcpServer) via
  * in-memory transport, exposing it through the same PoolClient interface
- * that CraftMcpClient uses for remote MCP sources.
+ * that TokenBirdMcpClient uses for remote MCP sources.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -22,7 +22,7 @@ export class ApiSourcePoolClient implements PoolClient {
   private closePromise?: Promise<void>;
 
   constructor(private mcpServer: McpServer) {
-    this.client = new Client({ name: 'craft-pool-api-source', version: '1.0.0' });
+    this.client = new Client({ name: 'tokenbird-pool-api-source', version: '1.0.0' });
   }
 
   async connect(): Promise<void> {

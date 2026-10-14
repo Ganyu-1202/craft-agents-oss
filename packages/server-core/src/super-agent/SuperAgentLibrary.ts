@@ -4,7 +4,7 @@ import { lstat, mkdir, readdir, realpath, rename, rm, stat } from 'node:fs/promi
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import type { SuperAgentArchive, SuperAgentLibraryCommand, SuperAgentState } from '@craft-agent/shared/super-agent'
+import type { SuperAgentArchive, SuperAgentLibraryCommand, SuperAgentState } from '@tokenbird/shared/super-agent'
 
 const MAX_FILE = 64 * 1024 * 1024
 const MAX_TOTAL = 256 * 1024 * 1024

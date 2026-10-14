@@ -19,7 +19,7 @@ import { PI_PREFERRED_DEFAULTS } from '../../../../../shared/src/config/llm-conn
  * Codex backend request contract (search path):
  * - model: derived from the active connection (see `candidateModels`), NOT hardcoded.
  *   Pinning a single model caused a total search outage once that model was retired
- *   (craft-agents-oss#1023) — the account rejected it with a 400 and search never
+ *   (tokenbird#1023) — the account rejected it with a 400 and search never
  *   recovered. Candidates come from the shared openai-codex catalog and an unsupported
  *   model is retried against the next candidate.
  * - store: false

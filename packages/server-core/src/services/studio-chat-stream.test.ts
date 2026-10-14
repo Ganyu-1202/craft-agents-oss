@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { normalizeStudioToolCallIds, readStudioChatStream, type StudioToolCall } from './studio-chat-stream'
-import type { StudioWorkEvent } from '@craft-agent/shared/protocol'
+import type { StudioWorkEvent } from '@tokenbird/shared/protocol'
 
 const sse = (delta: unknown, finish_reason?: string) => `data: ${JSON.stringify({ choices: [{ delta, finish_reason }] })}\r\n\r\n`
 describe('Studio incremental streaming', () => {

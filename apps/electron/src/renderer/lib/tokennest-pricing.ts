@@ -1,6 +1,6 @@
-import { TOKENNEST_RECHARGE_URL, getProviderRechargeTarget } from '@craft-agent/shared/utils/billing'
+import { TOKENNEST_RECHARGE_URL, getProviderRechargeTarget } from '@tokenbird/shared/utils/billing'
 import type { LlmConnection } from '@config/llm-connections'
-import { getPeakValleyPeriod, parsePeakValleySchedule, type PeakValleySchedule } from '@craft-agent/shared/utils/peak-valley'
+import { getPeakValleyPeriod, parsePeakValleySchedule, type PeakValleySchedule } from '@tokenbird/shared/utils/peak-valley'
 
 export { getPeakValleyPeriod, type PeakValleySchedule }
 export type PricingSource = 'tokennest' | 'deepseek'

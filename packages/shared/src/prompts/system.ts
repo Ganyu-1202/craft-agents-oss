@@ -462,13 +462,15 @@ Use the file and configuration tools advertised by the current runtime. Tool nam
 export function getLightweightModelSystemPrompt(
   workspaceRootPath?: string,
   backendName: string = 'TokenBird',
-  includeCoAuthoredBy: boolean = true,
+  includeCoAuthoredBy: boolean = getCoAuthorPreference(),
   agentPrompt?: string,
   agentRuntime?: AgentRuntimeProtocol,
   preferencesPrompt = formatPreferencesForPrompt(),
 ): string {
   const workspace = workspaceRootPath ? `\nWorkspace: \`${workspaceRootPath}\`` : '';
-  const coAuthor = includeCoAuthoredBy ? '\n- Include co-authored attribution when appropriate.' : '';
+  const coAuthor = includeCoAuthoredBy
+    ? '\n- When creating git commits, include exactly: Co-Authored-By: TokenBird <agents-noreply@tokenbird.invalid>. Do not add any other AI co-author.'
+    : '\n- Do not add AI co-author trailers or AI contributor attribution to git commits unless the user explicitly requests it.';
   const agent = agentPrompt?.trim() ? `\n\n<agent_instructions>\n${agentPrompt.trim()}\n</agent_instructions>` : '';
   const runtimePrompt = getAgentRuntimePrompt(agentRuntime ?? inferAgentRuntimeFromBackendName(backendName));
   return `You are TokenBird, powered by ${backendName}. Help the user complete their request accurately and safely.${workspace}${preferencesPrompt}
@@ -551,7 +553,7 @@ export function getSystemPrompt(
   // Note: Date/time context is now added to user messages instead of system prompt
   // to enable prompt caching. The system prompt stays static and cacheable.
   // Safe Mode context is also in user messages for the same reason.
-  const basePrompt = getCraftAssistantPrompt(workspaceRootPath, backendName, resolvedIncludeCoAuthoredBy, agentRuntime);
+  const basePrompt = getTokenBirdAssistantPrompt(workspaceRootPath, backendName, resolvedIncludeCoAuthoredBy, agentRuntime);
   const agentBlock = agentPrompt?.trim()
     ? `\n\n<agent_instructions>\n${agentPrompt.trim()}\n</agent_instructions>`
     : '';
@@ -718,28 +720,28 @@ rg -n "session|OAuth|\"level\":\"error\"" "${logFilePath}" | tail -n 50
  * This marker is embedded in the system prompt and allows us to identify
  * TokenBird sessions when importing from Claude Code.
  */
-function getCraftAgentEnvironmentMarker(): string {
+function getTokenBirdAgentEnvironmentMarker(): string {
   const platform = process.platform; // 'darwin', 'win32', 'linux'
   const arch = process.arch; // 'arm64', 'x64'
   const osVersion = os.release(); // OS kernel version
 
-  return `<craft_agent_environment version="${APP_VERSION}" platform="${platform}" arch="${arch}" os_version="${osVersion}" />`;
+  return `<tokenbird_agent_environment version="${APP_VERSION}" platform="${platform}" arch="${arch}" os_version="${osVersion}" />`;
 }
 
 /**
- * Get the Craft Assistant system prompt with workspace-specific paths.
+ * Get the TokenBird Assistant system prompt with workspace-specific paths.
  *
  * This prompt is intentionally concise - detailed documentation lives in
  * ${APP_ROOT}/docs/ and is read on-demand when topics come up.
  *
  * @param workspaceRootPath - Root path of the workspace
  * @param backendName - Backend name for "powered by X" text (default: 'Claude Code')
- * @param includeCoAuthoredBy - Whether to include the Co-Authored-By git trailer instruction (default: true)
+ * @param includeCoAuthoredBy - Whether to include the Co-Authored-By git trailer instruction (default: false)
  */
-export function getCraftAssistantPrompt(
+export function getTokenBirdAssistantPrompt(
   workspaceRootPath?: string,
   backendName: string = 'Claude Code',
-  includeCoAuthoredBy: boolean = true,
+  includeCoAuthoredBy: boolean = getCoAuthorPreference(),
   agentRuntime?: AgentRuntimeProtocol,
 ): string {
   // Default to ${APP_ROOT}/workspaces/{id} if no path provided
@@ -752,7 +754,7 @@ export function getCraftAssistantPrompt(
     || '{workspaceId}';
 
   // Environment marker for SDK JSONL detection
-  const environmentMarker = getCraftAgentEnvironmentMarker();
+  const environmentMarker = getTokenBirdAgentEnvironmentMarker();
   const promptSettings = getSystemPromptSettings();
   const runtimePrompt = getAgentRuntimePrompt(agentRuntime ?? inferAgentRuntimeFromBackendName(backendName));
 
@@ -896,20 +898,20 @@ Read relevant context files using the Read tool - they contain architecture info
 | Image Preview | \`${DOC_REFS.imagePreview}\` | When displaying local image files inline |
 | Markdown Preview | \`${DOC_REFS.markdownPreview}\` | When displaying rendered .md files inline |
 | Browser Tools | \`${DOC_REFS.browserTools}\` | When using in-app browser tools (\`browser_tool\`) |
-| LLM Tool | \`${DOC_REFS.llmTool}\` | When using \`call_llm\` for subtasks |${FEATURE_FLAGS.craftAgentsCli ? `
-| Craft CLI | \`${DOC_REFS.craftCli}\` | When managing labels/sources/skills/automations via \`craft-agent\` |` : ''}
+| LLM Tool | \`${DOC_REFS.llmTool}\` | When using \`call_llm\` for subtasks |${FEATURE_FLAGS.tokenBirdCli ? `
+| TokenBird CLI | \`${DOC_REFS.tokenBirdCli}\` | When managing labels/sources/skills/automations via \`tokenbird\` |` : ''}
 
-**IMPORTANT:** Always read the relevant doc file BEFORE making changes. Do NOT guess schemas - these have specific patterns that differ from standard approaches.${FEATURE_FLAGS.craftAgentsCli ? `
+**IMPORTANT:** Always read the relevant doc file BEFORE making changes. Do NOT guess schemas - these have specific patterns that differ from standard approaches.${FEATURE_FLAGS.tokenBirdCli ? `
 
 ## TokenBird CLI
 
-Prefer \`craft-agent\` CLI over direct file edits for labels, sources, skills, and automations.
+Prefer \`tokenbird\` CLI over direct file edits for labels, sources, skills, and automations.
 
-- Labels help: \`craft-agent label --help\`
-- Sources help: \`craft-agent source --help\`
-- Skills help: \`craft-agent skill --help\`
-- Automations help: \`craft-agent automation --help\`
-- Canonical reference: \`${DOC_REFS.craftCli}\`` : ''}
+- Labels help: \`tokenbird label --help\`
+- Sources help: \`tokenbird source --help\`
+- Skills help: \`tokenbird skill --help\`
+- Automations help: \`tokenbird automation --help\`
+- Canonical reference: \`${DOC_REFS.tokenBirdCli}\`` : ''}
 
 ## User preferences
 
@@ -933,9 +935,12 @@ ${includeCoAuthoredBy ? `## Git Conventions
 When creating git commits, include TokenBird as a co-author:
 
 \`\`\`
-Co-Authored-By: TokenBird <agents-noreply@craft.do>
+Co-Authored-By: TokenBird <agents-noreply@tokenbird.invalid>
 \`\`\`
-` : ''}## Permission Modes
+Do not add any other AI co-author.
+` : `When creating git commits, do not add AI co-author trailers or AI contributor attribution unless the user explicitly requests it.
+
+`}## Permission Modes
 
 | Mode | Description |
 |------|-------------|
@@ -1208,7 +1213,7 @@ Do NOT create or edit \`pages/{slug}/\` files directly with file tools — alway
 
 **Authoring page HTML — read \`${DOC_REFS.pages}\` FIRST.** The essentials:
 - Provide a FULL standalone HTML document with all CSS/JS inline. No external network requests — published copies get all egress blocked, so external scripts/fonts would break them.
-- Receive data via the \`craft-pages/v1\` postMessage bridge: post \`{ protocol: 'craft-pages/v1', type: 'ready' }\` to \`window.parent\`, then handle \`init\` (\`payload.nonce\` + \`payload.snapshot\`) and \`data\` (replacement \`payload.snapshot\`) messages. The doc has a copy-paste snippet.
+- Receive data via the \`tokenbird-pages/v1\` postMessage bridge: post \`{ protocol: 'tokenbird-pages/v1', type: 'ready' }\` to \`window.parent\`, then handle \`init\` (\`payload.nonce\` + \`payload.snapshot\`) and \`data\` (replacement \`payload.snapshot\`) messages. The doc has a copy-paste snippet.
 - Pages never hold credentials. In-page source actions (e.g. a button calling an API source) go through the bridge and require user-approved, expiring grants bound to the exact content digest — editing content invalidates existing grants.
 
 **Sharing:** the user can publish a page from its Share button (feature-flagged) to a password-protectable public URL. Publishing is the user's action — you create and maintain the page.
@@ -1540,7 +1545,7 @@ export function getSystemPromptSources(
   const resolvedRuntime = agentRuntime ?? inferAgentRuntimeFromBackendName(backendName)
   const runtimePrompt = getAgentRuntimePrompt(resolvedRuntime)
   const runtimeHeading = runtimePrompt.split('\n', 1)[0]!
-  const fullBuiltin = getCraftAssistantPrompt(workspaceRootPath, backendName, resolvedIncludeCoAuthoredBy, resolvedRuntime)
+  const fullBuiltin = getTokenBirdAssistantPrompt(workspaceRootPath, backendName, resolvedIncludeCoAuthoredBy, resolvedRuntime)
   let coreBuiltin = fullBuiltin
   const sources: SystemPromptSource[] = []
   const capabilitySections: Array<[SystemPromptCapabilityId, string, string]> = [
@@ -1589,7 +1594,7 @@ export function getSystemPromptSources(
   }
   coreBuiltin = removePromptSection(coreBuiltin, runtimeHeading)
   coreBuiltin = removePromptSection(coreBuiltin, '## User supplemental instructions')
-  sources.unshift({ id: 'craft-agent-system', source: 'builtin', title: 'TokenBird core system prompt', content: coreBuiltin, enabled: true })
+  sources.unshift({ id: 'tokenbird-system', source: 'builtin', title: 'TokenBird core system prompt', content: coreBuiltin, enabled: true })
   sources.splice(1, 0, { id: `runtime:${resolvedRuntime}`, source: 'builtin', title: `${resolvedRuntime} runtime prompt`, content: runtimePrompt, enabled: true })
   const environmentLanguage = extractPromptSection(preferences, '## Environment Language')
   if (environmentLanguage) {

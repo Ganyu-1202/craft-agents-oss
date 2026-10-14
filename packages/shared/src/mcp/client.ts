@@ -113,8 +113,8 @@ const BLOCKED_ENV_VARS = [
   // TokenBird auth (set by the app itself)
   'ANTHROPIC_API_KEY',
   'CLAUDE_CODE_OAUTH_TOKEN',
-  'CRAFT_SERVER_TOKEN',
-  'CRAFT_RPC_TOKEN',
+  'TOKENBIRD_SERVER_TOKEN',
+  'TOKENBIRD_RPC_TOKEN',
   'TOKENBIRD_SERVER_TOKEN',
 
   // AWS credentials
@@ -145,7 +145,7 @@ export interface PoolCallToolOptions {
 
 /**
  * Interface for clients managed by McpClientPool.
- * Both CraftMcpClient (remote MCP sources) and ApiSourcePoolClient (API sources) implement this.
+ * Both TokenBirdMcpClient (remote MCP sources) and ApiSourcePoolClient (API sources) implement this.
  */
 export interface PoolClient {
   listTools(): Promise<Tool[]>;
@@ -153,7 +153,7 @@ export interface PoolClient {
   close(): Promise<void>;
 }
 
-export class CraftMcpClient {
+export class TokenBirdMcpClient {
   private client: Client;
   private transport: Transport;
   private connected = false;
@@ -169,7 +169,7 @@ export class CraftMcpClient {
     this.connectTimeoutMs = config.connectTimeoutMs ?? 30_000;
     if (!Number.isFinite(this.connectTimeoutMs) || this.connectTimeoutMs <= 0) throw new Error('Invalid MCP connection timeout');
     this.client = new Client({
-      name: 'craft-agent',
+      name: 'tokenbird',
       version: '1.0.0',
     });
     this.client.onclose = () => {

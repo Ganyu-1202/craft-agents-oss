@@ -17,7 +17,7 @@ import type {
   CollaborationFile,
   CollaborationGroup,
   CollaborationMember,
-} from '@craft-agent/shared/protocol'
+} from '@tokenbird/shared/protocol'
 
 const MAX_EVENT_HISTORY = 500
 export const MAX_COLLABORATION_FILE_BYTES = 8 * 1024 * 1024

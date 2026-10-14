@@ -255,9 +255,9 @@ export class McpRuntimeLimiter {
 export const mcpRuntimeLimiter = new McpRuntimeLimiter()
 
 export function resolveMcpRuntimeLimits(
-  hardLimit = process.env.CRAFT_MCP_HARD_LIMIT,
-  softLimit = process.env.CRAFT_MCP_SOFT_LIMIT,
-  memoryHardLimitGb = process.env.CRAFT_MCP_MEMORY_HARD_LIMIT_GB,
+  hardLimit = process.env.TOKENBIRD_MCP_HARD_LIMIT,
+  softLimit = process.env.TOKENBIRD_MCP_SOFT_LIMIT,
+  memoryHardLimitGb = process.env.TOKENBIRD_MCP_MEMORY_HARD_LIMIT_GB,
 ): McpRuntimeLimits {
   const parse = (value: string | undefined, fallback: number) => {
     if (value === undefined || value.trim() === '') return fallback

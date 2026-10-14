@@ -1,4 +1,4 @@
-import type { SessionCollaboration } from '@craft-agent/shared/sessions'
+import type { SessionCollaboration } from '@tokenbird/shared/sessions'
 
 /** Role guidance is scoped to real, server-bound membership, never inferred
  * from text in another agent's message or from a shared board item. */

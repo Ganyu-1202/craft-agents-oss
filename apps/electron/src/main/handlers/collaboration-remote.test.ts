@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { createNativeWindowAuthority, advanceNativeWindowBinding } from '../native-window-authority'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
+import { RPC_CHANNELS } from '@tokenbird/shared/protocol'
 import { registerRemoteCollaborationIpcHandlers, REMOTE_COLLABORATION_IPC, type CollaborationIpcRegistrar } from './collaboration-remote'
 
 function fixture(options?: { failConnect?: boolean; failInvoke?: boolean; echoToken?: boolean; response?: unknown }) {
