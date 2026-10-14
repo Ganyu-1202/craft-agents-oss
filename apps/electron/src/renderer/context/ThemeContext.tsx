@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ThemePackLive2D } from '@/components/theme/ThemePackLive2D'
 import * as storage from '@/lib/local-storage'
 import {
   resolveTheme,
@@ -897,14 +898,18 @@ export function ThemeProvider({
   // declared in index.html (before #root so app UI paints above them).
   const characterStage =
     typeof document !== 'undefined' &&
-    (packAssets.characters.left || packAssets.characters.right)
+    (packAssets.characters.left || packAssets.characters.right || activeThemePack?.manifest.live2d)
       ? createPortal(
           <>
-            {packAssets.characters.left?.dataUrl ? (
+            {packAssets.characters.left?.dataUrl && activeThemePack?.manifest.live2d?.position !== 'left' ? (
               <img data-char="left" alt="" src={packAssets.characters.left.dataUrl} />
             ) : null}
-            {packAssets.characters.right?.dataUrl ? (
+            {packAssets.characters.right?.dataUrl && (!activeThemePack?.manifest.live2d || activeThemePack.manifest.live2d.position === 'left') ? (
               <img data-char="right" alt="" src={packAssets.characters.right.dataUrl} />
+            ) : null}
+            {activeThemePack?.manifest.live2d && presentation.showCharacters ? (
+              <ThemePackLive2D key={activeThemePack.id} pack={activeThemePack}
+                fallback={packAssets.characters[activeThemePack.manifest.live2d.position === 'left' ? 'left' : 'right']?.dataUrl} />
             ) : null}
           </>,
           document.getElementById('theme-pack-character-stage') ?? document.body,

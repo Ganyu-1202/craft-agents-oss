@@ -72,6 +72,8 @@ export interface ThemePackManifest {
   sidebarTexture?: string;
   /** Character standees (立绘) anchored to the window bottom corners. */
   characters?: { left?: string; right?: string };
+  /** Optional native Live2D stage. characters remains the fallback for older clients. */
+  live2d?: import('./theme-pack-live2d.ts').ThemePackLive2D;
   /** Basic style settings. */
   style?: ThemePackStyle;
   /**
@@ -485,6 +487,7 @@ export function listThemePacks(): ThemePack[] {
 // ============================================================
 
 const MIME_BY_EXT: Record<string, string> = {
+  '.moc3': 'application/octet-stream',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
