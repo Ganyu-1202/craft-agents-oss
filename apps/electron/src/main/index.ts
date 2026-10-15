@@ -17,6 +17,8 @@ import { configureRemoteCredentialProtection, hasPendingRemoteCredentialMigratio
 import { reconcileSourceCredentialChanges } from '@tokenbird/shared/sources/credential-runtime'
 import { validateNativeRemoteUrl } from './remote-transport-policy'
 import { registerNativeRemoteTransport } from './native-remote-transport'
+import { registerLocalThemePacks } from './local-theme-packs'
+import { LOCAL_THEME_PACK_CHANGED } from '../shared/local-theme-packs'
 import { NATIVE_REMOTE_TRANSPORT } from '../shared/native-remote-transport'
 import { WsRpcClient } from '@tokenbird/server-core/transport'
 import { createNodeCloudPeer } from '@tokenbird/server-core/cloud/peer-node'
@@ -925,6 +927,25 @@ app.whenReady().then(async () => {
       ...(process.env.VITE_DEV_SERVER_URL ? [process.env.VITE_DEV_SERVER_URL] : []),
     ], { allowUnboundWorkspace: true })
     nativeAppAuthority = assertNativeAppWindow
+    registerLocalThemePacks(ipcMain, {
+      assertSender: assertNativeAppWindow,
+      config: () => import('@tokenbird/shared/config'),
+      openDialog: async (event, folder) => {
+        const parent = BrowserWindow.fromWebContents(event.sender as Electron.WebContents)
+        const options: Electron.OpenDialogOptions = folder
+          ? { properties: ['openDirectory'], title: 'Select Theme Pack Folder' }
+          : { properties: ['openFile'], title: 'Import Theme Pack', filters: [{ name: 'Theme Pack ZIP', extensions: ['zip'] }] }
+        return parent ? dialog.showOpenDialog(parent, options) : dialog.showOpenDialog(options)
+      },
+      broadcast: change => {
+        for (const window of BrowserWindow.getAllWindows()) {
+          try {
+            assertNativeAppWindow({ sender: window.webContents, senderFrame: window.webContents.mainFrame })
+            window.webContents.send(LOCAL_THEME_PACK_CHANGED, change)
+          } catch { /* Skip windows outside the application UI. */ }
+        }
+      },
+    })
     if (!process.env.TOKENBIRD_HEADLESS) birdCompanionManager = new BirdCompanionManager(assertNativeAppWindow)
     registerNativeCredentialIpcHandlers(ipcMain, {
       vault: credentialVault,

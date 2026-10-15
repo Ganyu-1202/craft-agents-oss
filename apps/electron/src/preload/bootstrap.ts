@@ -9,7 +9,8 @@
  *
  * Remote frontend mode (reported by main):
  *   Creates a single WsRpcClient connected to the remote server.
- *   All channels go to the remote server.
+ *   Workspace channels go to the remote server; desktop theme packs use
+ *   native IPC so local appearance works without a local workspace server.
  *
  * On localhost the WS handshake completes in <1ms. The React app takes >100ms
  * to initialise, so by the time any component calls an API method, the
@@ -23,6 +24,7 @@ import { extname, isAbsolute } from 'node:path'
 import { WsRpcClient, type TransportConnectionState } from '../transport/client'
 import { RoutedClient, type WorkspaceTransportClient } from '../transport/routed-client'
 import { NativeRemoteClient } from './native-remote-client'
+import { createLocalThemePackApi } from './local-theme-packs'
 import { createNativeWorkspaceSwitcher } from './native-workspace-switch'
 import { buildClientApi } from '../transport/build-api'
 import { CHANNEL_MAP } from '../transport/channel-map'
@@ -134,7 +136,7 @@ let nativeThinClient: NativeRemoteClient | null = null
 if (isClientOnly) {
   // ── Thin-client mode ───────────────────────────────────────────────────
   // Single WsRpcClient connected directly to the remote server.
-  // No local server, no routing — all channels go to remote.
+  // No local workspace server; theme pack methods are replaced with native IPC below.
 
   if (startupContext.remote?.profileId) {
     nativeThinClient = new NativeRemoteClient(ipcRenderer)
@@ -306,6 +308,9 @@ client.handleCapability(CLIENT_MINDMAP_PROJECT_TOOL, async (request: { requestId
   return ipcRenderer.invoke('__studio:mindmap:tool', directory, request.name, request.args)
 })
 const api = buildClientApi(client, CHANNEL_MAP, (ch) => client.isChannelAvailable(ch))
+// Keep artwork, Live2D resources, imports and selection on this device even
+// when no local workspace server is running.
+Object.assign(api, createLocalThemePackApi(ipcRenderer))
 const generateMindMap = api.generateStudioMindMap as ElectronAPI['generateStudioMindMap']
 ;(api as ElectronAPI).generateStudioMindMap = async input => {
   const requestId = input.requestId ?? crypto.randomUUID()

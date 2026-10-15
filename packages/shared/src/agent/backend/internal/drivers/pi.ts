@@ -1,4 +1,5 @@
-import type { ProviderDriver, DriverTestConnectionArgs } from '../driver-types.ts';
+import type { ProviderDriver, DriverTestConnectionArgs, BackendRuntimePayload, BackendProviderOptions } from '../driver-types.ts';
+import type { LlmConnection } from '../../../../config/llm-connections.ts';
 import type { ModelDefinition } from '../../../../config/models.ts';
 import { getAllPiModels, getPiModelsForAuthProvider } from '../../../../config/models-pi.ts';
 import { getPiProviderBaseUrl } from '../../../../config/models-pi.ts';
@@ -217,21 +218,16 @@ async function testAnthropicCompatible(
   }
 }
 
-export const piDriver: ProviderDriver = {
-  provider: 'pi',
-  buildRuntime: ({ context, providerOptions, resolvedPaths }) => ({
-    paths: {
-      piServer: resolvedPaths.piServerPath,
-      interceptor: resolvedPaths.interceptorBundlePath,
-      node: resolvedPaths.nodeRuntimePath,
-    },
+/** Model transport is connection-owned even when the caller has no host paths. */
+export function buildPiConnectionTransport(connection?: LlmConnection | null, providerOptions?: BackendProviderOptions): BackendRuntimePayload {
+  return {
     piAuthProvider: providerOptions?.piAuthProvider
-      || context.connection?.piAuthProvider
-      || (context.connection?.providerType === 'anthropic' ? 'anthropic' : undefined),
-    oauthProvider: context.connection?.oauthProvider,
-    baseUrl: context.connection?.baseUrl,
-    customEndpoint: context.connection?.customEndpoint,
-    customModels: context.connection?.models?.map(m => {
+      || connection?.piAuthProvider
+      || (connection?.providerType === 'anthropic' ? 'anthropic' : undefined),
+    oauthProvider: connection?.oauthProvider,
+    baseUrl: connection?.baseUrl,
+    customEndpoint: connection?.customEndpoint,
+    customModels: connection?.models?.map(m => {
       if (typeof m === 'string') return m;
       const supportsImages = typeof m.supportsImages === 'boolean'
         ? m.supportsImages
@@ -245,9 +241,21 @@ export const piDriver: ProviderDriver = {
       }
       return m.id;
     }),
-    customHeaders: context.connection?.oauthProvider === 'tokennest' && context.connection.channelGroup
-      ? { 'X-TokenNest-Group': tokenNestGroupHeaderValue(context.connection.channelGroup) }
+    customHeaders: connection?.oauthProvider === 'tokennest' && connection.channelGroup
+      ? { 'X-TokenNest-Group': tokenNestGroupHeaderValue(connection.channelGroup) }
       : undefined,
+  };
+}
+
+export const piDriver: ProviderDriver = {
+  provider: 'pi',
+  buildRuntime: ({ context, providerOptions, resolvedPaths }) => ({
+    paths: {
+      piServer: resolvedPaths.piServerPath,
+      interceptor: resolvedPaths.interceptorBundlePath,
+      node: resolvedPaths.nodeRuntimePath,
+    },
+    ...buildPiConnectionTransport(context.connection, providerOptions),
   }),
   fetchModels: async ({ connection, credentials, timeoutMs }) => {
     // Copilot OAuth: fetch models directly from the Copilot API via HTTP.

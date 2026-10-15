@@ -16,6 +16,23 @@ const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
 
 describe('TokenNest OAuth', () => {
+  test('uses imported access tokens without expiry or refresh metadata instead of reporting missing credentials', async () => {
+    const stored = { accessToken: 'existing-provider-access-token' };
+    const manager = { getLlmOAuth: mock(async () => stored) } as unknown as CredentialManager;
+    const network = mock(async () => { throw new Error('must not refresh without a refresh token'); });
+    globalThis.fetch = network as unknown as typeof fetch;
+    expect(await getValidTokenNestCredentials('tokennest', manager)).toBe(stored);
+    expect(network).not.toHaveBeenCalled();
+    expect(await getValidTokenNestCredentials('tokennest', manager, true)).toBeNull();
+  });
+
+  test('keeps an unexpired token usable inside the early refresh window when no refresh token is stored', async () => {
+    const stored = { accessToken: 'still-valid', expiresAt: Date.now() + 60000 };
+    const manager = { getLlmOAuth: mock(async () => stored) } as unknown as CredentialManager;
+    expect(await getValidTokenNestCredentials('tokennest', manager)).toBe(stored);
+    stored.expiresAt = Date.now() - 1;
+    expect(await getValidTokenNestCredentials('tokennest', manager)).toBeNull();
+  });
   test('reads the authorized username and rejects unavailable or malformed profiles', async () => {
     globalThis.fetch = mock(async (input, init) => {
       expect(String(input)).toBe(TOKENNEST_OAUTH_CONFIG.profileUrl);

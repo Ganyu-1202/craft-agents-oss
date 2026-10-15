@@ -390,7 +390,12 @@ export async function getValidTokenNestCredentials(
   if (!stored || (!stored.accessToken && !stored.refreshToken)) return null;
   const expiring = !stored.accessToken || !stored.expiresAt || stored.expiresAt < Date.now() + 5 * 60_000;
   if (!forceRefresh && !expiring) return stored;
-  if (!stored.refreshToken) return forceRefresh || expiring ? null : stored;
+  if (!stored.refreshToken) {
+    // Imported bearer credentials may lack expiry/refresh metadata. A missing
+    // timestamp or the proactive refresh window is not proof of expiration.
+    const expired = stored.expiresAt !== undefined && stored.expiresAt <= Date.now();
+    return !forceRefresh && stored.accessToken && !expired ? stored : null;
+  }
 
   let credentialRefreshes = credentialRefreshesByManager.get(credentialManager);
   if (!credentialRefreshes) {

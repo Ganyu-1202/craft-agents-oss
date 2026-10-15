@@ -13,6 +13,7 @@ import {
   detectProvider,
   createBackend,
   createCodexBackend,
+  createConfigFromConnection,
   createAgent,
   fetchBackendModels,
   getAvailableProviders,
@@ -71,6 +72,18 @@ function createTestConfig(overrides: Partial<BackendConfig> = {}): BackendConfig
 }
 
 describe('detectProvider', () => {
+  it('retains TokenNest transport when creating connection config without host runtime paths', () => {
+    const connection: LlmConnection = { slug: 'tokennest', name: 'TokenNest', providerType: 'pi_compat', authType: 'oauth',
+      agentRuntime: 'codex', piAuthProvider: 'openai', oauthProvider: 'tokennest',
+      baseUrl: 'https://gateway.example.test/v1', customEndpoint: { api: 'openai-completions' },
+      channelGroup: 'group', createdAt: 1, models: ['gpt-5.2-codex'], defaultModel: 'gpt-5.2-codex' };
+    const config = createConfigFromConnection(connection, createTestConfig({ provider: 'pi', runtime: { paths: { node: 'existing-runtime' } } }));
+    expect(config.runtime).toMatchObject({ baseUrl: connection.baseUrl, oauthProvider: 'tokennest',
+      customEndpoint: connection.customEndpoint, customHeaders: { 'X-TokenNest-Group': 'group' }, paths: { node: 'existing-runtime' } });
+    const agent = createCodexBackend(config, { path: 'codex', source: 'PATH', version: '0.154.0', testedProtocol: true });
+    expect(agent).toBeInstanceOf(NativeCodexAgent);
+    agent.destroy();
+  });
   describe('Anthropic authentication types', () => {
     it('should return anthropic for api_key', () => {
       expect(detectProvider('api_key')).toBe('anthropic');

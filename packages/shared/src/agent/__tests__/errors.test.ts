@@ -2,6 +2,10 @@ import { describe, expect, it } from 'bun:test'
 import { parseError } from '../errors.ts'
 
 describe('OAuth startup errors', () => {
+  it('shows credential recovery actions instead of an unknown error for missing provider credentials', () => {
+    expect(parseError(new Error('OAuth credentials are unavailable for connection "tokennest". Please sign in again.')).code).toBe('expired_oauth_token')
+    expect(parseError(new Error('Stored credentials are unavailable. Update Credentials in Settings before the next request.')).code).toBe('invalid_credentials')
+  })
   it('classifies expired login and invalid grant failures as requiring reauthentication', () => {
     for (const message of ['Your login has expired. Please sign in again to continue.', 'invalid_grant']) {
       expect(parseError(new Error(message)).code).toBe('expired_oauth_token')

@@ -266,7 +266,7 @@ export class NativeCodexAgent extends BaseAgent {
         } else if (['api_key', 'api_key_with_endpoint'].includes(this.config.authType ?? '')) {
           credential = await getCredentialManager().getLlmApiKey(slug) ?? undefined;
         }
-        if (!credential) throw new Error('Stored credentials are unavailable. Update Credentials in Settings before the next request.');
+        if (!credential) throw this.missingConnectionCredentials(slug);
       }
       custom = customCodexTransport(runtime, credential);
     }
@@ -295,6 +295,12 @@ export class NativeCodexAgent extends BaseAgent {
   private buildCodexConfigArgs(env?: Record<string, string>): string[] {
     const custom = customCodexTransport(getBackendRuntime(this.config), env?.[CODEX_CUSTOM_API_KEY_ENV]);
     return [...(this.usesHostExecution() ? codexHostExecutionArgs() : []), ...(custom?.configArgs ?? [])];
+  }
+
+  private missingConnectionCredentials(slug: string): Error {
+    return new Error(this.config.authType === 'oauth'
+      ? `OAuth credentials are unavailable for connection "${slug}". Please sign in again.`
+      : `Stored credentials are unavailable. Update Credentials in Settings before the next request. Connection: "${slug}".`);
   }
 
   private async authenticateClient(client: NativeCodexAppServerClient): Promise<boolean> {
@@ -337,7 +343,7 @@ export class NativeCodexAgent extends BaseAgent {
     const snapshot = await getCredentialManager().getSnapshot(id);
     if (!snapshot.credential?.value) {
       this.authenticated = false;
-      throw new Error('Stored credentials are unavailable. Update Credentials in Settings before the next request.');
+      throw this.missingConnectionCredentials(slug);
     }
     const fingerprint = createHash('sha256').update(snapshot.credential.value).digest('hex');
     if (getBackendRuntime(this.config).baseUrl && fingerprint !== this.clientCredentials.get(client)) throw new CredentialChangedError();

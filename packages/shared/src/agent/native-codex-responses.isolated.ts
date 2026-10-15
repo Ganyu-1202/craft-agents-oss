@@ -4,8 +4,10 @@ import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resolveNativeCodexBinary } from '../codex/binary-resolver.ts';
-import { createCodexBackend } from './backend/factory.ts';
+import { createCodexBackend, createConfigFromConnection } from './backend/factory.ts';
+import { tokenNestGroupHeaderValue } from '../utils/tokennest-headers.ts';
 import { NativeCodexAgent } from './native-codex-agent.ts';
+import type { BackendConfig } from './backend/types.ts';
 import { getCredentialManager } from '../credentials/index.ts';
 import { SecureStorageBackend } from '../credentials/backends/secure-storage.ts';
 import { setSessionExecutionPolicy, clearSessionExecutionPolicy } from './core/session-execution-policy.ts';
@@ -25,7 +27,7 @@ for (const authType of ['api_key_with_endpoint', 'oauth', 'none'] as const) {
     manager.configureBackend(backend);
     const slug = `responses-${authType}`;
     const id = { type: authType === 'oauth' ? 'llm_oauth' as const : 'llm_api_key' as const, connectionSlug: slug };
-    if (authType !== 'none') await backend.set(id, { value: 'fixture-key-one', expiresAt: Date.now() + 3600000 });
+    if (authType !== 'none') await backend.set(id, { value: 'fixture-key-one', ...(authType === 'oauth' ? {} : { expiresAt: Date.now() + 3600000 }) });
     const requests: Array<{ path: string; authorization: string | null; group: string | null; body: Record<string, unknown> }> = [];
     const server = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
       const entry = { path: new URL(request.url).pathname, authorization: request.headers.get('Authorization'),
@@ -47,14 +49,18 @@ for (const authType of ['api_key_with_endpoint', 'oauth', 'none'] as const) {
       readFiles: true, writeFiles: false, runPrograms: false, browser: false, allowSources: [], allowSubagents: false });
     const { writeFile } = await import('node:fs/promises');
     await writeFile(join(root, 'input.txt'), 'Read through TokenBird');
-    const agent = createCodexBackend({ provider: 'pi', providerType: 'pi_compat', agentRuntime: 'codex', authType,
+    const baseConfig: BackendConfig = { provider: 'pi', providerType: 'pi_compat', agentRuntime: 'codex', authType,
       connectionSlug: slug, model: 'gpt-5.2-codex', isHeadless: true,
       runtime: { baseUrl: `${server.url}v1`, piAuthProvider: 'openai',
         customEndpoint: { api: authType === 'oauth' ? 'openai-completions' : 'openai-responses' },
         ...(authType === 'oauth' ? { oauthProvider: 'tokennest' } : {}), customHeaders: { 'X-TokenNest-Group': 'fixture-group' } },
       workspace: { id: 'test', name: 'Test', slug: 'test', rootPath: root, createdAt: 1 },
       session: { id: sessionId, workspaceRootPath: root, workingDirectory: root, createdAt: 1, lastUsedAt: 1, permissionMode: 'allow-all' },
-    }, binary!) as NativeCodexAgent;
+    };
+    const config = authType === 'oauth' ? createConfigFromConnection({ slug, name: 'TokenNest', providerType: 'pi_compat', agentRuntime: 'codex',
+      authType, piAuthProvider: 'openai', oauthProvider: 'tokennest', baseUrl: `${server.url}v1`,
+      customEndpoint: { api: 'openai-completions' }, channelGroup: '中文分组', createdAt: 1 }, baseConfig) : baseConfig;
+    const agent = createCodexBackend(config, binary!) as NativeCodexAgent;
     const proxies = Object.fromEntries(['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'].map(key => [key, process.env[key]]));
     Object.assign(process.env, { HTTP_PROXY: '', HTTPS_PROXY: '', ALL_PROXY: '', NO_PROXY: '127.0.0.1,localhost,::1' });
     try {
@@ -66,14 +72,15 @@ for (const authType of ['api_key_with_endpoint', 'oauth', 'none'] as const) {
       expect(events.some(event => event.type === 'tool_result' && !event.isError && event.result.includes('Read through TokenBird'))).toBe(true);
       expect(events.some(event => event.type === 'text_complete' && event.text.includes('Custom Responses'))).toBe(true);
       expect(requests).toHaveLength(2);
-      if (authType !== 'none') await backend.set(id, { value: 'fixture-key-two', expiresAt: Date.now() + 3600000 });
+      if (authType !== 'none') await backend.set(id, { value: 'fixture-key-two', ...(authType === 'oauth' ? {} : { expiresAt: Date.now() + 3600000 }) });
       const nextEvents = [];
       for await (const event of agent['chatImpl']('Finish another turn.')) nextEvents.push(event);
       expect(nextEvents.filter(event => event.type === 'error' || event.type === 'typed_error')).toEqual([]);
       expect(requests).toHaveLength(3);
       expect((await agent.queryLlm({ prompt: 'Finish a utility query.' })).text).toContain('Custom Responses');
       expect(requests).toHaveLength(4);
-      expect(requests.every(entry => entry.path === '/v1/responses' && entry.group === 'fixture-group')).toBe(true);
+      const expectedGroup = authType === 'oauth' ? tokenNestGroupHeaderValue('中文分组') : 'fixture-group';
+      expect(requests.every(entry => entry.path === '/v1/responses' && entry.group === expectedGroup)).toBe(true);
       expect(requests.slice(0, 2).map(entry => entry.authorization)).toEqual(Array(2).fill(authType === 'none' ? null : 'Bearer fixture-key-one'));
       expect(requests.slice(2).map(entry => entry.authorization)).toEqual(Array(2).fill(authType === 'none' ? null : 'Bearer fixture-key-two'));
       // No key or global OpenAI login is written to this controlled Codex home.
@@ -84,7 +91,7 @@ for (const authType of ['api_key_with_endpoint', 'oauth', 'none'] as const) {
         await backend.delete(id);
         const denied = [];
         for await (const event of agent['chatImpl']('Do not send without credentials.')) denied.push(event);
-        expect(denied.some(event => event.type === 'error')).toBe(true);
+        expect(denied.some(event => event.type === 'typed_error' && event.error.code === (authType === 'oauth' ? 'expired_oauth_token' : 'invalid_credentials'))).toBe(true);
         expect(requests).toHaveLength(4);
       }
     } finally {

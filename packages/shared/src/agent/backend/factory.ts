@@ -66,7 +66,7 @@ import {
   resolveBackendRuntimePaths,
 } from './internal/runtime-resolver.ts';
 import { anthropicDriver } from './internal/drivers/anthropic.ts';
-import { piDriver } from './internal/drivers/pi.ts';
+import { piDriver, buildPiConnectionTransport } from './internal/drivers/pi.ts';
 import { PluginAgent } from '../../agent-plugins/plugin-agent.ts';
 import { getAgentPluginManifest, refreshAgentPluginCatalog } from '../../agent-plugins/storage.ts';
 import { getAgentPluginDescriptor } from '../../agent-plugins/catalog.ts';
@@ -613,6 +613,7 @@ export function createConfigFromConnection(
     providerType,
     authType: connection.authType,
     connectionSlug: connection.slug,
+    ...(provider === 'pi' ? { runtime: { ...getBackendRuntime({ ...baseConfig, provider }), ...buildPiConnectionTransport(connection) } } : {}),
     // Use connection's default model if no model specified in baseConfig
     model: baseConfig.model || connection.defaultModel,
     modelPromptSettings: getModelPromptSettings(connection, baseConfig.model || connection.defaultModel),

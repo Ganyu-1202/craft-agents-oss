@@ -31,7 +31,10 @@ export function customCodexTransport(runtime: BackendRuntimePayload, credential?
       throw new Error(`Codex Responses header is reserved: ${name}`);
     }
     const key = `TOKENBIRD_CODEX_HEADER_${index}`;
-    env[key] = value;
+    // Pi stores TokenNest headers as ByteString text for fetch; Rust's native
+    // HTTP client encodes strings as UTF-8, so restore the original group ID.
+    env[key] = runtime.oauthProvider === 'tokennest' && name.toLowerCase() === 'x-tokennest-group'
+      ? Buffer.from(value, 'latin1').toString('utf8') : value;
     headers[name] = key;
   }
   if (Object.keys(headers).length) provider.env_http_headers = headers;
