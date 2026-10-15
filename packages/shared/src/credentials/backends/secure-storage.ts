@@ -20,7 +20,7 @@
  *
  * File format:
  *   [Header - 64 bytes]
- *   ├── Magic: "TOKENBIRD01\0" (8 bytes)
+ *   ├── Magic: "CRAFT01\0" (8 bytes; stable protocol identifier)
  *   ├── Flags: uint32 LE (4 bytes) - reserved for future use
  *   ├── Salt: 32 bytes (PBKDF2 salt)
  *   ├── Reserved: 20 bytes
@@ -55,7 +55,15 @@ const CREDENTIALS_DIR = CONFIG_DIR;
 const CREDENTIALS_FILE = join(CREDENTIALS_DIR, 'credentials.enc');
 
 // File format constants
-const MAGIC_BYTES = Buffer.from('TOKENBIRD01\0');
+const MAGIC_BYTES = Buffer.from('CRAFT01\0');
+// A released rename wrote a 12-byte magic into an 8-byte field, then
+// overwrote its tail with flags. Accept its exact on-disk prefix on reads.
+const RENAMED_MAGIC_BYTES = Buffer.from('TOKENBIR');
+function hasLegacyHeader(bytes: Buffer): boolean {
+  return bytes.subarray(0, 8).equals(MAGIC_BYTES)
+    || (bytes.subarray(0, 8).equals(RENAMED_MAGIC_BYTES)
+      && bytes.length >= 12 && bytes.readUInt32LE(8) === 0);
+}
 const NATIVE_MAGIC_BYTES = Buffer.from('TBVAULT2');
 const ROLLBACK_MAGIC_BYTES = Buffer.from('TBROLL01');
 const NATIVE_HEADER_SIZE = 12;
@@ -148,7 +156,7 @@ export class SecureStorageBackend implements CredentialBackend {
     let bytes: Buffer;
     try { bytes = readFileSync(this.filePath); } catch { throw new CredentialVaultError('VAULT_READ_FAILED'); }
     if (bytes.subarray(0, MAGIC_SIZE).equals(NATIVE_MAGIC_BYTES)) return 'native';
-    if (bytes.subarray(0, MAGIC_SIZE).equals(MAGIC_BYTES)) return 'legacy';
+    if (hasLegacyHeader(bytes)) return 'legacy';
     throw new CredentialVaultError('VAULT_CORRUPT');
   }
 
@@ -172,7 +180,7 @@ export class SecureStorageBackend implements CredentialBackend {
       decipher.setAAD(bytes.subarray(0, headerLength));
       decipher.setAuthTag(bytes.subarray(headerLength + IV_SIZE, headerLength + IV_SIZE + AUTH_TAG_SIZE));
       const original = Buffer.concat([decipher.update(bytes.subarray(headerLength + IV_SIZE + AUTH_TAG_SIZE)), decipher.final()]);
-      if (original.length < HEADER_SIZE + IV_SIZE + AUTH_TAG_SIZE || !original.subarray(0, MAGIC_SIZE).equals(MAGIC_BYTES)) throw new Error('Invalid rollback snapshot');
+      if (original.length < HEADER_SIZE + IV_SIZE + AUTH_TAG_SIZE || !hasLegacyHeader(original)) throw new Error('Invalid rollback snapshot');
       return original;
     } catch (error) {
       if (error instanceof CredentialVaultError) throw error;
@@ -502,7 +510,7 @@ export class SecureStorageBackend implements CredentialBackend {
     }
 
     // Validate magic bytes
-    if (!fileData.subarray(0, MAGIC_SIZE).equals(MAGIC_BYTES)) {
+    if (!hasLegacyHeader(fileData)) {
       throw new Error('Credential store is corrupted; original file preserved');
     }
 
@@ -536,6 +544,20 @@ export class SecureStorageBackend implements CredentialBackend {
       this.cachedStore = store;
       this.cachedFileVersion = version;
       return store;
+    }
+
+    // Recover the accidentally renamed key domain only for that writer's
+    // header. Authentication must succeed before accepting or rewriting data.
+    if (fileData.subarray(0, MAGIC_SIZE).equals(RENAMED_MAGIC_BYTES)) {
+      for (const legacy of [false, true]) {
+        store = this.tryDecrypt(encryptedData, this.deriveEncryptionKey(salt, 'tokenbird', legacy));
+        if (store) {
+          this.cachedFormat = 'legacy';
+          this.cachedStore = store;
+          this.cachedFileVersion = version;
+          return store;
+        }
+      }
     }
 
     // Never silently destroy an unreadable vault or overwrite it with a new one.
@@ -698,13 +720,7 @@ export class SecureStorageBackend implements CredentialBackend {
 
     // New stable machine ID using hardware UUID (v2)
     // This is far more stable than hostname which can change with network/DHCP
-    const stableMachineId = createHash('sha256')
-      .update(getStableMachineId())
-      .update('tokenbird-v2') // Bumped version for new key derivation
-      .digest();
-
-    // Derive key using PBKDF2
-    this.encryptionKey = pbkdf2Sync(stableMachineId, salt, PBKDF2_ITERATIONS, KEY_SIZE, 'sha256');
+    this.encryptionKey = this.deriveEncryptionKey(salt, 'craft-agent', false);
 
     return this.encryptionKey;
   }
@@ -714,14 +730,15 @@ export class SecureStorageBackend implements CredentialBackend {
    * Used to decrypt credentials from older versions before re-encrypting with stable key.
    */
   private getLegacyEncryptionKey(salt: Buffer): Buffer {
-    const legacyMachineId = createHash('sha256')
-      .update(hostname())
-      .update(userInfo().username)
-      .update(homedir())
-      .update('tokenbird-v1')
-      .digest();
+    return this.deriveEncryptionKey(salt, 'craft-agent', true);
+  }
 
-    return pbkdf2Sync(legacyMachineId, salt, PBKDF2_ITERATIONS, KEY_SIZE, 'sha256');
+  private deriveEncryptionKey(salt: Buffer, namespace: 'craft-agent' | 'tokenbird', legacy: boolean): Buffer {
+    const identity = createHash('sha256');
+    if (legacy) identity.update(hostname()).update(userInfo().username).update(homedir());
+    else identity.update(getStableMachineId());
+    identity.update(`${namespace}-v${legacy ? 1 : 2}`);
+    return pbkdf2Sync(identity.digest(), salt, PBKDF2_ITERATIONS, KEY_SIZE, 'sha256');
   }
 
   /** Clear cached data (for testing or forced refresh) */

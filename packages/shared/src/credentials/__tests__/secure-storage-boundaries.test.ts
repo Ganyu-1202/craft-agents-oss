@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from 'node:crypto';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, hostname, userInfo, homedir } from 'node:os';
 import { join } from 'node:path';
 import { SecureStorageBackend } from '../backends/secure-storage.ts';
 import { credentialIdToAccount, type CredentialId, type CredentialWrite } from '../types.ts';
@@ -18,15 +18,20 @@ beforeEach(() => {
 afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
 /** Construct authenticated fixtures without production format changes or real credentials. */
-function fixture(payload: unknown, legacy = false) {
+function fixture(payload: unknown, legacy = false, renamed = false) {
   const backend = new SecureStorageBackend(path) as any;
   const salt = randomBytes(32);
-  const key: Buffer = legacy ? backend.getLegacyEncryptionKey(salt) : backend.getEncryptionKey(salt);
+  // Pin the historical v1 key independently of the current implementation.
+  const key: Buffer = legacy ? pbkdf2Sync(createHash('sha256')
+    .update(hostname()).update(userInfo().username).update(homedir())
+    .update(renamed ? 'tokenbird-v1' : 'craft-agent-v1').digest(), salt, 100000, 32, 'sha256')
+    : renamed ? backend.deriveEncryptionKey(salt, 'tokenbird', false) : backend.getEncryptionKey(salt);
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const ciphertext = Buffer.concat([cipher.update(JSON.stringify(payload)), cipher.final()]);
   const header = Buffer.alloc(64);
-  Buffer.from('TOKENBIRD01\0').copy(header);
+  Buffer.from(renamed ? 'TOKENBIRD01\0' : 'CRAFT01\0').copy(header);
+  header.writeUInt32LE(0, 8);
   salt.copy(header, 12);
   const bytes = Buffer.concat([header, iv, cipher.getAuthTag(), ciphertext]);
   writeFileSync(path, bytes, { mode: 0o600 });
@@ -122,6 +127,32 @@ describe('authenticated schema corruption', () => {
 });
 
 describe('legacy key migration boundaries', () => {
+  for (const legacy of [false, true]) {
+    test(`recovers the released renamed header and v${legacy ? 1 : 2} key without changing the file on read`, async () => {
+      const original = fixture(payload(), legacy, true);
+      expect(original.subarray(0, 8).toString()).toBe('TOKENBIR');
+      const backend = new SecureStorageBackend(path);
+      expect(backend.getProtectionFormat()).toBe('legacy');
+      expect((await backend.get(id('old')))?.value).toBe('dummy-old');
+      expect(readFileSync(path)).toEqual(original);
+      await backend.setMany([entry('new')]);
+      expect(readFileSync(path).subarray(0, 8).toString()).toBe('CRAFT01\0');
+      expect((await new SecureStorageBackend(path).get(id('old')))?.value).toBe('dummy-old');
+      expect((await new SecureStorageBackend(path).get(id('new')))?.value).toBe('dummy-new');
+      expect((decrypt(readFileSync(path), false) as any).metadata.createdAt).toBe(123);
+    });
+  }
+
+  test('a renamed vault with failed authentication is never overwritten', async () => {
+    const original = fixture(payload(), false, true);
+    original[original.length - 1] = original[original.length - 1]! ^ 1;
+    writeFileSync(path, original);
+    const backend = new SecureStorageBackend(path);
+    await expect(backend.get(id('old'))).rejects.toThrow('preserved');
+    await expect(backend.setMany([entry('new')])).rejects.toThrow('preserved');
+    expect(readFileSync(path)).toEqual(original);
+  });
+
   test('reads never migrate; the next successful batch migrates every entry to the stable key', async () => {
     const original = fixture(payload(), true);
     const backend = new SecureStorageBackend(path);

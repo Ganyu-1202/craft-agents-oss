@@ -68,7 +68,7 @@ describe.skipIf(process.platform === 'win32')('owned-process native migration in
         expect(new SecureStorageBackend(path, protection()).readLegacyRollbackSnapshot()).toEqual(original);
         expect(readFileSync(`${path}.legacy-backup`).subarray(0, 8).toString()).toBe('TBROLL01');
         const native = phase === 'after-native-rename';
-        expect(readFileSync(path).subarray(0, 8).toString()).toBe(native ? 'TBVAULT2' : 'TOKENBIRD01\0');
+        expect(readFileSync(path).subarray(0, 8).toString()).toBe(native ? 'TBVAULT2' : 'CRAFT01\0');
         const backend = new SecureStorageBackend(path, protection());
         expect((await backend.get(id))?.refreshToken).toBe('dummy-original-refresh');
         expect(existsSync(`${path}.lock`)).toBe(true);

@@ -23,7 +23,7 @@ test('existing legacy LLM reads, writes and refreshes remain usable without OS p
   await manager.set(id, { ...oldCredential, value: 'dummy-refreshed', refreshToken: 'dummy-rotated' });
   expect((await legacy.get(id))?.value).toBe('dummy-refreshed');
   expect((await vault.status())).toMatchObject({ state: 'ready', protection: 'legacy-machine', canApply: true, canMigrate: false });
-  expect(readFileSync(item.filePath).subarray(0, 8).toString()).toBe('TOKENBIRD01\0');
+  expect(readFileSync(item.filePath).subarray(0, 8).toString()).toBe('CRAFT01\0');
   expect(item.state.wraps).toBe(0);
   expect(item.state.unwraps).toBe(0);
   item.state.available = true;
