@@ -423,6 +423,10 @@ html[data-theme-pack] [data-theme-area="sidebar"]::before {
    Tailwind variables; the data attributes keep those colors overridable by
    the pack stylesheet without affecting the rest of the application. */
 [data-theme-area="chat"] {
+  background-color: color-mix(in srgb, var(--background) var(--tokenbird-chat-bubble-opacity, 100%), transparent);
+}
+
+[data-panel-role="content"][data-theme-area="chat"] {
   background-color: color-mix(in srgb, var(--background) var(--tokenbird-chat-panel-opacity, 100%), transparent);
 }
 
@@ -449,6 +453,10 @@ html[data-theme-pack] [data-theme-area="chat"]::before {
      order), so the frame wraps the input without covering the text. */
   z-index: 0;
   border-radius: inherit;
+}
+
+html[data-theme-pack] [data-panel-role="content"][data-theme-area="chat"]::before {
+  opacity: calc(var(--theme-pack-chat-opacity, 0.9) * var(--tokenbird-chat-panel-opacity-number, 1));
 }
 
 html[data-theme-pack] [data-theme-area="sidebar"]::before {

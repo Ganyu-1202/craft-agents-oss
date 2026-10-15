@@ -25,7 +25,7 @@ TokenNest 和云服务器配置相同的随机密钥 `TOKENBIRD_CLOUD_SERVICE_KE
 实现要求：
 
 - 使用现有 OAuth grant 校验流程核验 access token 的哈希、到期时间、撤销状态、所属应用及用户状态。
-- 仅接受已允许使用 TokenBird 云功能的客户端，例如当前原生应用 `tnc_tokenbird_agents_community`。现有原生登录 scope 无需变更；不要因添加新 scope 影响现有登录。
+- 仅接受已允许使用 TokenBird 云功能的客户端，例如当前原生应用 `tnc_craft_agents_community`（已注册的协议标识，不随产品改名）。现有原生登录 scope 无需变更；不要因添加新 scope 影响现有登录。
 - `subject` 为稳定、唯一的账户标识（如 `user:<数据库用户ID>`），所有设备、列表及连接操作使用它。不可相信请求传入的用户 ID。
 - `expires_at` 是实际访问令牌过期时间，Unix **毫秒**。账号禁用、grant 撤销、token 无效时返回 401/403。
 - 不返回 refresh token、模型 key、用户密码或其他隐私信息。

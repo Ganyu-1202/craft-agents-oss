@@ -11,7 +11,8 @@ import { TOKENNEST_RECHARGE_URL, validateTokenNestRechargeUrl } from '../utils/b
 
 export const TOKENNEST_OAUTH_CONFIG = {
   issuer: 'https://openai.goldgom.top',
-  clientId: 'tnc_tokenbird_agents_community',
+  // Registered protocol identifier; keep stable across product renames.
+  clientId: 'tnc_craft_agents_community',
   authorizationUrl: 'https://openai.goldgom.top/oauth/authorize',
   tokenUrl: 'https://openai.goldgom.top/api/oauth2/token',
   revocationUrl: 'https://openai.goldgom.top/api/oauth2/revoke',

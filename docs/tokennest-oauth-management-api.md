@@ -1,6 +1,6 @@
 # TokenNest OAuth management API handoff
 
-TokenBird already uses the public native client `tnc_tokenbird_agents_community`
+TokenBird already uses the public native client `tnc_craft_agents_community`
 with authorization-code + PKCE. Access and refresh tokens remain in the
 TokenBird server-side credential store. The following TokenNest additions are
 needed to make the in-app usage page authoritative instead of linking to the

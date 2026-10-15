@@ -50,7 +50,8 @@ describe('TokenNest OAuth', () => {
     const prepared = prepareTokenNestOAuth('http://127.0.0.1:6477/callback');
     const url = new URL(prepared.authUrl);
     expect(url.origin + url.pathname).toBe(TOKENNEST_OAUTH_CONFIG.authorizationUrl);
-    expect(url.searchParams.get('client_id')).toBe(TOKENNEST_OAUTH_CONFIG.clientId);
+    // Assert the registered server ID, independently of the client config.
+    expect(url.searchParams.get('client_id')).toBe('tnc_craft_agents_community');
     expect(url.searchParams.get('scope')).toBe('api balance:read groups:read usage:read invoice:read offline_access');
     expect(url.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:6477/callback');
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
@@ -80,6 +81,9 @@ describe('TokenNest OAuth', () => {
     expect(refreshed.refreshToken).toBe('refresh-2');
     expect(bodies[0]).toContain('grant_type=authorization_code');
     expect(bodies[1]).toContain('grant_type=refresh_token');
+    for (const body of bodies) {
+      expect(new URLSearchParams(body).get('client_id')).toBe('tnc_craft_agents_community');
+    }
     expect(bodies.join('&')).not.toContain('client_secret');
   });
 

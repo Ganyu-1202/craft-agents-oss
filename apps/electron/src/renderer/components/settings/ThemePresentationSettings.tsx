@@ -14,7 +14,7 @@ function Range({ label, value, min = 0, max = 100, unit = '%', onChange }: {
 export function ThemePresentationSettings() {
   const { t } = useTranslation()
   const { isScenic, activeThemePack, presentation, setPresentation, resetPresentation } = useTheme()
-  const hasCharacters = Boolean(activeThemePack?.manifest.characters?.left || activeThemePack?.manifest.characters?.right)
+  const hasCharacters = Boolean(activeThemePack?.manifest.live2d || activeThemePack?.manifest.characters?.left || activeThemePack?.manifest.characters?.right)
   if (!isScenic && !hasCharacters) return null
   return <div className="mt-3 overflow-hidden rounded-xl border border-foreground/10 bg-foreground/[0.02]">
     <div className="flex items-center justify-between gap-3 px-4 pt-2.5"><span className="text-xs font-medium text-muted-foreground">{t('settings.appearance.themeAdjustments')}</span>

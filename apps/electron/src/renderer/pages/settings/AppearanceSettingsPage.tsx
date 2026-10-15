@@ -127,6 +127,8 @@ export default function AppearanceSettingsPage() {
     setFont,
     chatOpacity,
     setChatOpacity,
+    chatPanelOpacity,
+    setChatPanelOpacity,
     activeWorkspaceId,
     setWorkspaceColorTheme,
     themeLoadError,
@@ -407,6 +409,26 @@ export default function AppearanceSettingsPage() {
                         { value: 'system', label: t("settings.appearance.fontSystem") },
                       ]}
                     />
+                  </SettingsRow>
+                  <SettingsRow
+                    label={t('settings.appearance.chatPanelOpacity')}
+                    description={t('settings.appearance.chatPanelOpacityDesc')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        aria-label={t('settings.appearance.chatPanelOpacity')}
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={Math.round(chatPanelOpacity * 100)}
+                        onChange={event => setChatPanelOpacity(Number(event.target.value) / 100)}
+                        className="w-32 accent-accent"
+                      />
+                      <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
+                        {Math.round(chatPanelOpacity * 100)}%
+                      </span>
+                    </div>
                   </SettingsRow>
                   <SettingsRow
                     label={t("settings.appearance.chatOpacity")}

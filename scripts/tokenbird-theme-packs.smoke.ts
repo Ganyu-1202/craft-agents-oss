@@ -36,7 +36,7 @@ import {initReactI18next} from 'react-i18next';
 import translations from '../../../../../packages/shared/src/i18n/locales/zh-Hans.json';
 import '../index.css';
 import data from './fixtures.json';
-localStorage.clear();
+if (!sessionStorage.getItem('fixture-initialized')) {localStorage.clear();localStorage.setItem('tokenbird-chat-opacity', '0.72');sessionStorage.setItem('fixture-initialized','true');}
 i18n.use(initReactI18next).init({lng:'zh-Hans',resources:{'zh-Hans':{translation:translations}},initImmediate:false});
 let listener;
 window.electronAPI = {
@@ -50,10 +50,10 @@ window.electronAPI = {
 function Screen() {
   const theme = useTheme();
   window.fixture = {
-    select: theme.setThemePack, mode: theme.setMode, preset: theme.setColorTheme, presentation: theme.setPresentation, reset: theme.resetPresentation,
+    panelOpacity: theme.setChatPanelOpacity, bubbleOpacity: theme.setChatOpacity, select: theme.setThemePack, mode: theme.setMode, preset: theme.setColorTheme, presentation: theme.setPresentation, reset: theme.resetPresentation,
     color: value => {const span = document.createElement('span');span.style.color = value;document.body.appendChild(span);const result = getComputedStyle(span).color;span.remove();return result;},
     notify: id => listener?.({packId: id}),
-    snapshot: () => ({id: theme.themePackId, active: theme.activeThemePack?.id, preset: theme.effectiveColorTheme, presentation: theme.presentation, dark: theme.isDark, scenic: theme.isScenic, accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), bg: document.documentElement.style.getPropertyValue('--background-image'), characters: [...document.querySelectorAll('#theme-pack-character-stage img')].map(img => ({width: img.getBoundingClientRect().width, height: img.getBoundingClientRect().height, loaded: img.complete && img.naturalWidth > 0})), shiki: theme.shikiTheme}),
+    snapshot: () => ({panelOpacity: theme.chatPanelOpacity, bubbleOpacity: theme.chatOpacity, id: theme.themePackId, active: theme.activeThemePack?.id, preset: theme.effectiveColorTheme, presentation: theme.presentation, dark: theme.isDark, scenic: theme.isScenic, accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), bg: document.documentElement.style.getPropertyValue('--background-image'), characters: [...document.querySelectorAll('#theme-pack-character-stage img')].map(img => ({width: img.getBoundingClientRect().width, height: img.getBoundingClientRect().height, loaded: img.complete && img.naturalWidth > 0})), shiki: theme.shikiTheme}),
     gallery: () => window.showGallery(true),
   };
   const [gallery, showGallery] = React.useState(false);
@@ -65,11 +65,11 @@ function Screen() {
       <h2 style={{fontSize:22,fontWeight:600}}>词元鸟</h2><p style={{opacity:.55,margin:'8px 0 30px'}}>TokenBird</p>
       {['新建会话','所有会话','标签','数据源','工具','技能','设置'].map((label,i)=><div key={label} style={{padding:'12px',margin:'4px 0',borderRadius:10,background:i===1?'color-mix(in srgb, var(--accent) 12%, transparent)':'transparent',color:i===1?'var(--accent)':'inherit'}}>{label}</div>)}
     </aside>
-    <main data-theme-area="chat" className="shadow-middle" style={{minWidth:0,borderRadius:18,padding:compact?16:26,display:'flex',flexDirection:'column',gap:20}}>
+    <main data-panel-role="content" data-theme-area="chat" className="shadow-middle" style={{minWidth:0,borderRadius:18,padding:compact?16:26,display:'flex',flexDirection:'column',gap:20}}>
       <header style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid color-mix(in srgb,var(--foreground) 10%,transparent)',paddingBottom:16}}><strong>{theme.themePackName ?? '默认主题'}</strong><span style={{opacity:.5}}>创作工作台</span></header>
       <div style={{marginLeft:'auto',padding:'14px 22px',borderRadius:16,background:'var(--message-user-bg)'}}>一起创作下一段旋律吧。</div>
       <div className="theme-message-assistant-bubble" style={{padding:22,borderRadius:16,maxWidth:620}}><h3 style={{fontWeight:600,marginBottom:12}}>灵感，从这里开始</h3><p>青绿与绯红交织，让每一次对话都有自己的色彩。</p><p style={{opacity:.55,marginTop:12}}>明暗配色 · 自适应立绘 · 原创矢量背景</p></div>
-      <div className="input-container shadow-middle" style={{padding:20,marginTop:'auto',height:128}}><p style={{opacity:.45}}>输入消息…</p><div style={{display:'flex',justifyContent:'flex-end',marginTop:26}}><button className="bg-primary" style={{borderRadius:12,padding:'8px 18px',color:'var(--popover-solid)'}}>发送</button></div></div>
+      <div data-theme-area="chat" className="input-container shadow-middle" style={{padding:20,marginTop:'auto',height:128}}><p style={{opacity:.45}}>输入消息…</p><div style={{display:'flex',justifyContent:'flex-end',marginTop:26}}><button className="bg-primary" style={{borderRadius:12,padding:'8px 18px',color:'var(--popover-solid)'}}>发送</button></div></div>
     </main>
   </div>;
 }
@@ -101,11 +101,42 @@ app.whenReady().then(async () => {
   try {
     await win.loadFile(${JSON.stringify(join(root, 'renderer/index.html'))});
     await wait('!!window.fixture');
+    // Existing combined opacity migrates to the independent panel control.
+    await wait('fixture.snapshot().panelOpacity===0.72 && fixture.snapshot().bubbleOpacity===0.72');
+    await js('fixture.bubbleOpacity(0.8)');
+    await wait('fixture.snapshot().panelOpacity===0.72 && fixture.snapshot().bubbleOpacity===0.8');
+    await Promise.all([new Promise(resolve => win.webContents.once('did-finish-load', resolve)), Promise.resolve(win.reload())]);
+    await wait('!!window.fixture && fixture.snapshot().panelOpacity===0.72 && fixture.snapshot().bubbleOpacity===0.8');
+    await js('fixture.panelOpacity(0.35)');
+    await wait('fixture.snapshot().panelOpacity===0.35 && fixture.snapshot().bubbleOpacity===0.8');
+    await Promise.all([new Promise(resolve => win.webContents.once('did-finish-load', resolve)), Promise.resolve(win.reload())]);
+    await wait('!!window.fixture && fixture.snapshot().panelOpacity===0.35 && fixture.snapshot().bubbleOpacity===0.8');
     // A late response from an older selection must not replace the current pack.
     await js("fixture.select('miku-mint');fixture.select('teto-crimson')");
     await wait("fixture.snapshot().active==='teto-crimson' && fixture.snapshot().bg.includes('data:image')");
     await new Promise(r=>setTimeout(r,100));
     assert.equal((await js('fixture.snapshot()')).active,'teto-crimson');
+    await js("fixture.select('miku-mint');fixture.bubbleOpacity(0.8)");
+    await wait("fixture.snapshot().active==='miku-mint'");
+    for (const mode of ['light', 'dark']) {
+      await js('fixture.mode('+JSON.stringify(mode)+')');
+      await wait('fixture.snapshot().dark==='+JSON.stringify(mode==='dark'));
+      for (const opacity of [0, 0.35, 1]) {
+        await js('fixture.panelOpacity('+opacity+')');
+        await wait('getComputedStyle(document.documentElement).getPropertyValue("--tokenbird-chat-panel-opacity").trim()==='+JSON.stringify(opacity*100+'%'));
+        const rendered = await js("(() => {const panel=document.querySelector('[data-panel-role=content]');const input=document.querySelector('.input-container');return {background:getComputedStyle(panel).backgroundColor,expected:fixture.color('color-mix(in srgb, var(--background) '+fixture.snapshot().panelOpacity*100+'%, transparent)'),texture:Number(getComputedStyle(panel,'::before').opacity),inputTexture:Number(getComputedStyle(input,'::before').opacity),textOpacity:getComputedStyle(panel.querySelector('header')).opacity,panelOpacity:getComputedStyle(panel).opacity,bubble:fixture.snapshot().bubbleOpacity}})()");
+        assert.equal(rendered.background, rendered.expected);
+        assert.ok(Math.abs(rendered.texture - opacity*0.9)<0.001, JSON.stringify(rendered));
+        assert.ok(Math.abs(rendered.inputTexture - 0.8*0.9)<0.001);
+        assert.equal(rendered.textOpacity, '1');
+        assert.equal(rendered.panelOpacity, '1');
+        assert.equal(rendered.bubble, 0.8);
+      }
+    }
+    await js('fixture.panelOpacity(0.15);fixture.bubbleOpacity(0.8)');
+    await wait('fixture.snapshot().panelOpacity===0.15');
+    writeFileSync(${JSON.stringify(join(root, 'transparent-chat.png'))},(await win.webContents.capturePage()).toPNG());
+    await js('fixture.panelOpacity(1);fixture.bubbleOpacity(1)');
     for (const pack of ${JSON.stringify(packs)}) {
       for (const mode of ['light','dark']) {
         await js('fixture.mode('+JSON.stringify(mode)+');fixture.select('+JSON.stringify(pack.id)+')');
@@ -184,7 +215,7 @@ app.whenReady().then(async () => {
     await wait('fixture.snapshot().presentation.showCharacters===false');
     writeFileSync(${JSON.stringify(join(root, 'theme-controls.png'))},(await win.webContents.capturePage()).toPNG());
     assert.equal(errors.length,0,errors.join(' | '));
-    writeFileSync(${JSON.stringify(report)},JSON.stringify({success:true,checks,compact,rapidSwitch:true,cleanup:true,preferences:true,gallery:true,controls:true,errors},null,2));
+    writeFileSync(${JSON.stringify(report)},JSON.stringify({success:true,checks,compact,rapidSwitch:true,cleanup:true,preferences:true,gallery:true,controls:true,chatOpacity:true,errors},null,2));
     win.destroy();app.exit(0);
   } catch(error) {
     const snapshot = await js('window.fixture?.snapshot()').catch(()=>null);

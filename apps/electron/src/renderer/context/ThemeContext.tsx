@@ -32,9 +32,12 @@ interface ThemeContextType {
   /** Set app-level default color theme */
   setColorTheme: (theme: string) => void
   setFont: (font: FontFamily) => void
-  /** Opacity of the chat panel background (0 = transparent, 1 = opaque). */
+  /** Opacity of message bubbles and composer backgrounds. */
   chatOpacity: number
   setChatOpacity: (opacity: number) => void
+  /** Opacity of the chat window background (0 = transparent, 1 = opaque). */
+  chatPanelOpacity: number
+  setChatPanelOpacity: (opacity: number) => void
 
   // Workspace-level theme override
   /** Active workspace ID (null if no workspace context) */
@@ -270,6 +273,15 @@ export function ThemeProvider({
     const value = storage.get<number>(storage.KEYS.chatOpacity, 1)
     return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
   })
+  const [chatPanelOpacity, setChatPanelOpacityState] = useState(() => {
+    // Preserve the panel appearance chosen before the two controls were split.
+    const value = storage.get<number>(storage.KEYS.chatPanelOpacity, chatOpacity)
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
+  })
+  useEffect(() => {
+    // Save the migrated value before a later bubble-only change can replace it.
+    storage.set(storage.KEYS.chatPanelOpacity, chatPanelOpacity)
+  }, [chatPanelOpacity])
   const [systemPreference, setSystemPreference] = useState<'light' | 'dark'>(getSystemPreference)
   const [previewColorTheme, setPreviewColorTheme] = useState<string | null>(null)
 
@@ -472,10 +484,11 @@ export function ThemeProvider({
 
     // Always set theme override for semi-transparent background (vibrancy effect)
     root.dataset.themeOverride = 'true'
-    root.style.setProperty('--tokenbird-chat-panel-opacity', `${chatOpacity * 100}%`)
+    root.style.setProperty('--tokenbird-chat-panel-opacity', `${chatPanelOpacity * 100}%`)
+    root.style.setProperty('--tokenbird-chat-panel-opacity-number', String(chatPanelOpacity))
     root.style.setProperty('--tokenbird-chat-bubble-opacity', `${chatOpacity * 100}%`)
     root.style.setProperty('--tokenbird-chat-opacity-number', String(chatOpacity))
-  }, [effectiveColorTheme, font, chatOpacity])
+  }, [effectiveColorTheme, font, chatOpacity, chatPanelOpacity])
 
   useEffect(() => {
     const root = document.documentElement
@@ -894,6 +907,11 @@ export function ThemeProvider({
     storage.set(storage.KEYS.chatOpacity, next)
   }, [])
 
+  const setChatPanelOpacity = useCallback((opacity: number) => {
+    const next = Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : 1
+    setChatPanelOpacityState(next)
+  }, [])
+
   const themePackName = activeThemePack?.manifest.name ?? null
 
   // Character standees (立绘) — rendered through the fixed stage element
@@ -929,6 +947,8 @@ export function ThemeProvider({
         setColorTheme,
         setFont,
         chatOpacity,
+        chatPanelOpacity,
+        setChatPanelOpacity,
         setChatOpacity,
 
         // Workspace-level theme override
