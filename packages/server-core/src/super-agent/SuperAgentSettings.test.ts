@@ -19,6 +19,24 @@ async function interaction() {
 }
 
 describe('AI Super Agent settings', () => {
+  test('persists user vault grants and passes them to worker sessions', async () => {
+    const f = await configured();
+    f.config.environment.credentialAccess = true;
+    await f.service.save('alpha', f.config);
+    expect((await loadSuperAgentDocument(join(f.root, 'alpha'))).config!.environment.credentialAccess).toBe(true);
+    await f.service.command('alpha', { type: 'task', nodeId: 'worker', title: 'Use saved account', instructions: 'List saved accounts' });
+    await until(() => f.service.get('alpha'), () => f.host.sends.length > 0);
+    const sessionId = f.host.sends[0]!.sessionId;
+    expect(f.host.policies.get(sessionId)?.credentialAccess).toBe(true);
+    expect(f.host.sends[0]!.context).toContain('"credentialAccess":true');
+  });
+
+  test('does not let a node grant itself credential vault access through settings', async () => {
+    const f = await interaction(); const before = await f.read();
+    await expect(f.service.accessSettings('alpha', { action: 'update', expectedRevision: before.revision,
+      changes: { environment: { ...before.config.environment, credentialAccess: true } } }, f.sessionId)).rejects.toThrow('changed by the user');
+    expect((await f.read()).config.environment.credentialAccess).not.toBe(true);
+  });
   test('reads complete config and edits every mutable top-level setting without dropping unrelated data', async () => {
     const f = await configured()
     const before = await f.read()

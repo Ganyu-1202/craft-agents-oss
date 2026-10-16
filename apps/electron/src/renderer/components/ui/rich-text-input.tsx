@@ -522,6 +522,7 @@ export const RichTextInput = React.forwardRef<RichTextInputHandle, RichTextInput
     const safeValue = React.useMemo(() => coerceInputText(value), [value])
     const divRef = React.useRef<HTMLDivElement>(null)
     const [isFocused, setIsFocused] = React.useState(false)
+    const [isCompositionActive, setIsCompositionActive] = React.useState(false)
     const isComposing = React.useRef(false)
     const lastValueRef = React.useRef(safeValue)
     const cursorPositionRef = React.useRef(0)
@@ -620,10 +621,12 @@ export const RichTextInput = React.forwardRef<RichTextInputHandle, RichTextInput
     // Handle composition (IME)
     const handleCompositionStart = React.useCallback(() => {
       isComposing.current = true
+      setIsCompositionActive(true)
     }, [])
 
     const handleCompositionEnd = React.useCallback(() => {
       isComposing.current = false
+      setIsCompositionActive(false)
       handleInput()
     }, [handleInput])
 
@@ -757,8 +760,9 @@ export const RichTextInput = React.forwardRef<RichTextInputHandle, RichTextInput
       return () => document.removeEventListener('selectionchange', handleSelectionChange)
     }, [])
 
-    // Show placeholder when input is empty (regardless of focus state)
-    const showPlaceholder = !safeValue
+    // The controlled value stays empty until IME composition commits, even though
+    // the browser is already displaying preedit text in the editable element.
+    const showPlaceholder = !safeValue && !isCompositionActive
 
     // Normalize placeholder to array for RotatingPlaceholder
     const placeholderArray = React.useMemo(() => {
@@ -786,8 +790,6 @@ export const RichTextInput = React.forwardRef<RichTextInputHandle, RichTextInput
             'outline-none text-sm whitespace-pre-wrap break-words',
             'min-h-[1.5em]',
             disabled && 'opacity-50 cursor-not-allowed',
-            // Make text transparent when showing placeholder (so caret is still visible)
-            showPlaceholder && 'text-transparent caret-foreground',
             className
           )}
           // Use inline style for line-height to override text-sm's built-in line-height

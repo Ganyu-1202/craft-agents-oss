@@ -26,13 +26,14 @@ export function classifyActionGate(toolName: string, input: Record<string, unkno
   }
   if (SUPER_AGENT_ACTION_TOOLS.some(def => def.name === tool)) return;
   const name = tool.replace(/_/g, '');
+  if (name === 'savedcredentials' && input.action === 'list') return;
   if (tool === 'super_agent_task' && input.action === 'install-skill') return 'state-change';
   if (tool === 'super_agent_settings') return input.action === 'get' ? undefined : 'state-change';
   if (tool === 'super_agent_library') {
     if (['library-list', 'library-get', 'memory-upsert', 'memory-delete'].includes(String(input.type))) return;
     return 'state-change';
   }
-  if (['read', 'glob', 'grep', 'find', 'ls', 'todowrite', 'taskoutput', 'askuserquestion', 'mermaidvalidate', 'getsessioninfo', 'sendagentmessage'].includes(name)
+  if (['read', 'glob', 'grep', 'find', 'ls', 'skill', 'todowrite', 'taskoutput', 'askuserquestion', 'mermaidvalidate', 'getsessioninfo', 'sendagentmessage'].includes(name)
     || tool === 'super_agent_task' || (tool === 'collaboration_board' && input.action === 'get')) return;
   if (['write', 'edit', 'multiedit', 'notebookedit'].includes(name)) return 'state-change';
   if (['bash', 'localbash', 'runshell'].includes(name)) {

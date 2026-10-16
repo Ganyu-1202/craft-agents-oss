@@ -14,7 +14,7 @@
  */
 
 import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 import type { AgentEvent } from '@tokenbird/core/types';
 import type { FileAttachment } from '../utils/files.ts';
@@ -49,7 +49,7 @@ import type { Workspace } from '../config/storage.ts';
 
 // Core modules
 import { PermissionManager } from './core/permission-manager.ts';
-import { checkSessionExecutionPolicy, getSessionExecutionPolicy, hasSessionExecutionPolicy, setSessionReferenceFiles } from './core/session-execution-policy.ts';
+import { checkSessionExecutionPolicy, getSessionExecutionPolicy, hasSessionExecutionPolicy, setSessionReferenceFiles, setSessionReferenceDirectories } from './core/session-execution-policy.ts';
 import { CONFIG_DIR } from '../config/paths.ts';
 import { SourceManager } from './core/source-manager.ts';
 import { PromptBuilder } from './core/prompt-builder.ts';
@@ -665,10 +665,11 @@ export abstract class BaseAgent implements AgentBackend {
   private refreshNodeReferenceFiles(sources: LoadedSource[]): void {
     const policy = getSessionExecutionPolicy(this._sessionId);
     if (!policy) return;
-    const paths = sources.filter(source => policy.fullControl || policy.allowSources.includes(source.config.slug)).map(source => join(source.folderPath, 'guide.md'));
+    const resourceDirectories = sources.filter(source => policy.fullControl || policy.allowSources.includes(source.config.slug)).map(source => source.folderPath);
+    const paths = resourceDirectories.map(path => join(path, 'guide.md'));
     for (const slug of policy.allowSkills ?? []) {
       const skill = loadSkillBySlug(this.config.workspace.rootPath, slug, this.config.session?.workingDirectory);
-      if (skill) paths.push(join(skill.path, 'SKILL.md'));
+      if (skill) { paths.push(join(skill.path, 'SKILL.md')); resourceDirectories.push(skill.path); }
     }
     // App-provided capability instructions are exact read-only references. Discover
     // their real assets, and only the matching names of synced documentation;
@@ -678,7 +679,10 @@ export abstract class BaseAgent implements AgentBackend {
     try {
       if (skillsRoot) {
         for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
-          if (entry.isDirectory() && (policy.allowSkills === undefined || policy.allowSkills.includes(entry.name))) paths.push(join(skillsRoot, entry.name, 'SKILL.md'));
+          if (entry.isDirectory() && (policy.allowSkills === undefined || policy.allowSkills.includes(entry.name))) {
+            paths.push(join(skillsRoot, entry.name, 'SKILL.md'));
+            resourceDirectories.push(join(skillsRoot, entry.name));
+          }
         }
       }
       if (docsRoot) {
@@ -689,6 +693,7 @@ export abstract class BaseAgent implements AgentBackend {
       }
     } catch { /* Missing app assets do not grant broader filesystem access. */ }
     setSessionReferenceFiles(this._sessionId, paths);
+    setSessionReferenceDirectories(this._sessionId, resourceDirectories, (process.env.PATH ?? '').split(delimiter).filter(Boolean));
   }
 
   /**

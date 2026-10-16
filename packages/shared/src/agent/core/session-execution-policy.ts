@@ -28,6 +28,8 @@ type RegisteredPolicy = {
   policy: SessionExecutionPolicy | null;
   executor?: SessionProgramExecutor;
   referenceFiles?: Set<string>;
+  referenceDirectories?: Set<string>;
+  executableDirectories?: Set<string>;
   requestPermission?: (request: SessionPolicyPermissionRequest) => Promise<boolean>;
   grants?: Map<string, OperationGrant>;
   generation?: number;
@@ -57,6 +59,7 @@ export function normalizeSessionExecutionPolicy(input: SessionExecutionPolicy): 
     || !Array.isArray(input.allowSources) || input.allowSources.some(slug => typeof slug !== 'string' || !slug.trim())
     || (input.allowSkills !== undefined && (!Array.isArray(input.allowSkills) || input.allowSkills.length > 100 || input.allowSkills.some(slug => typeof slug !== 'string' || !slug.trim() || slug.length > 200 || /[\\/:\0]/.test(slug) || slug === '.' || slug === '..')))
     || (input.agentRuntime !== undefined && (typeof input.agentRuntime !== 'string' || !/^(?:pi|claude-code|codex|plugin:[a-z0-9][a-z0-9_-]*)$/.test(input.agentRuntime)))
+    || (input.credentialAccess !== undefined && typeof input.credentialAccess !== 'boolean')
     || ['readFiles', 'writeFiles', 'runPrograms', 'browser'].some(key => typeof input[key as keyof SessionExecutionPolicy] !== 'boolean')) {
     throw new Error('Invalid Super Agent execution policy');
   }
@@ -74,6 +77,7 @@ export function normalizeSessionExecutionPolicy(input: SessionExecutionPolicy): 
     role: input.role,
     rootPath,
     fullControl: input.role === 'worker' && input.fullControl === true,
+    ...(input.credentialAccess !== undefined ? { credentialAccess: input.role === 'worker' && input.credentialAccess === true } : {}),
     ...(input.actionGates ? { actionGates: true as const, userIntent: input.userIntent ?? '', safety: Object.freeze({
       autoReview: input.safety?.autoReview === true,
       customRules: Object.freeze((input.safety?.customRules ?? []).map(rule => Object.freeze({ ...rule }))) as unknown as NonNullable<SessionExecutionPolicy['safety']>['customRules'],
@@ -104,6 +108,8 @@ export function setSessionExecutionPolicy(sessionId: string, input: SessionExecu
   policies.set(sessionId, {
     policy, executor: unchanged ? existing?.executor : undefined,
     referenceFiles: unchanged ? existing?.referenceFiles : undefined,
+    referenceDirectories: unchanged ? existing?.referenceDirectories : undefined,
+    executableDirectories: unchanged ? existing?.executableDirectories : undefined,
     requestPermission: existing?.requestPermission,
     reviewAction: existing?.reviewAction,
     recordOperation: existing?.recordOperation,
@@ -187,6 +193,54 @@ export function setSessionReferenceFiles(sessionId: string, paths: string[]): vo
   registered.referenceFiles = verified;
 }
 
+/** Host-resolved skill/source packages are readable independently of execution permissions. */
+export function setSessionReferenceDirectories(sessionId: string, paths: string[], executablePaths: string[] = []): void {
+  const registered = policies.get(sessionId);
+  if (!registered?.policy) return;
+  const verify = (entries: string[]) => new Set(entries.flatMap(path => {
+    try {
+      if (!isAbsolute(path) || lstatSync(path).isSymbolicLink() || !statSync(path).isDirectory()) return [];
+      return [realpathSync(path)];
+    } catch { return []; }
+  }));
+  registered.referenceDirectories = verify(paths);
+  registered.executableDirectories = verify(executablePaths);
+}
+
+/** Only resource reads and executable-name discovery; never resource writes or programs. */
+export function isSessionReferenceReadTool(sessionId: string, toolName: string, input: Record<string, unknown>, cwd?: string): boolean {
+  const registered = policies.get(sessionId);
+  return !!registered?.policy && referenceReadAllowed(registered, toolName, input, cwd);
+}
+
+function referenceReadAllowed(registered: RegisteredPolicy, toolName: string, input: Record<string, unknown>, cwd?: string): boolean {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
+  const parts = toolName.toLowerCase().split('__');
+  if (parts.length > 1 && (parts.length !== 3 || parts[0] !== 'mcp' || parts[1] !== 'session')) return false;
+  const name = parts.at(-1)!.replace(/_/g, '');
+  if (!READ_TOOLS.has(name)) return false;
+  const policy = registered.policy!;
+  const search = name !== 'read';
+  const supplied = [input.file_path, input.path, input.notebook_path].filter(path => path !== undefined);
+  if (!supplied.length && !search) return false;
+  if (name === 'glob' && typeof input.pattern === 'string' && (isAbsolute(input.pattern) || /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(input.pattern))) return false;
+  return (supplied.length ? supplied : [cwd || policy.rootPath]).every(raw => {
+    try {
+      if (typeof raw !== 'string' || !raw || raw.includes('\0') || /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(raw) || /^(?:[a-z]+:\/\/|\\\\)/i.test(raw)) return false;
+      const path = resolve(expandPath(raw, cwd || policy.rootPath));
+      if (name === 'read' && registered.referenceFiles?.has(path) && !lstatSync(path).isSymbolicLink() && realpathSync(path) === path) return true;
+      for (const root of registered.referenceDirectories ?? []) {
+        if (contained(root, path) && realpathSync(root) === root
+          && checkSessionPolicyPath({ ...policy, rootPath: root, fullControl: false }, path, root, search) === null) return true;
+      }
+      // Executable directories may contain normal command symlinks. Discovery
+      // returns filenames only; content reads and grep are not covered here.
+      return ['find', 'ls', 'glob'].includes(name) && !!registered.executableDirectories?.has(path)
+        && realpathSync(path) === path && statSync(path).isDirectory();
+    } catch { return false; }
+  });
+}
+
 /** Resolve missing write targets through their nearest existing parent, including junctions. */
 export function checkSessionPolicyPath(policy: SessionExecutionPolicy, value: string, cwd?: string, scanDirectory = false): string | null {
   if (policy.fullControl === true) return null;
@@ -240,6 +294,31 @@ const BROWSER_COMMANDS = new Set(['--help', 'open', 'navigate', 'snapshot', 'fin
 
 function deny(reason: string): SessionPolicyToolResult { return { allowed: false, reason: `Super Agent policy: ${reason}` }; }
 
+/** Rechecked by the host callback after tool approval; never returns credential material. */
+export function checkSessionCredentialAccess(sessionId: string, input: Record<string, unknown>, cwd?: string): SessionPolicyToolResult {
+  const registered = policies.get(sessionId);
+  if (!registered?.policy) return deny('credential access requires a valid node policy');
+  return checkCredentialAccess(registered, input, cwd);
+}
+
+function checkCredentialAccess(registered: RegisteredPolicy, input: Record<string, unknown>, cwd?: string): SessionPolicyToolResult {
+  const policy = registered.policy!;
+  if (policy.role !== 'worker' || policy.credentialAccess !== true) return deny('enable credential vault access in Super Agent settings');
+  if (!input || typeof input.action !== 'string' || !['list', 'request', 'fill', 'run'].includes(input.action)) return deny('unknown credential operation');
+  if (input.action === 'fill' && !policy.browser && !policy.fullControl) return deny('credential fill requires browser permission');
+  if (input.action === 'run') {
+    if (!policy.runPrograms && !policy.fullControl) return deny('credential injection requires program permission');
+    // The existing credential runner executes on the host; it cannot wrap a container command.
+    if (registered.executor) return deny('credential program injection is unavailable in the configured sandbox');
+    if (!policy.fullControl && !policy.actionGates) return deny('credential program injection requires host execution approval');
+    if (typeof input.command !== 'string' || !input.command.trim() || input.command.includes('\0')) return deny('a valid credential program command is required');
+    if (input.cwd !== undefined && typeof input.cwd !== 'string') return deny('credential program directory must be a string');
+    const error = checkSessionPolicyPath(policy, typeof input.cwd === 'string' ? input.cwd : cwd || policy.rootPath, cwd);
+    if (error) return deny(error);
+  }
+  return { allowed: true };
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value && typeof value === 'object') return `{${Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
@@ -255,7 +334,7 @@ function operationInput(policy: SessionExecutionPolicy, toolName: string, input:
     for (const field of ['file_path', 'path', 'notebook_path']) if (typeof output[field] === 'string') output[field] = resolve(expandPath(output[field] as string, cwd || policy.rootPath));
     if (!output.file_path && !output.path && !output.notebook_path) output.path = cwd || policy.rootPath;
   }
-  if (['bash', 'localbash', 'runshell'].includes(name)) output.cwd = typeof output.cwd === 'string'
+  if (['bash', 'localbash', 'runshell'].includes(name) || (name === 'savedcredentials' && input.action === 'run')) output.cwd = typeof output.cwd === 'string'
     ? resolve(expandPath(output.cwd, cwd || policy.rootPath)) : cwd || policy.rootPath;
   return output;
 }
@@ -452,11 +531,12 @@ async function authorizeActionGate(sessionId: string, registered: RegisteredPoli
   registered.gates.set(invocationId, lease); // Pending/denied IDs cannot be replayed or raced.
   const normalized = JSON.parse(canonicalJson(operationInput(policy, toolName, input, cwd))) as Record<string, unknown>;
   const name = toolName.toLowerCase().split('__').at(-1)!;
+  const credentialProgram = name.replace(/_/g, '') === 'savedcredentials' && input.action === 'run';
   const scope: SessionPolicyPermissionScope = {
     kind: WRITE_TOOLS.has(name.replace(/_/g, '')) ? 'file_write' : READ_TOOLS.has(name) ? 'file_read'
-      : ['bash', 'localbash', 'runshell'].includes(name.replace(/_/g, '')) ? 'program' : name === 'browser_tool' ? 'browser' : 'source',
+      : credentialProgram || ['bash', 'localbash', 'runshell'].includes(name.replace(/_/g, '')) ? 'program' : name === 'browser_tool' ? 'browser' : 'source',
     target: fileScope?.target ?? String(normalized.file_path ?? normalized.path ?? normalized.cwd ?? toolName),
-    toolName, operation: canonicalJson(normalized), boundary: fileScope?.boundary ?? (hostProgram(registered, toolName)
+    toolName, operation: canonicalJson(normalized), boundary: fileScope?.boundary ?? (credentialProgram ? 'host' : hostProgram(registered, toolName)
       ? name.replace(/_/g, '') === 'localbash' ? 'client' : 'host'
       : toolName.startsWith('mcp__') && !toolName.startsWith('mcp__session__') ? 'source' : 'environment'),
     expiresAt, actionGate: { invocationId, category },
@@ -545,6 +625,9 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
   const name = parts[parts.length - 1]!.toLowerCase().replace(/_/g, '');
   const slug = parts.length >= 3 && parts[0] === 'mcp' ? parts[1] : undefined;
   const canonical = parts[parts.length - 1]!.toLowerCase();
+  if (name === 'savedcredentials' && (!slug || slug === 'session')) {
+    return checkCredentialAccess(registered, input, cwd);
+  }
   if (canonical === 'computer_use') {
     if (policy.role === 'worker' && policy.fullControl && !registered.executor) return { allowed: true };
     return deny('Computer use controls the host desktop outside the node environment; restricted nodes cannot access it');
@@ -590,10 +673,12 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     if (input.type === 'archive-restore') return policy.writeFiles || policy.fullControl ? { allowed: true } : deny('archive restore requires file write permission');
     return deny('unknown library operation');
   }
-  if (name === 'skill') {
+  if (name === 'skill' && (!slug || slug === 'session')) {
     const skill = typeof input.skill === 'string' ? input.skill.split(':').pop() : undefined;
     if (!skill || !policy.allowSkills?.includes(skill)) return deny('skill is not assigned to this node');
+    return { allowed: true };
   }
+  if (referenceReadAllowed(registered, toolName, input, cwd)) return { allowed: true };
   if (policy.role !== 'worker') return deny('the main agent only understands user needs and communicates; assign reading, research, execution and verification to workers');
   if (DELEGATION_TOOLS.has(canonical) || /^(?:spawn|delegate|handoff|callllm|createtask)/.test(name)) return deny('each node uses one model process; spawning, delegation and additional model calls are disabled');
   if (name === 'webfetch' && !slug) return deny('WebFetch can call an additional summarization model; use browser_tool to fetch pages within the node model process');
@@ -617,15 +702,6 @@ function checkPolicyRules(registered: RegisteredPolicy, toolName: string, input:
     const search = ['glob', 'grep', 'find', 'ls'].includes(name);
     if (suppliedPaths.some(value => typeof value !== 'string')) return deny('filesystem path must be a string');
     if (!rawPath && !search) return deny('a verifiable filesystem path is required');
-    // Read only the exact docs registered by the host. Never allow a sibling, directory, link or write.
-    if (name === 'read' && suppliedPaths.length && suppliedPaths.every(value => {
-      try {
-        const raw = value as string;
-        if (raw.includes('\0') || /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(raw)) return false;
-        const path = expandPath(raw, cwd || policy.rootPath);
-        return registered.referenceFiles?.has(path) && !lstatSync(path).isSymbolicLink() && realpathSync(path) === path;
-      } catch { return false; }
-    })) return { allowed: true };
     if (!(policy.fullControl || fileAccess || (writing ? policy.writeFiles : policy.readFiles))) return deny(`${writing ? 'file writing' : 'file reading'} is disabled for this node`);
     for (const path of suppliedPaths.length ? suppliedPaths : [cwd || policy.rootPath]) {
       const error = checkSessionPolicyPath(policy, path as string, cwd, search);
@@ -679,7 +755,7 @@ export function normalizeSessionPolicyInput(sessionId: string, toolName: string,
   const policy = policies.get(sessionId)?.policy;
   if (!policy) return undefined;
   const name = toolName.split('__').at(-1)!.toLowerCase().replace(/_/g, '');
-  if (name === 'localbash' || name === 'runshell') return operationInput(policy, toolName, input, cwd);
+  if (name === 'localbash' || name === 'runshell' || (name === 'savedcredentials' && input.action === 'run')) return operationInput(policy, toolName, input, cwd);
   if (!READ_TOOLS.has(name) && !WRITE_TOOLS.has(name)) return undefined;
   const output = { ...input };
   let hasPath = false;

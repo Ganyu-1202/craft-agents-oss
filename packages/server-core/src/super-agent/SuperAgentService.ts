@@ -282,6 +282,9 @@ export class SuperAgentService {
       if (!request.changes || !Object.keys(request.changes).length) throw new Error('Provide at least one setting to change')
       if ('version' in request.changes) throw new Error('The configuration format version cannot be edited')
       const config = validateSuperAgentConfig({ ...document.config, ...request.changes })
+      if (active && (config.environment.credentialAccess === true) !== (document.config.environment.credentialAccess === true)) {
+        throw new Error('Credential vault access must be changed by the user in Super Agent settings')
+      }
       if (this.settingsUpdates.has(workspaceId)) throw new Error('A settings update is already pending; wait for completion')
       if (active) {
         if (document.pendingTurns.length !== 1 || document.state.scripts.some(script => script.status === 'running')
@@ -2195,6 +2198,7 @@ export class SuperAgentService {
         await this.deps.host.applySessionPolicy(runtime.sessionId!, {
           nodeId, role: node.role, rootPath: environment.workingDirectory,
           fullControl: node.role === 'worker' && currentConfig.environment.fullControl === true,
+          credentialAccess: node.role === 'worker' && currentConfig.environment.credentialAccess === true,
           actionGates: this.deps.actionGates,
           safety: currentConfig.environment.safety,
           userIntent: document.state.messages.filter(message => message.fromNodeId === 'user' && message.kind === 'chat').slice(-4).map(message => message.body).join('\n').slice(-64_000),
@@ -2888,7 +2892,7 @@ export class SuperAgentService {
         taskProgress: document.state.tasks.slice(-24).map(task => ({ id: task.id, title: task.title, status: task.status, acceptance: task.acceptance?.status })),
         artifacts: document.state.artifacts?.filter(artifact => turn.text.includes(artifact.id) || document.state.tasks.slice(-24).some(task => task.id === artifact.taskId)).slice(-32),
         communicationBudget: { remainingHops: Math.max(0, MAX_CHAIN_DEPTH - turn.depth), remainingTurns: Math.max(0, MAX_CHAIN_TURNS - (document.chainCounts[turn.chainId] ?? 0)) },
-        environment: { fullControl: config.environment.fullControl === true, actionGates: this.deps.actionGates === true && config.environment.fullControl !== true, safety: config.environment.safety,
+        environment: { fullControl: config.environment.fullControl === true, credentialAccess: config.environment.credentialAccess === true, actionGates: this.deps.actionGates === true && config.environment.fullControl !== true, safety: config.environment.safety,
           nodePermissions: superAgentNodePermissions(config.environment, recipient.role), workerPermissions: superAgentNodePermissions(config.environment, 'worker') },
         turn: { id: turn.id, kind: turn.kind },
       })
@@ -2940,7 +2944,7 @@ export class SuperAgentService {
         abilityProfiles: config.abilityProfiles.map(profile => ({ id: profile.id, name: profile.name, description: contextExcerpt(profile.description, 200) })) } : {}),
       environment: { kind: config.environment.kind, workingDirectory: config.environment.workingDirectory,
         actionGates: this.deps.actionGates === true && config.environment.fullControl !== true, safety: config.environment.safety,
-        fullControl: config.environment.fullControl === true, sourceSlugs: recipient.sourceSlugs, skillSlugs: recipient.skillSlugs ?? [],
+        fullControl: config.environment.fullControl === true, credentialAccess: config.environment.credentialAccess === true, sourceSlugs: recipient.sourceSlugs, skillSlugs: recipient.skillSlugs ?? [],
         permissionsRole: recipient.role, nodePermissions: superAgentNodePermissions(config.environment, recipient.role),
         ...(coordinator ? { workerPermissions: superAgentNodePermissions(config.environment, 'worker') } : {}) },
       runtime: document.state.nodes.filter(runtime => nodeIds.has(runtime.nodeId)).map(runtime => ({ nodeId: runtime.nodeId, sessionId: runtime.sessionId, status: runtime.status, activeTaskId: runtime.activeTaskId,

@@ -46,6 +46,7 @@ const ConfigSchema = z.object({
     // Accept legacy documents, then reconcile every node to the team's Execute mode.
     permissionMode: z.enum(['safe', 'ask', 'allow-all']).default('allow-all').transform(() => 'allow-all' as const),
     fullControl: z.boolean().default(true),
+    credentialAccess: z.boolean().optional(),
     safety: z.object({
       autoReview: z.boolean(),
       customRules: z.array(z.object({ toolName: slug, effect: z.enum(['deny', 'require-human']), reason: z.string().trim().min(1).max(2_000) }).strict()).max(100),

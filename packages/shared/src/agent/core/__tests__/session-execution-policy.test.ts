@@ -6,6 +6,8 @@ import { parse } from 'shell-quote';
 import { authorizeSessionPolicyTool, checkSessionExecutionPolicy, clearSessionExecutionPolicy, clearSessionPolicyGrants, getSessionExecutionPolicy, getSessionPolicyGrantTarget, getSessionProgramExecutor, hasSessionFullControl, isSessionPolicyShellAutoAllowed, normalizeSessionPolicyInput, setSessionExecutionPolicy, setSessionPolicyPermissionHandler, setSessionProgramExecutor, setSessionReferenceFiles, wrapSessionProgramInput, type SessionExecutionPolicy, type SessionPolicyPermissionRequest } from '../session-execution-policy.ts';
 import { PermissionManager } from '../permission-manager.ts';
 import { setSessionOperationRecorder } from '../session-execution-policy.ts';
+import { setSessionReferenceDirectories } from '../session-execution-policy.ts';
+import { checkSessionCredentialAccess } from '../session-execution-policy.ts';
 import { runPreToolUseChecks, runPreToolUseChecksWithPermissions } from '../pre-tool-use.ts';
 import { setPermissionMode, cleanupModeState, formatSessionState } from '../../mode-manager.ts';
 import { writeSessionJsonl, readSessionJsonl } from '../../../sessions/jsonl.ts';
@@ -30,6 +32,62 @@ beforeEach(() => {
 });
 
 afterEach(() => { clearSessionExecutionPolicy(sessionId); cleanupModeState(sessionId); rmSync(temp, { recursive: true, force: true }); });
+
+describe('explicit credential vault access', () => {
+  test('requires an explicit worker grant in either full control mode, including the host callback', async () => {
+    for (const fullControl of [false, true]) {
+      for (const role of ['worker', 'coordinator', 'orchestrator'] as const) {
+        for (const credentialAccess of [undefined, false, true]) {
+          setSessionExecutionPolicy(sessionId, { ...policy, role, fullControl, credentialAccess, actionGates: true });
+          const allowed = role === 'worker' && credentialAccess === true;
+          for (const toolName of ['saved_credentials', 'mcp__session__saved_credentials']) {
+            expect(checkSessionExecutionPolicy(sessionId, toolName, { action: 'list' }).allowed).toBe(allowed);
+          }
+          expect(checkSessionCredentialAccess(sessionId, { action: 'list' }).allowed).toBe(allowed);
+          if (allowed) {
+            const result = await runPreToolUseChecksWithPermissions({ toolName: 'mcp__session__saved_credentials', input: { action: 'list' }, sessionId,
+              permissionMode: 'allow-all', workspaceRootPath: root, workspaceId: 'workspace', workingDirectory: root,
+              activeSourceSlugs: [], allSourceSlugs: [], hasSourceActivation: false,
+              permissionManager: new PermissionManager({ sessionId, workspaceId: 'workspace', workingDirectory: root }) });
+            expect(['allow', 'modify']).toContain(result.type);
+          }
+        }
+      }
+    }
+    expect(() => setSessionExecutionPolicy(sessionId, { ...policy, credentialAccess: 'yes' as never })).toThrow('Invalid');
+  });
+
+  test('keeps execution, browser, scope and exact approval boundaries', async () => {
+    const tool = 'mcp__session__saved_credentials';
+    const input = { action: 'run', name: 'key', command: 'echo test', env: { TB_CRED_KEY: 'secret' } };
+    setSessionExecutionPolicy(sessionId, { ...policy, credentialAccess: true, actionGates: true });
+    expect(checkSessionCredentialAccess(sessionId, { action: 'fill' }).allowed).toBe(false);
+    expect(checkSessionCredentialAccess(sessionId, { ...input, cwd: outside }).allowed).toBe(false);
+    expect(normalizeSessionPolicyInput(sessionId, tool, input)?.cwd).toBe(root);
+    expect(checkSessionExecutionPolicy(sessionId, tool, input).allowed).toBe(false);
+    let approvals = 0;
+    setSessionPolicyPermissionHandler(sessionId, async request => {
+      approvals++;
+      expect(request.scope.kind).toBe('program');
+      expect(request.scope.boundary).toBe('host');
+      return true;
+    });
+    expect((await authorizeSessionPolicyTool(sessionId, tool, input, root, undefined, 'credential-run')).allowed).toBe(true);
+    expect(approvals).toBe(1);
+    expect(checkSessionExecutionPolicy(sessionId, tool, { ...input, command: 'echo changed' }, root, 'credential-run').allowed).toBe(false);
+    setSessionExecutionPolicy(sessionId, { ...policy, credentialAccess: true, actionGates: true, runPrograms: false });
+    expect(checkSessionCredentialAccess(sessionId, input).allowed).toBe(false);
+    setSessionExecutionPolicy(sessionId, { ...policy, credentialAccess: true, fullControl: true, actionGates: true });
+    expect(checkSessionExecutionPolicy(sessionId, tool, input).allowed).toBe(true);
+    const executable = join(temp, 'docker'); writeFileSync(executable, 'fixture');
+    setSessionProgramExecutor(sessionId, { runtimePath: executable, containerId: 'tokenbird-super-test', workingDirectory: '/workspace' });
+    expect(checkSessionCredentialAccess(sessionId, input).allowed).toBe(false);
+    setSessionExecutionPolicy(sessionId, { ...policy, credentialAccess: false, fullControl: true, actionGates: true });
+    expect(checkSessionCredentialAccess(sessionId, { action: 'list' }).allowed).toBe(false);
+    clearSessionExecutionPolicy(sessionId);
+    expect(checkSessionCredentialAccess(sessionId, { action: 'list' }).allowed).toBe(false);
+  });
+});
 
 describe('node output paths in model context', () => {
   test('node skill bindings and backend survive policy normalization; full control cannot select an unassigned skill', () => {
@@ -81,6 +139,69 @@ describe('node output paths in model context', () => {
     const state = formatSessionState(sessionId, options);
     expect(state).toContain(`plansFolderPath: ${options.plansFolderPath}`);
     expect(state).toContain(`dataFolderPath: ${options.dataFolderPath}`);
+  });
+});
+
+describe('skill and source package reads', () => {
+  test('all roles can read references and discover package files in either control mode without approvals or prerequisite deadlocks', async () => {
+    const packageRoot = join(outside, 'skill');
+    mkdirSync(join(packageRoot, 'references'), { recursive: true });
+    const reference = join(packageRoot, 'references', 'auth.md');
+    writeFileSync(reference, 'Authentication instructions');
+    for (const role of ['coordinator', 'orchestrator', 'worker'] as const) {
+      for (const fullControl of [false, true]) {
+        setSessionExecutionPolicy(sessionId, { ...policy, role, fullControl, readFiles: false, actionGates: true, allowSkills: ['report'] });
+        setSessionReferenceDirectories(sessionId, [packageRoot]);
+        let requests = 0;
+        setSessionPolicyPermissionHandler(sessionId, async () => { requests++; return false; });
+        const operations = [
+          ['Read', { file_path: reference }], ['Read', { path: reference }],
+          ['Find', { path: packageRoot, pattern: '**/*.md' }],
+          ['Ls', { path: packageRoot }], ['Grep', { path: packageRoot, pattern: 'instructions' }],
+          ['Glob', { path: packageRoot, pattern: '**/*.md' }],
+        ] as const;
+        for (const [toolName, input] of operations) {
+          expect((await authorizeSessionPolicyTool(sessionId, toolName, input)).allowed).toBe(true);
+          const result = await runPreToolUseChecksWithPermissions({ toolName, input, sessionId,
+            permissionMode: 'allow-all', workspaceRootPath: root, workspaceId: 'workspace', workingDirectory: root,
+            activeSourceSlugs: [], allSourceSlugs: [], hasSourceActivation: false,
+            prerequisiteManager: { checkPrerequisites: () => { throw new Error('Resource reads must not wait on prerequisites'); }, trackBashSkillRead: () => false },
+            permissionManager: new PermissionManager({ sessionId, workspaceId: 'workspace', workingDirectory: root }) });
+          expect(result.type).toBe('modify');
+        }
+        expect((await authorizeSessionPolicyTool(sessionId, 'Skill', { skill: 'workspace:report' })).allowed).toBe(true);
+        expect(requests).toBe(0);
+      }
+    }
+  });
+
+  test('resource grants do not allow writes, other source tools, traversal or symlink escapes', () => {
+    const packageRoot = join(outside, 'skill');
+    mkdirSync(packageRoot);
+    writeFileSync(join(packageRoot, 'reference.txt'), 'Reference');
+    symlinkSync(root, join(packageRoot, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
+    setSessionExecutionPolicy(sessionId, { ...policy, readFiles: false });
+    setSessionReferenceDirectories(sessionId, [packageRoot]);
+    for (const [tool, input] of [
+      ['Write', { file_path: join(packageRoot, 'reference.txt'), content: 'changed' }],
+      ['Read', { file_path: join(packageRoot, 'escape', 'allowed.txt') }],
+      ['Read', { file_path: `${packageRoot}/../secret.txt` }],
+      ['Find', { path: packageRoot }],
+      ['Glob', { path: packageRoot, pattern: join(outside, '*') }],
+      ['mcp__other__read', { path: join(packageRoot, 'reference.txt') }],
+      ['mcp__other__Skill', { skill: 'workspace:report' }],
+    ] as const) expect(checkSessionExecutionPolicy(sessionId, tool, input).allowed).toBe(false);
+  });
+
+  test('allows filename discovery in host-selected executable directories without reading their contents', async () => {
+    const bin = join(outside, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'tool'), 'Executable');
+    setSessionExecutionPolicy(sessionId, { ...policy, readFiles: false, actionGates: true });
+    setSessionReferenceDirectories(sessionId, [], [bin]);
+    for (const tool of ['Find', 'Ls', 'Glob']) expect((await authorizeSessionPolicyTool(sessionId, tool, { path: bin, pattern: '*' })).allowed).toBe(true);
+    for (const tool of ['Read', 'Grep', 'Write']) expect(checkSessionExecutionPolicy(sessionId, tool, { path: join(bin, 'tool') }).allowed).toBe(false);
+    expect(checkSessionExecutionPolicy(sessionId, 'Find', { path: outside }).allowed).toBe(false);
   });
 });
 

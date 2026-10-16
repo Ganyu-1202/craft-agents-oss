@@ -16,7 +16,7 @@ import { basename, dirname, join } from 'path'
 import { existsSync } from 'fs'
 import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { randomUUID } from 'node:crypto'
-import { setSessionExecutionPolicy, setSessionProgramExecutor, getSessionProgramExecutor, clearSessionExecutionPolicy, clearSessionPolicyGrants, setSessionPolicyPermissionHandler, setSessionActionReviewer, checkSessionExecutionPolicy, checkSessionPolicyPath, isSessionPolicyShellAutoAllowed, type SessionExecutionPolicy, type SessionPolicyPermissionRequest } from '@tokenbird/shared/agent'
+import { setSessionExecutionPolicy, setSessionProgramExecutor, getSessionProgramExecutor, clearSessionExecutionPolicy, clearSessionPolicyGrants, setSessionPolicyPermissionHandler, setSessionActionReviewer, checkSessionExecutionPolicy, checkSessionCredentialAccess, checkSessionPolicyPath, isSessionPolicyShellAutoAllowed, type SessionExecutionPolicy, type SessionPolicyPermissionRequest } from '@tokenbird/shared/agent'
 import { reviewActionGate, type ActionReviewRequest } from '@tokenbird/shared/agent'
 import { CONFIG_DIR } from '@tokenbird/shared/config/paths'
 import type { SuperAgentSessionPolicy } from '@tokenbird/shared/super-agent'
@@ -5175,7 +5175,10 @@ export class SessionManager implements ISessionManager {
       mergeSessionScopedToolCallbacks(managed.id, {
         savedCredentialsFn: async (args) => {
           if (!this.localCredentialAccessEnabled) throw new Error('Host credentials are unavailable')
-          if (managed.executionPolicy && (!managed.executionPolicy.fullControl || managed.executionPolicy.actionGates)) throw new Error('Node policy does not permit credential access')
+          if (managed.executionPolicy) {
+            const access = checkSessionCredentialAccess(managed.id, { ...args }, managed.workingDirectory)
+            if (!access.allowed) throw new Error(access.reason)
+          }
           return runSavedCredentialOperation(managed.workspace.id, args, {
             browser: args.action === 'fill' ? getSessionScopedToolCallbacks(managed.id)?.browserPaneFns : undefined,
             workingDirectory: managed.workingDirectory ?? managed.workspace.rootPath,

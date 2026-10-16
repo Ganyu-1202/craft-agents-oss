@@ -44,6 +44,8 @@ export interface SuperAgentEnvironment {
   permissionMode: PermissionMode
   /** Enable worker capabilities and skip all approvals/reviews within the fixed environment. */
   fullControl?: boolean
+  /** Explicit workspace vault grant, independent of full control. Defaults to disabled. */
+  credentialAccess?: boolean
   safety?: {
     autoReview: boolean
     /** Exact tool names; rules can only restrict the mandatory policy. */
@@ -429,6 +431,7 @@ export interface SuperAgentSessionPolicy {
   rootPath: string
   /** Enable worker capabilities and skip all approvals/reviews within the fixed environment. */
   fullControl?: boolean
+  credentialAccess?: boolean
   /** Host-enforced, never configurable by a model or delegation. */
   actionGates?: true
   safety?: SuperAgentEnvironment['safety']

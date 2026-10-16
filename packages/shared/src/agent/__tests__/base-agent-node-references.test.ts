@@ -30,8 +30,10 @@ beforeEach(() => {
   unassignedGuide = join(temp, 'unassigned-source', 'guide.md');
   writeFileSync(skillFile, '# Real bundled skill');
   writeFileSync(docFile, '# Real bundled browser documentation');
-  writeFileSync(join(skillsRoot, 'browser-automation', 'private.txt'), 'Not a capability reference');
+  mkdirSync(join(skillsRoot, 'browser-automation', 'references'));
+  writeFileSync(join(skillsRoot, 'browser-automation', 'references', 'usage.md'), 'Additional skill instructions');
   writeFileSync(assignedGuide, '# Assigned source instructions');
+  writeFileSync(join(temp, 'assigned-source', 'config.json'), '{"name":"Assigned source"}');
   writeFileSync(unassignedGuide, '# Unassigned source instructions');
   setBundledAssetsRoot(temp);
   setSessionExecutionPolicy(sessionId, {
@@ -47,7 +49,7 @@ afterEach(() => {
 });
 
 describe('node builtin instructions', () => {
-  test('automatically reads exact shipped skills and documentation with no approvals and preserves them on source refresh', async () => {
+  test('automatically reads skill packages, assigned source packages and shipped docs without approvals after source refresh', async () => {
     let requests = 0;
     setSessionPolicyPermissionHandler(sessionId, async () => { requests++; return false; });
     const agent = new TestAgent(createMockBackendConfig({ session: createMockSession({ id: sessionId }),
@@ -60,12 +62,13 @@ describe('node builtin instructions', () => {
     const unassigned = createMockSource({ slug: 'unassigned' });
     unassigned.folderPath = join(temp, 'unassigned-source');
     agent.setAllSources([assigned, unassigned]);
-    for (const path of [skillFile, docFile, assignedGuide]) {
+    const skillReference = join(temp, 'resources', 'skills', 'browser-automation', 'references', 'usage.md');
+    for (const path of [skillFile, skillReference, docFile, assignedGuide, join(temp, 'assigned-source', 'config.json')]) {
       expect((await authorizeSessionPolicyTool(sessionId, 'Read', { file_path: path }, environment)).allowed).toBe(true);
     }
     expect(requests).toBe(0);
     expect(checkSessionExecutionPolicy(sessionId, 'Read', { file_path: unassignedGuide }, environment).allowed).toBe(false);
-    expect(checkSessionExecutionPolicy(sessionId, 'Read', { file_path: join(temp, 'resources', 'skills', 'browser-automation', 'private.txt') }, environment).allowed).toBe(false);
+    expect((await authorizeSessionPolicyTool(sessionId, 'Find', { path: join(temp, 'resources', 'skills', 'browser-automation') }, environment)).allowed).toBe(true);
     expect(checkSessionExecutionPolicy(sessionId, 'Write', { file_path: skillFile, content: 'changed' }, environment).allowed).toBe(false);
     expect(checkSessionExecutionPolicy(sessionId, 'Glob', { path: join(temp, 'resources', 'docs'), pattern: '*' }, environment).allowed).toBe(false);
     agent.dispose();

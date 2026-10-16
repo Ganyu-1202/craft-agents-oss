@@ -171,6 +171,8 @@ const strings = {
   writeFiles: ['修改文件', 'Write files'],
   runPrograms: ['运行程序和脚本', 'Run programs and scripts'],
   browser: ['操作浏览器', 'Control browser'],
+  credentialAccess: ['访问凭据库', 'Access credential vault'],
+  credentialAccessHint: ['允许工作节点使用当前工作区保存的凭据：查看账户列表、填充登录信息或向程序注入凭据。密钥不返回给模型；填充和程序执行仍需对应权限。此开关独立于完全控制。', 'Allow workers to use credentials saved in this workspace: list accounts, fill login fields, or inject credentials into programs. Secrets are not returned to the model. Filling and execution require their respective permissions. This switch is independent of full control.'],
   permissionMode: ['执行模式', 'Execution mode'],
   allowAll: ['执行（Execute）', 'Execute'],
   executionModeHint: ['主节点与所有工作节点统一使用执行模式；具体操作仍受能力开关、工作环境和单次授权约束。', 'The coordinator and all workers use Execute. Capability switches, the work environment and scoped approvals still control access.'],
@@ -494,7 +496,7 @@ export function createConfig(connections: LlmConnectionWithStatus[], text: Super
     continuousWork: true,
     execution: { connectionConcurrency: 4, connectionCallsPerMinute: 60, stallMinutes: 15, maxResumeAttempts: 3 },
     environment: {
-      kind: 'folder', workingDirectory: '', permissionMode: 'allow-all', fullControl: true,
+      kind: 'folder', workingDirectory: '', permissionMode: 'allow-all', fullControl: true, credentialAccess: false,
       permissions: { readFiles: true, writeFiles: false, runPrograms: false, browser: false },
     },
     sourceSlugs: [], abilityProfiles: [], scripts: [],

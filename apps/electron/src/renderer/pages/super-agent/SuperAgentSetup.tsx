@@ -151,6 +151,7 @@ export function SuperAgentSetup({ connections, sources = [], skills = [], defaul
           <div className="border-t border-border/70 pt-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs"><span className="font-medium text-muted-foreground">{text('permissions')}</span><span>{text(config.environment.fullControl ? 'fullControlEnabled' : 'limitedControl')}</span></div><p className="text-xs font-medium text-muted-foreground">{text('workingDirectory')}</p><p className="mt-1 break-all font-mono text-xs">{config.environment.workingDirectory}</p>
             {config.environment.fullControl ? <p className="mt-3 text-xs leading-5 text-muted-foreground">{text('fullControlBoundary')}</p>
               : <div className="mt-3 flex flex-wrap gap-2">{(['readFiles', 'writeFiles', 'runPrograms', 'browser'] as const).filter(key => config.environment.permissions[key]).map(key => <span key={key} className="rounded-full bg-foreground/5 px-2 py-1 text-xs">{text(key)}</span>)}</div>}
+            <p className="mt-3 text-xs text-muted-foreground">{text('credentialAccess')} · {text(config.environment.credentialAccess ? 'enabled' : 'disabled')}</p>
           </div>
         </div>}
       </fieldset>

@@ -21,6 +21,19 @@ async function recovering(context: Fixture) {
 }
 
 describe('Super Agent transient failure classification', () => {
+  test('does not retry missing or incompatible Agent Framework runtimes', () => {
+    for (const finalText of [
+      "Agent Framework process exited (1).\nModuleNotFoundError: No module named 'agent_framework'",
+      "Agent Framework process exited (1).\nModuleNotFoundError: No module named 'pydantic'",
+      'spawn python3 ENOENT. Install agent-framework-core==1.21.0 and set TOKENBIRD_AGENT_FRAMEWORK_PYTHON to that Python interpreter.',
+      'Unsupported Agent Framework version 1.20.0. Install agent-framework-core==1.21.0',
+    ]) {
+      expect(canRecoverSuperAgentTurn({ reason: 'error', finalText })).toBe(false)
+      expect(canRecoverSuperAgentTurn({ reason: 'error', errorCode: 'service_error', canRetry: true, finalText })).toBe(false)
+    }
+    expect(canRecoverSuperAgentTurn({ reason: 'error', finalText: 'Agent Framework process exited (1)' })).toBe(true)
+  })
+
   test('recovers known network failures and respects explicit nonretryable metadata', () => {
     for (const finalText of [connectionError, 'fetch failed', 'read ECONNRESET', 'Request timed out', 'HTTP 503 service unavailable', '429 too many requests']) {
       expect(canRecoverSuperAgentTurn({ reason: 'error', finalText })).toBe(true)
@@ -43,6 +56,23 @@ describe('Super Agent transient failure classification', () => {
 })
 
 describe('Super Agent durable network recovery', () => {
+  test('persists workflow dependency failures without invoking a model or scheduling retries', async () => {
+    const error = "Agent Framework process exited (1).\nModuleNotFoundError: No module named 'agent_framework'"
+    const context = await superAgentFixture({ workflow: { run: async () => { throw new Error(error) }, close() {} } })
+    await context.service.save('alpha', context.config)
+    await context.service.command('alpha', { type: 'chat', text: 'Read the current holdings.' })
+    const failed = await until(() => context.service.get('alpha'), value => value.state.nodes.some(node => node.status === 'error'))
+    expect(failed.state.nodes.find(node => node.nodeId === 'main')?.error).toContain(error)
+    expect(context.host.sends).toHaveLength(0)
+    const durable = await loadSuperAgentDocument(join(context.root, 'alpha'))
+    expect(durable.pendingTurns).toHaveLength(0)
+    expect(durable.failedTurns).toHaveLength(1)
+    expect(durable.state.metrics?.retries ?? 0).toBe(0)
+    context.advance(SUPER_AGENT_RECOVERY_WINDOW_MS)
+    await context.service.tick()
+    expect(context.host.sends).toHaveLength(0)
+  })
+
   test('counts a completion event and rejection for the same failed send only once', async () => {
     const context = await superAgentFixture()
     let rejectSend!: (reason: Error) => void

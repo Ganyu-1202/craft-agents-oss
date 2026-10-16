@@ -210,6 +210,11 @@ export function EnvironmentEditor({ environment, onChange, status }: {
     {environment.kind === 'vm' && <FormField label={text('vmWorkspace')}><Input value={environment.vm?.workspaceId ?? ''} onChange={event => onChange({ ...environment, vm: { workspaceId: event.target.value } })} /></FormField>}
     {environment.kind === 'folder' && <p className="rounded-lg bg-foreground/5 px-3 py-2 text-xs leading-5 text-muted-foreground">{text('folderIsolation')}</p>}
     <FormSection title={text('permissions')}>
+      <label className="flex cursor-pointer items-start justify-between gap-4 text-sm">
+        <span>{text('credentialAccess')}<span className="mt-1 block text-xs leading-5 text-muted-foreground">{text('credentialAccessHint')}</span></span>
+        <input type="checkbox" className="mt-1 size-4 accent-primary" checked={environment.credentialAccess === true}
+          onChange={event => onChange({ ...environment, credentialAccess: event.target.checked })} />
+      </label>
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0 space-y-2"><label htmlFor={fullControlId} className="cursor-pointer text-sm font-semibold">{text('fullControl')}</label><p id={fullControlId + '-description'} className="text-xs leading-5 text-muted-foreground">{text('fullControlDescription')}</p></div>
         <Switch id={fullControlId} type="button" className="mt-0.5" checked={environment.fullControl === true} aria-describedby={fullControlId + '-description'} onCheckedChange={fullControl => onChange({ ...environment, fullControl })} />

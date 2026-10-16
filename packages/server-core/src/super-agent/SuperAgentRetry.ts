@@ -11,9 +11,12 @@ const REQUEST_TIMEOUT = /\b(?:request|connect|connection|socket|fetch)\b.{0,40}\
 
 export function canRecoverSuperAgentTurn(event: Pick<SessionCompletionEvent, 'reason' | 'errorCode' | 'canRetry' | 'finalText'>, emptyResponseRetryAttempt = 0): boolean {
   if (!['error', 'timeout'].includes(event.reason) || event.canRetry === false) return false
+  const raw = event.finalText ?? ''
+  // Retrying cannot install Python dependencies or fix an incompatible runtime.
+  // Check before parseError, which classifies every "process exited" as transient.
+  if (/Agent[ _-]Framework/i.test(raw) && /No module named|ModuleNotFoundError|Unsupported Agent Framework version|spawn .+ ENOENT/i.test(raw)) return false
   if (event.errorCode === EMPTY_RESPONSE_ERROR_CODE) return emptyResponseRetryAttempt < MAX_EMPTY_RESPONSE_RETRIES
   if (event.errorCode) return TRANSIENT_CODES.has(event.errorCode)
-  const raw = event.finalText ?? ''
   const code = parseError(new Error(raw)).code
   return TRANSIENT_CODES.has(code) || (code === 'unknown_error' && (TRANSPORT_CODES.test(raw) || REQUEST_TIMEOUT.test(raw)))
 }

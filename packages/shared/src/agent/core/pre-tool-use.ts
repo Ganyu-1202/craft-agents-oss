@@ -50,7 +50,7 @@ import { permissionsConfigCache, type PermissionsContext } from '../permissions-
 import type { PrerequisiteCheckResult } from './prerequisite-manager.ts';
 import { rewriteBashWithRtk } from './rtk-rewrite.ts';
 import { frameworkToolBlockReason } from '../../agent-plugins/framework-tool-policy.ts';
-import { authorizeSessionPolicyTool, checkSessionExecutionPolicy, consumeSessionActionGate, recordSessionPolicyOperation, requiresSessionOperationRecording, getSessionExecutionPolicy, hasSessionExecutionPolicy, hasSessionFullControl, hasSessionPolicyToolGrant, isSessionPolicyShellAutoAllowed, normalizeSessionPolicyInput, wrapSessionProgramInput } from './session-execution-policy.ts';
+import { authorizeSessionPolicyTool, checkSessionExecutionPolicy, consumeSessionActionGate, recordSessionPolicyOperation, requiresSessionOperationRecording, getSessionExecutionPolicy, hasSessionExecutionPolicy, hasSessionFullControl, hasSessionPolicyToolGrant, isSessionPolicyShellAutoAllowed, isSessionReferenceReadTool, normalizeSessionPolicyInput, wrapSessionProgramInput } from './session-execution-policy.ts';
 
 // ============================================================
 // TYPES
@@ -818,7 +818,7 @@ export function runPreToolUseChecks(ctx: PreToolUseInput, deferDispatch?: (input
   // ============================================================
   // 3. PREREQUISITE CHECK (guide.md before source tools)
   // ============================================================
-  if (prerequisiteManager) {
+  if (prerequisiteManager && !isSessionReferenceReadTool(sessionId, toolName, input, workingDirectory)) {
     // Allow Bash through if it's reading a pending skill file (clears the prerequisite)
     if (toolName === 'Bash' && prerequisiteManager.trackBashSkillRead(input)) {
       // Prerequisite cleared — fall through to remaining pipeline steps
